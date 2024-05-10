@@ -1,0 +1,11 @@
+graft doc
+prune doc/_build
+prune doc/reference/casm/_autosummary
+graft examples
+recursive-include casm *.in
+recursive-include tests *.py
+graft tests/data
+include pyproject.toml
+include setup.py
+include CHANGELOG.md README.md LICENSE
+include build_requirements.txt dev_requirements.txt doc_requirements.txt test_requirements.txt
