@@ -22,7 +22,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "libcasm-xtal"
+    "libcasm-mapping",
+    "libcasm-clexmonte",
 ]
 
 [project.urls]
