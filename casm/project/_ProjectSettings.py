@@ -1,8 +1,11 @@
+import re
+
+import numpy as np
+
 import libcasm.casmglobal as casmglobal
 import libcasm.xtal as xtal
 from libcasm.clexulator import PrimNeighborList
-import numpy as np
-import re
+
 from ._ClexDescription import ClexDescription
 
 

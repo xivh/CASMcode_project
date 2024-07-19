@@ -1,9 +1,10 @@
 import pathlib
 from typing import Callable, Union
 
+import numpy as np
+
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
-import numpy as np
 
 
 def project_path(start: Union[str, pathlib.Path, None] = None):

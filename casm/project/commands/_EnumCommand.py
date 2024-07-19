@@ -1,10 +1,8 @@
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
 from casm.project._Project import Project
-from casm.project.json_io import (
-    read_required,
-    safe_dump,
-)
 
 
 class EnumCommand:

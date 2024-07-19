@@ -1,10 +1,7 @@
 from typing import Optional
+
 from casm.project._ClexDescription import ClexDescription
 from casm.project._Project import Project
-from casm.project.json_io import (
-    read_required,
-    safe_dump,
-)
 
 
 class BsetCommand:

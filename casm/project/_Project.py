@@ -199,7 +199,7 @@ class Project:
 
         if prim is None and check_path is not None:
             print(f"CASM project already exists at {path}")
-            print(f"Using existing project")
+            print("Using existing project")
             return Project(path=check_path)
 
         if check_path == path:

@@ -6,9 +6,9 @@ from ._CompositionAxes import (
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator
 from ._DirectoryStructure import DirectoryStructure
 from ._methods import (
-    project_path,
     make_symmetrized_lattice,
     make_symmetrized_prim,
+    project_path,
 )
 from ._Project import Project
 from ._ProjectSettings import ProjectSettings

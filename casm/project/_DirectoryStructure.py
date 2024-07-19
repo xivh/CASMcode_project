@@ -2,9 +2,6 @@ import pathlib
 from typing import Optional, Union
 
 from ._ClexDescription import ClexDescription
-from ._methods import (
-    project_path,
-)
 
 
 class DirectoryStructure:
