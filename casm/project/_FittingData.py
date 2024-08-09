@@ -5,42 +5,6 @@ import libcasm.composition as comp
 import libcasm.configuration as casmconfig
 
 
-class FormationEnergyCalculator:
-    """Should this be moved to libcasm.composition?"""
-
-    def __init__(self):
-        self.chemical_reference = None
-
-    def set_chemical_reference(self, chemical_reference):
-        """TODO: Docstring for set_chemical_reference.
-
-        Parameters
-        ----------
-        chemical_reference : TODO
-
-        Returns
-        -------
-        TODO
-
-        """
-        pass
-
-    def get_formation_energy(self, energy_per_prim, mol_comp):
-        """TODO: Docstring for get_formation_energy.
-
-        Parameters
-        ----------
-        energy_per_prim : TODO
-        param_comp : TODO
-
-        Returns
-        -------
-        TODO
-
-        """
-        pass
-
-
 class FittingData:
     """A convenient class that holds all the required properties
     of configurations which can be used while fitting cluster expansions
@@ -77,6 +41,56 @@ class FittingData:
         self.mol_compositions = None
         self.correlations_per_unitcell = None
         self.formation_energies = None
+
+    @staticmethod
+    def from_dict(data):
+        """Construct FittingData from a dictionary
+
+        Parameters
+        ----------
+        data : dict
+            A dictionary containing `names`, `parametric_compositions`
+            `mol_compositions`, `correlations_per_unitcell` and `formation_energies`
+            of the configurations
+            Note that `formation_energies` can be None
+
+        Returns
+        -------
+        fitting_data : FittingData
+            :class:`FittingData` with `names`, `parametric_compositions`,
+            `mol_compositions`, `correlations_per_unitcell` and `formation_energies`
+            filled in for all the configurations
+
+
+        """
+        fitting_data = FittingData()
+
+        fitting_data.names = data["names"]
+        fitting_data.parametric_compositions = data["parametric_compositions"]
+        fitting_data.mol_compositions = data["mol_compositions"]
+        fitting_data.correlations_per_unitcell = data["correlations_per_unitcell"]
+        fitting_data.formation_energies = data["formation_energies"]
+
+        return fitting_data
+
+    def to_dict(self):
+        """Turn `FittingData` into a dictionary with `names`,
+        `parametric_compositions`, `mol_compositions`, `correlations_per_unitcell`
+        and `formation_energies` for the configurations.
+
+        Returns
+        -------
+        data : dict
+
+        """
+
+        return dict(
+            names=self.names,
+            parametric_compositions=self.parametric_compositions,
+            mol_compositions=self.mol_compositions,
+            correlations_per_unitcell=self.correlations_per_unitcell,
+            formation_energies=self.formation_energies,
+        )
 
 
 def _extract_correlations_for_configuration(
@@ -118,7 +132,7 @@ def _extract_correlations_for_configuration(
         clexulator,
         configuration.dof_values,
     )
-    return corr.per_unitcell()
+    return corr.per_unitcell(corr.per_supercell()).tolist()
 
 
 def _extract_mol_and_param_comp_for_configuration(
@@ -152,13 +166,11 @@ def _extract_mol_and_param_comp_for_configuration(
         allowed_occs=xtal_prim.occ_dof(),
         components=composition_converter.components(),
     )
-    mol_comp = composition_calculator.mean_num_each_component(
-        configuration.configuration.occupation
-    )
+    mol_comp = composition_calculator.mean_num_each_component(configuration.occupation)
     # Convert mol comp to param comp
     param_comp = composition_converter.param_composition(mol_comp)
 
-    return mol_comp, param_comp
+    return mol_comp.tolist(), param_comp.tolist()
 
 
 def make_calculated_fitting_data(
@@ -167,7 +179,6 @@ def make_calculated_fitting_data(
     composition_converter: comp.CompositionConverter,
     clexulator: clex.Clexulator,
     prim_neighbor_list: clex.PrimNeighborList,
-    formation_energy_calculator: FormationEnergyCalculator,
 ) -> FittingData:
     """For a given `config_props` list, constructs FittingData which
     which holds compositions, correlations per unitcell, formation energies
@@ -181,8 +192,8 @@ def make_calculated_fitting_data(
         Prim of the project
     config_props : list[dict]
         A list containing results of mapping/import
-    composition_converter : libcasm.composition.CompositionCalculator
-        A :class:`~libcasm.composition.CompositionCalculator` object with
+    composition_converter : libcasm.composition.CompositionConverter
+        A :class:`~libcasm.composition.CompositionConverter` object with
         the warranted composition axes set, which will be used to obtain
         mol and parametric compostions
     clexulator : libcasm.clexulator.Clexulator
@@ -192,8 +203,6 @@ def make_calculated_fitting_data(
         A :class:`~libcasm.clexulator.PrimNeighborList` which will be
         used to construct the :class:`~libcasm.clexulator.SuperNeighborList`
         for every configuration and will be used while obtaining correlations
-    formation_energy_calculator: TODO
-        TODO
 
     Returns
     -------
@@ -226,19 +235,14 @@ def make_calculated_fitting_data(
             composition_converter=composition_converter,
         )
 
-        # Formation energies
-        formation_energy = formation_energy_calculator.get_formation_energy(
-            energy_per_prim=config_with_properties.scalar_global_property_value(
-                "energy_per_unitcell"
-            ),
-            mol_comp=mol_comp,
-        )
-
         names.append("config." + str(config_id))
         correlations_per_unitcell.append(corr_per_unitcell)
         mol_compositions.append(mol_comp)
         parametric_compositions.append(param_comp)
-        formation_energies.append(formation_energy)
+
+        # This currently assumes that formation energies are already
+        # in config props. Should it be like this??
+        formation_energies.append(config_prop["formation_energy"])
 
     fitting_data = FittingData()
     fitting_data.names = names

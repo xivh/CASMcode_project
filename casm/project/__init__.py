@@ -12,3 +12,8 @@ from ._methods import (
 )
 from ._Project import Project
 from ._ProjectSettings import ProjectSettings
+from ._FittingData import (
+    FittingData,
+    make_calculated_fitting_data,
+    make_uncalculated_fitting_data,
+)
