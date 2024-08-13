@@ -17,24 +17,23 @@ class FittingData:
 
     If it is constructed from :func:`make_uncalculated_fitting_data`, all the
     attributes except `formation_energies` will be filled
-
-
-    Attributes
-    ----------
-    names : Optional[list[str]] = None
-        Names of the configurations
-    parametric_compositions : Optional[np.ndarray] = None
-        Paramteric compositions of all the configurations
-    mol_compositions : Optional[np.ndarray] = None
-        Number of components per unitcell of all the configurations
-    correlations_per_unitcell : Optional[np.ndarray] = None
-        Correlations per unitcell of all the configurations
-    formation_energies : Optional[np.ndarray] = None
-        Formation energy per unitcell of all the configurations
-
     """
 
     def __init__(self):
+        """
+        Attributes
+        ----------
+        names : Optional[list[str]] = None
+            Names of the configurations
+        parametric_compositions : Optional[np.ndarray] = None
+            Paramteric compositions of all the configurations
+        mol_compositions : Optional[np.ndarray] = None
+            Number of components per unitcell of all the configurations
+        correlations_per_unitcell : Optional[np.ndarray] = None
+            Correlations per unitcell of all the configurations
+        formation_energies : Optional[np.ndarray] = None
+            Formation energy per unitcell of all the configurations
+        """
 
         self.names = None
         self.parametric_compositions = None
@@ -66,10 +65,12 @@ class FittingData:
         fitting_data = FittingData()
 
         fitting_data.names = data["names"]
-        fitting_data.parametric_compositions = data["parametric_compositions"]
-        fitting_data.mol_compositions = data["mol_compositions"]
-        fitting_data.correlations_per_unitcell = data["correlations_per_unitcell"]
-        fitting_data.formation_energies = data["formation_energies"]
+        fitting_data.parametric_compositions = np.array(data["parametric_compositions"])
+        fitting_data.mol_compositions = np.array(data["mol_compositions"])
+        fitting_data.correlations_per_unitcell = np.array(
+            data["correlations_per_unitcell"]
+        )
+        fitting_data.formation_energies = np.array(data["formation_energies"])
 
         return fitting_data
 
@@ -86,10 +87,10 @@ class FittingData:
 
         return dict(
             names=self.names,
-            parametric_compositions=self.parametric_compositions,
-            mol_compositions=self.mol_compositions,
-            correlations_per_unitcell=self.correlations_per_unitcell,
-            formation_energies=self.formation_energies,
+            parametric_compositions=self.parametric_compositions.tolist(),
+            mol_compositions=self.mol_compositions.tolist(),
+            correlations_per_unitcell=self.correlations_per_unitcell.tolist(),
+            formation_energies=self.formation_energies.tolist(),
         )
 
 
@@ -132,7 +133,7 @@ def _extract_correlations_for_configuration(
         clexulator,
         configuration.dof_values,
     )
-    return corr.per_unitcell(corr.per_supercell()).tolist()
+    return corr.per_unitcell(corr.per_supercell())
 
 
 def _extract_mol_and_param_comp_for_configuration(
@@ -157,7 +158,7 @@ def _extract_mol_and_param_comp_for_configuration(
 
     Returns
     -------
-    mol_comp, param_comp : Tuple[mol_comp, param_comp]
+    mol_comp, param_comp : tuple[np.ndarray, np.ndarray]
         mol composition and parametric composition of the configuration
 
     """
@@ -170,7 +171,7 @@ def _extract_mol_and_param_comp_for_configuration(
     # Convert mol comp to param comp
     param_comp = composition_converter.param_composition(mol_comp)
 
-    return mol_comp.tolist(), param_comp.tolist()
+    return mol_comp, param_comp
 
 
 def make_calculated_fitting_data(
@@ -236,9 +237,9 @@ def make_calculated_fitting_data(
         )
 
         names.append("config." + str(config_id))
-        correlations_per_unitcell.append(corr_per_unitcell)
-        mol_compositions.append(mol_comp)
-        parametric_compositions.append(param_comp)
+        correlations_per_unitcell.append(corr_per_unitcell.tolist())
+        mol_compositions.append(mol_comp.tolist())
+        parametric_compositions.append(param_comp.tolist())
 
         # This currently assumes that formation energies are already
         # in config props. Should it be like this??
@@ -246,10 +247,10 @@ def make_calculated_fitting_data(
 
     fitting_data = FittingData()
     fitting_data.names = names
-    fitting_data.correlations_per_unitcell = correlations_per_unitcell
-    fitting_data.mol_compositions = mol_compositions
-    fitting_data.parametric_compositions = parametric_compositions
-    fitting_data.formation_energies = formation_energies
+    fitting_data.correlations_per_unitcell = np.array(correlations_per_unitcell)
+    fitting_data.mol_compositions = np.array(mol_compositions)
+    fitting_data.parametric_compositions = np.array(parametric_compositions)
+    fitting_data.formation_energies = np.array(formation_energies)
 
     return fitting_data
 
