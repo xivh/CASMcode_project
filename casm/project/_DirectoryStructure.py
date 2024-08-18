@@ -32,6 +32,7 @@ class DirectoryStructure:
             )
         self.__casm_dir = ".casm"
         self.__casmdb_dir = "jsonDB"
+        self.__enum_dir = "enumerations"
         self.__bset_dir = "basis_sets"
         self.__calc_dir = "training_data"
         self.__set_dir = "settings"
@@ -40,6 +41,10 @@ class DirectoryStructure:
         self.__system_dir = "systems"
 
     # ** Query filesystem **
+
+    def all_enum(self):
+        """Check filesystem directory structure and return list of all enumeration names"""
+        return self.__all_settings("enum", self.path / self.__enum_dir)
 
     def all_bset(self):
         """Check filesystem directory structure and return list of all basis set names"""
@@ -185,6 +190,14 @@ class DirectoryStructure:
     def crystal_point_group(self):
         """Return crystal_point_group.json path"""
         return self.symmetry_dir() / "crystal_point_group.json"
+
+    # -- Enumerations --------
+    def enum_dir(
+        self,
+        enum: str,
+    ):
+        """Return path to directory contain enumeration info"""
+        return self.path / self.__enum_dir / self.__enum(enum=enum)
 
     # -- Basis sets --------
 
@@ -437,6 +450,9 @@ class DirectoryStructure:
 
     # private:
 
+    def __enum(self, enum: str):
+        return "enum." + enum
+
     def __bset(self, bset: str):
         return "bset." + bset
 
@@ -465,7 +481,7 @@ class DirectoryStructure:
         pattern += "."
 
         # get all
-        if not location.exist():
+        if not location.exists():
             return all
 
         for child in location.iterdir():

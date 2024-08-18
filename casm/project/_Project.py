@@ -6,10 +6,7 @@ import libcasm.configuration as casmconfig
 import libcasm.configuration.io as config_io
 import libcasm.xtal as xtal
 
-from ._CompositionAxes import (
-    ChemicalCompositionAxes,
-    OccupantCompositionAxes,
-)
+from ._CompositionAxes import CompositionAxes
 from ._DirectoryStructure import DirectoryStructure
 from ._methods import (
     PrimToleranceSensitivity,
@@ -53,7 +50,7 @@ class Project:
         of freedom (DoF) with symmetry information"""
 
         self.chemical_composition_axes = None
-        """ChemicalCompositionAxes: Project chemical composition axes.
+        """CompositionAxes: Project chemical composition axes.
         
         The chemical composition axes are based on compositions calculated such that
         all :class:`~libcasm.xtal.Occupant` that have the same "chemical name" 
@@ -72,7 +69,7 @@ class Project:
         """
 
         self.occupant_composition_axes = None
-        """OccupantCompositionAxes: Project distinct occupant composition \
+        """CompositionAxes: Project distinct occupant composition \
         axes.
         
         The occupant composition axes are based on compositions calculated such that
@@ -90,26 +87,29 @@ class Project:
         """
 
         if self.dir.chemical_composition_axes().exists():
-            self.chemical_composition_axes = ChemicalCompositionAxes.from_dict(
-                read_optional(self.dir.chemical_composition_axes())
+            self.chemical_composition_axes = CompositionAxes(
+                path=self.dir.chemical_composition_axes()
             )
+            self.chemical_composition_axes.load()
         elif self.dir.composition_axes().exists():
             print(
                 "Note: Using existing composition_axes.json file for chemical "
                 "compositions (CASM v1 compatibility)."
             )
-            self.chemical_composition_axes = ChemicalCompositionAxes.from_dict(
-                read_optional(self.dir.composition_axes())
+            self.chemical_composition_axes = CompositionAxes.from_dict(
+                data=read_optional(self.dir.composition_axes()),
+                path=self.dir.chemical_composition_axes(),
             )
         else:
-            self.chemical_composition_axes = ChemicalCompositionAxes.init(
+            self.chemical_composition_axes = CompositionAxes.init_chemical_axes(
                 xtal_prim=self.prim.xtal_prim,
                 sort=True,
+                path=self.dir.chemical_composition_axes(),
             )
         self.chemical_composition = self.chemical_composition_axes.config_composition
 
         if self.dir.occupant_composition_axes().exists():
-            self.occupant_composition_axes = OccupantCompositionAxes.from_dict(
+            self.occupant_composition_axes = CompositionAxes.from_dict(
                 read_optional(self.dir.occupant_composition_axes())
             )
         elif self.dir.composition_axes().exists():
@@ -117,15 +117,19 @@ class Project:
                 "Note: Using existing composition_axes.json file for occupant "
                 "compositions (CASM v1 compatibility)."
             )
-            self.occupant_composition_axes = OccupantCompositionAxes.from_dict(
+            self.occupant_composition_axes = CompositionAxes.from_dict(
                 read_optional(self.dir.composition_axes())
             )
         else:
-            self.occupant_composition_axes = OccupantCompositionAxes.init(
+            self.occupant_composition_axes = CompositionAxes.init_occupant_axes(
                 xtal_prim=self.prim.xtal_prim,
                 sort=True,
+                path=self.dir.occupant_composition_axes(),
             )
         self.occupant_composition = self.occupant_composition_axes.config_composition
+
+        # Make project.enum persist
+        self._enum = None
 
     @property
     def bset(self):
@@ -141,7 +145,9 @@ class Project:
         configurations, events, etc."""
         from casm.project.commands._EnumCommand import EnumCommand
 
-        return EnumCommand(proj=self)
+        if self._enum is None:
+            self._enum = EnumCommand(proj=self)
+        return self._enum
 
     @property
     def sym(self):
@@ -197,21 +203,15 @@ class Project:
 
         check_path = project_path(path)
 
-        if prim is None and check_path is not None:
-            print(f"CASM project already exists at {path}")
-            print("Using existing project")
-            return Project(path=check_path)
-
-        if check_path == path:
-            raise Exception(
-                "Error in casm.project.Project.init: "
-                f"CASM project already exists at {path}"
-            )
-        elif check_path is not None:
-            print(
-                "Note: Creating a sub-project. "
-                f"A project already exists at {check_path}"
-            )
+        if check_path is not None:
+            if check_path.resolve() == path.resolve():
+                print(f"CASM project already exists at {printpathstr(path)}")
+                print("Using existing project")
+                return Project(path=check_path)
+            else:
+                print("** Creating a sub-project. **")
+                print(f"A project already exists at {printpathstr(check_path)}")
+                print()
 
         ### Get Prim
         if isinstance(prim, casmconfig.Prim):
@@ -394,14 +394,8 @@ class Project:
         )
 
         # Write standard composition axes
-        safe_dump(
-            data=proj.chemical_composition_axes.to_dict(),
-            path=dir.chemical_composition_axes(),
-        )
-        safe_dump(
-            data=proj.occupant_composition_axes.to_dict(),
-            path=dir.occupant_composition_axes(),
-        )
+        proj.chemical_composition_axes.commit()
+        proj.occupant_composition_axes.commit()
 
         # Write symmetry info (overwrite existing files)
         # - write lattice_point_group.json,
