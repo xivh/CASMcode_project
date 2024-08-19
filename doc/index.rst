@@ -11,6 +11,8 @@
 casm-project
 ============
 
+**Note**: casm-project is under development and not yet released. The interface may change in future releases.
+
 The casm-project package makes it easier to construct, fit, and use a cluster expansion in CASM version >= 2 by:
 
 - providing quick access to the most commonly used methods,
