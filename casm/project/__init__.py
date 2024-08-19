@@ -1,10 +1,8 @@
 from ._ClexDescription import ClexDescription
-from ._CompositionAxes import (
-    ChemicalCompositionAxes,
-    OccupantCompositionAxes,
-)
+from ._CompositionAxes import CompositionAxes
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator
 from ._DirectoryStructure import DirectoryStructure
+from ._EnumData import EnumData
 from ._methods import (
     make_symmetrized_lattice,
     make_symmetrized_prim,

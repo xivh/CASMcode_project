@@ -1,6 +1,7 @@
 import numpy as np
-import libcasm.xtal as xtal
+
 import casm.project
+import libcasm.xtal as xtal
 
 
 def test_make_symmetrized_lattice_1():

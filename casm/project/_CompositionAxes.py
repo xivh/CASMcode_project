@@ -1,19 +1,54 @@
-from typing import Any, Optional, TypeVar
+import pathlib
+import sys
+from typing import Any, Optional, TextIO, TypeVar, Union
 
 import libcasm.casmglobal as casmglobal
 import libcasm.xtal as xtal
 from libcasm.composition import (
     CompositionCalculator,
     CompositionConverter,
-    make_standard_origin_and_end_members,
+    make_standard_axes,
+    print_axes_summary,
+    print_axes_table,
 )
 
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator
+from .json_io import (
+    read_required,
+    safe_dump,
+)
 
 
-def make_chemical_components(
+def _update_components(
+    components: Union[str, list[str], None],
+    unique_components: list[str],
+) -> list[str]:
+    invalid_value_error = ValueError(
+        f"Invalid value for `components`: {components}. "
+        f"May be None, or a list of "
+        f"components, or 'sorted' to sort components alphabetically."
+    )
+
+    if components is None:
+        components = unique_components
+    elif isinstance(components, str):
+        if components == "sorted":
+            components = sorted(unique_components)
+        else:
+            raise invalid_value_error
+    elif isinstance(components, list):
+        if sorted(components) != sorted(unique_components):
+            raise ValueError(
+                f"Given `components` ({components}) do not match the components "
+                f"found in `allowed_occs`: ({unique_components})"
+            )
+    else:
+        raise invalid_value_error
+
+
+def _make_chemical_components(
     xtal_prim: xtal.Prim,
-    sort: bool = True,
+    components: Union[str, list[str], None] = None,
 ):
     """Make components and allowed_occs for a chemical composition calculator
 
@@ -29,25 +64,23 @@ def make_chemical_components(
     ----------
     xtal_prim: libcasm.xtal.Prim
         The prim.
-
-    sort: bool = True
-        By default, components are sorted. If `sort` is False, then the components
-        are ordered as found iterating over `Prim.occ_dof`.
+    components: Union[str, list[str], None] = None
+        The requested component order in the composition vectors. If None, the
+        components are listed in the order found in `allowed_occs`. If the string
+        "sorted", the components are sorted alphabetically. If a list, the components
+        are listed in the order given in the list.
 
     Returns
     -------
-    (components, allowed_occs):
+    components: list[str],
+        The requested component order in the composition vectors. Occupants
+        are distinguished by `Occupant.name` (the chemical name).
 
-        components: list[str],
-            The requested component order in the composition vectors. Occupants
-            are distinguished by `Occupant.name` (the chemical name). The components
-            are ordered as found iterating over `Prim.occ_dof`.
-
-        allowed_occs: list[list[str]],
-            For each sublattice, a vector of components allowed to occupy
-            the sublattice.
+    allowed_occs: list[list[str]],
+        For each sublattice, a vector of components allowed to occupy
+        the sublattice.
     """
-    components = []
+    unique_components = []
     allowed_occs = []
 
     occupants = xtal_prim.occupants()
@@ -56,19 +89,22 @@ def make_chemical_components(
         site_allowed_occs = []
         for occ_id in site_occ_dof:
             occupant = occupants[occ_id]
-            if occupant.name() not in components:
-                components.append(occupant.name())
+            if occupant.name() not in unique_components:
+                unique_components.append(occupant.name())
             site_allowed_occs.append(occupant.name())
         allowed_occs.append(site_allowed_occs)
 
-    if sort:
-        components.sort()
+    components = _update_components(
+        components=components,
+        unique_components=unique_components,
+    )
+
     return (components, allowed_occs)
 
 
-def make_occupant_components(
+def _make_occupant_components(
     xtal_prim: xtal.Prim,
-    sort: bool = True,
+    components: Union[str, list[str], None] = None,
 ):
     """Make components and allowed_occs for a unique occupant composition calculator
 
@@ -84,282 +120,61 @@ def make_occupant_components(
     ----------
     xtal_prim: libcasm.xtal.Prim
         The prim.
+    components: Union[str, list[str], None] = None
+        The requested component order in the composition vectors. If None, the
+        components are listed in the order found in `allowed_occs`. If the string
+        "sorted", the components are sorted alphabetically. If a list, the components
+        are listed in the order given in the list.
 
-    sort: bool = True
-        By default, components are sorted. If `sort` is False, then the components
-        are ordered as found iterating over `Prim.occ_dof`.
 
     Returns
     -------
-    (components, allowed_occs):
+    components: list[str],
+        The requested component order in the composition vectors. Occupants
+        are distinguished by label in the `Prim.occ_dof` lists
+        (the unique name / orientation name).
 
-        components: list[str],
-            The requested component order in the composition vectors. Occupants
-            are distinguished by label in the `Prim.occ_dof` lists
-            (the unique name / orientation name).
-
-        allowed_occs: list[list[str]],
-            For each sublattice, a vector of components allowed to occupy
-            the sublattice.
+    allowed_occs: list[list[str]],
+        For each sublattice, a vector of components allowed to occupy
+        the sublattice.
     """
-    components = []
+    unique_components = []
     allowed_occs = []
 
     occ_dof = xtal_prim.occ_dof()
     for site_occ_dof in occ_dof:
         site_allowed_occs = []
         for occ_id in site_occ_dof:
-            if occ_id not in components:
-                components.append(occ_id)
+            if occ_id not in unique_components:
+                unique_components.append(occ_id)
             site_allowed_occs.append(occ_id)
         allowed_occs.append(site_allowed_occs)
 
-    if sort:
-        components.sort()
+    components = _update_components(
+        components=components,
+        unique_components=unique_components,
+    )
+
     return (components, allowed_occs)
 
 
-def make_standard_axes(
-    components: list[str],
-    allowed_occs: list[list[str]],
-    tol: float = casmglobal.TOL,
-) -> tuple[CompositionCalculator, list[CompositionConverter]]:
-    """Make composition calculator and standard axes
-
-    Parameters
-    ----------
-    components: list[str],
-        The requested component order in the composition vectors.
-
-    allowed_occs: list[list[str]]
-        For each sublattice, a vector of components allowed to occupy the sublattice.
-
-    tol: float = libcasm.casmglobal.TOL
-        Tolerance for comparison. Used to find composition axes such that the
-        parametric composition parameters are non-negative.
-
-    Returns
-    -------
-    (calculator, standard_axes):
-
-        calculator: libcasm.composition.CompositionCalculator
-            The composition calculator.
-
-        standard_axes: list[libcasm.composition.CompositionConverter]
-            A list of :class:`~libcasm.composition.CompositionConverter` for
-            standard composition axes.
-    """
-    calculator = CompositionCalculator(
-        components=components,
-        allowed_occs=allowed_occs,
-    )
-    standard_origin_and_end_members = make_standard_origin_and_end_members(
-        components=components,
-        allowed_occs=allowed_occs,
-        tol=tol,
-    )
-
-    axes = []
-    for choice in standard_origin_and_end_members:
-        axes.append(
-            CompositionConverter(
-                components=components,
-                origin_and_end_members=choice,
-            )
-        )
-    return (calculator, axes)
+CompositionAxesType = TypeVar("CompositionAxesType")
 
 
-def axes_from_dict(cls: Any, data: dict) -> Any:
-    value = cls()
-    value.allowed_occs = data["allowed_occs"]
-    value.components = data["components"]
-    value.enumerated = data["enumerated"]
-    value.possible_axes = {
-        key: CompositionConverter.from_dict(value)
-        for key, value in data["possible_axes"].items()
-    }
-    value.current_axes = data["current_axes"]
-    value.calculator = CompositionCalculator(
-        components=value.components,
-        allowed_occs=value.allowed_occs,
-    )
-    return value
-
-
-def axes_to_dict(axes: Any) -> dict:
-    return {
-        "current_axes": axes.current_axes,
-        "enumerated": axes.enumerated,
-        "possible_axes": {
-            key: value.to_dict() for key, value in axes.possible_axes.items()
-        },
-        "components": axes.components,
-        "allowed_occs": axes.allowed_occs,
-    }
-
-
-ChemicalCompositionAxesType = TypeVar("ChemicalCompositionAxesType")
-
-
-class ChemicalCompositionAxes:
-    """Chemical composition axes
+class CompositionAxes:
+    """Store, access, and use composition axes
 
     This class is used to:
 
     - make a :class:`~libcasm.composition.CompositionCalculator`
-    - make and store a list of :class:`~libcasm.composition.CompositionConverter` in
-      which occupants which have the same chemical name are treated as a single
-      component, even if they have different magnetic spin, or molecular orientation,
-      etc.
+    - make and store a list of :class:`~libcasm.composition.CompositionConverter`, the
+      possible parametric composition axes
     - store which :class:`~libcasm.composition.CompositionConverter` is the default
       axes choice.
 
     """
 
-    def __init__(self):
-        """
-        .. rubric:: Constructor
-
-        Notes
-        -----
-
-        It is expected that ChemicalCompositionAxes is constructed using one of:
-
-        - :func:`~casm.project.ChemicalCompositionAxes.init`
-        - :func:`~casm.project.ChemicalCompositionAxes.from_dict`
-
-        """
-
-        self.components = None
-        """Optional[list[str]]: The component order in the composition vectors.
-        
-        A user may customize the order of components in this list to adjust the order
-        of components in the calculated composition vectors.
-        """
-
-        self.allowed_occs: Optional[list[list[str]]] = None
-        """Optional[list[list[str]]]: For each sublattice, a vector of components \
-        allowed to occupy the sublattice.
-        
-        The values must be elements in `components`. The order must be consistent 
-        with the order of occupants listed in `xtal.Prim.occ_dof`. This should be 
-        used as calculated.
-        """
-
-        self.calculator = None
-        """Optional[CompositionCalculator]: Composition calculator"""
-
-        self.enumerated: list[str] = []
-        """list[str]: Keys of enumerated standard axes"""
-
-        self.possible_axes: dict[str, CompositionConverter] = {}
-        """dict[str, CompositionConverter]: All possible axes, enumerated and custom, \
-        by id string"""
-
-        self.current_axes: Optional[str] = None
-        """Optional[str]: Key of current axes in `self.possible_axes`"""
-
-    @property
-    def config_composition(self) -> ConfigCompositionCalculator:
-        return ConfigCompositionCalculator(
-            calculator=self.calculator,
-            converter=self.possible_axes.get(self.current_axes),
-        )
-
-    @staticmethod
-    def init(
-        xtal_prim: xtal.Prim,
-        sort: bool = True,
-        tol: float = casmglobal.TOL,
-    ) -> ChemicalCompositionAxesType:
-        """Initialize with the standard chemical composition axes
-
-        Notes
-        -----
-
-        - Generates or overwrites the enumerated standard composition axes.
-        - Keeps any custom axes.
-
-        """
-
-        value = ChemicalCompositionAxes()
-        value.calculate(
-            xtal_prim=xtal_prim,
-            sort=sort,
-            tol=tol,
-        )
-        return value
-
-    def calculate(
-        self,
-        xtal_prim: xtal.Prim,
-        sort: bool = True,
-        tol: float = casmglobal.TOL,
-    ):
-        """Calculate (or re-calculate) the standard composition axes
-
-        Notes
-        -----
-
-        - Generates or overwrites the enumerated standard composition axes.
-        - Keeps any custom axes.
-
-        """
-        for key in self.enumerated:
-            if key in self.possible_axes:
-                del self.possible_axes[key]
-
-        components, self.allowed_occs = make_chemical_components(
-            xtal_prim=xtal_prim,
-            sort=sort,
-        )
-
-        if self.components is None:
-            self.components = components
-
-        calculator, enumerated_axes = make_standard_axes(
-            components=self.components,
-            allowed_occs=self.allowed_occs,
-            tol=tol,
-        )
-
-    @staticmethod
-    def from_dict(
-        data: dict,
-    ) -> ChemicalCompositionAxesType:
-        """Construct ChemicalCompositionAxesType from a dictionary"""
-        return axes_from_dict(ChemicalCompositionAxes, data)
-
-    def to_dict(
-        self,
-    ) -> dict:
-        """Represent ChemicalCompositionAxes as a Python dict
-
-        The `Composition Axes reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/CompositionAxes/>`_
-        documents the format.
-        """
-        return axes_to_dict(self)
-
-
-OccupantCompositionAxesType = TypeVar("OccupantCompositionAxesType")
-
-
-class OccupantCompositionAxes:
-    """Unique occupant composition axes
-
-    This class is used to:
-
-    - make a :class:`~libcasm.composition.CompositionCalculator`
-    - make and store a list of :class:`~libcasm.composition.CompositionConverter` in
-      which occupants which are the same chemistry but different magnetic spin, or
-      molecular orientation, etc. are treated as different components.
-    - store which :class:`~libcasm.composition.CompositionConverter` is the default
-      axes choice.
-
-    """
-
-    def __init__(self):
+    def __init__(self, path: Optional[pathlib.Path] = None):
         """
         .. rubric:: Constructor
 
@@ -371,16 +186,17 @@ class OccupantCompositionAxes:
         - :func:`~casm.project.OccupantCompositionAxes.init`
         - :func:`~casm.project.OccupantCompositionAxes.from_dict`
 
+        Parameters
+        ----------
+        path: Optional[pathlib.Path] = None
+            Path to the axes file, for `load` and `commit`.
+
         """
 
-        self.components = None
-        """Optional[list[str]]: The component order in the composition vectors.
+        self.path = path
+        """Optional[pathlib.Path]: Path to the axes file, for `load` and `commit`."""
 
-        A user may customize the order of components in this list to adjust the order
-        of components in the calculated composition vectors.
-        """
-
-        self.allowed_occs: Optional[list[list[str]]] = None
+        self.allowed_occs = None
         """Optional[list[list[str]]]: For each sublattice, a vector of components \
         allowed to occupy the sublattice.
 
@@ -392,22 +208,171 @@ class OccupantCompositionAxes:
         self.calculator = None
         """Optional[CompositionCalculator]: Composition calculator"""
 
-        self.enumerated: list[str] = []
+        self.enumerated = []
         """list[str]: Keys of enumerated standard axes
-        
+
         This is populated by the `calculate` method.
         """
 
-        self.possible_axes: dict[str, CompositionConverter] = {}
+        self.possible_axes = {}
         """dict[str, CompositionConverter]: All possible axes, enumerated and custom, \
         by id string.
-        
+
         The enumerated axes are constructed by the `calculate` method. The custom
         axes are user provided.
         """
 
-        self.current_axes: Optional[str] = None
+        self.current_axes = None
         """Optional[str]: Key of current axes in `self.possible_axes`"""
+
+        self.include_va: bool = False
+        """bool: If True, include "chem_pot(Va)" in formulas; If False (default)
+        assume that the vacancy chemical potential is zero."""
+
+    def set_current_axes(self, key: Optional[Any] = None):
+        """Select the current composition axes
+
+        Parameters
+        ----------
+        key: Optional[Any] = None
+            The key of one of the `possible_axes` to set as the current axes. If None,
+            then the current axes are cleared. If `key` is not found, then a ValueError
+            is raised. The key must be a string or convertible to string.
+        """
+        if key is None:
+            self.current_axes = None
+            return
+        key = str(key)
+        if key not in self.possible_axes:
+            raise ValueError(
+                f"Error in CompositionAxes.select: '{key}' not found in possible_axes"
+            )
+        self.current_axes = key
+
+    def _assign_from_dict(self, data: dict):
+        self.allowed_occs = data["allowed_occs"]
+        self.enumerated = data["enumerated"]
+        self.possible_axes = {
+            key: CompositionConverter.from_dict(x)
+            for key, x in data["possible_axes"].items()
+        }
+        self.current_axes = data["current_axes"]
+        self.calculator = CompositionCalculator(
+            components=data["components"],
+            allowed_occs=self.allowed_occs,
+        )
+        self.include_va = data.get("include_va", False)
+
+    def load(self):
+        if self.path is None:
+            raise ValueError("Error in CompositionAxes.load: path is None")
+        data = read_required(self.path)
+        self._assign_from_dict(data)
+
+    def commit(self):
+        if self.path is None:
+            raise ValueError("Error in CompositionAxes.commit: path is None")
+        safe_dump(self.to_dict(), self.path, force=True, quiet=True)
+
+    def set_include_va(self, include_va: bool):
+        """Set whether vacancy chemical potential is included in formulas
+
+        Parameters
+        ----------
+        include_va: Optional[bool] = None
+            If True, include the vacancy chemical potential when printing formulas.
+            If False, assume that the vacancy chemical potential is zero.
+        """
+        self.include_va = include_va
+
+    def print_axes_table(
+        self,
+        out: Optional[TextIO] = None,
+    ):
+        """Print a formatted summary of possible_axes
+
+        Parameters
+        ----------
+        out: Optional[TextIO] = None
+            Output stream. Defaults to `sys.stdout`
+        """
+        print_axes_table(
+            possible_axes=self.possible_axes,
+            out=out,
+        )
+
+    def print_current_axes(
+        self,
+        out: Optional[TextIO] = None,
+    ):
+        """Print a formatted summary of the formulas for the
+        current composition axes
+
+        Parameters
+        ----------
+        out: Optional[TextIO] = None
+            Output stream. Defaults to `sys.stdout`
+
+        """
+
+        if out is None:
+            out = sys.stdout
+        if self.current_axes is None:
+            out.write("No composition axes selected\n")
+            return
+        if self.current_axes not in self.possible_axes:
+            raise ValueError(
+                "Error in CompositionAxes.print_current_axes: "
+                f"current_axes ('{self.current_axes}') not found in possible_axes"
+            )
+        out.write(f"Currently selected composition axes: {self.current_axes}\n\n")
+        print_axes_summary(
+            composition_converter=self.possible_axes.get(self.current_axes),
+            include_va=self.include_va,
+            out=out,
+        )
+
+    def print_axes(
+        self,
+        key: Optional[Any] = None,
+        out: Optional[TextIO] = None,
+    ):
+        """Print a formatted summary of the composition formulas for a
+        particular choice of axes
+
+        Parameters
+        ----------
+        key: Optional[Any] = None
+            The key of one of the `possible_axes` to print. If `key` is not found,
+            then a ValueError
+            is raised. The key must be a string or convertible to string.
+        out: Optional[TextIO] = None
+            Output stream. Defaults to `sys.stdout`
+
+        """
+        key = str(key)
+        if key not in self.possible_axes:
+            raise ValueError(
+                f"Error in CompositionAxes.print_axes: "
+                f"'{key}' not found in possible_axes"
+            )
+        if out is None:
+            out = sys.stdout
+        out.write(f"Composition axes: {key}\n\n")
+        print_axes_summary(
+            composition_converter=self.possible_axes.get(key),
+            include_va=self.include_va,
+            out=out,
+        )
+
+    def __repr__(self):
+        from io import StringIO
+
+        out = StringIO()
+        self.print_axes_table(out)
+        out.write("\n")
+        self.print_current_axes(out=out)
+        return out.getvalue().strip()
 
     @property
     def config_composition(self) -> ConfigCompositionCalculator:
@@ -418,74 +383,168 @@ class OccupantCompositionAxes:
 
     @staticmethod
     def init(
-        xtal_prim: xtal.Prim,
-        sort: bool = True,
+        allowed_occs: list[list[str]],
+        components: Union[str, list[str], None] = None,
+        path: Optional[pathlib.Path] = None,
         tol: float = casmglobal.TOL,
-    ) -> OccupantCompositionAxesType:
+    ):
+        """Initialize with standard axes
+
+        Parameters
+        ----------
+        allowed_occs: list[list[str]]
+            For each sublattice, a vector of components allowed to occupy the
+            sublattice. This must be consistent with the prim.
+        components: Union[str, list[str], None] = None
+            The requested component order in the composition vectors. If None, the
+            components are listed in the order found in `allowed_occs`. If the string
+            "sorted", the components are sorted alphabetically. If a list, the components
+            are listed in the order given in the list.
+        path: Optional[pathlib.Path] = None,
+            Path to the axes file, for `load` and `commit`.
+        tol: float = libcasm.casmglobal.TOL
+            Tolerance for comparison. Used to find composition axes such that the
+            parametric composition parameters are non-negative
+
+        Returns
+        -------
+        value: CompositionAxes
+            CompositionAxes with standard axes and calculator. The current axes are
+            set to `"0"` by default.
+        """
+        value = CompositionAxes(path=path)
+        value.allowed_occs = allowed_occs
+        value.calculator, enumerated_axes = make_standard_axes(
+            components=components,
+            allowed_occs=allowed_occs,
+            normalize=True,
+            tol=tol,
+        )
+        for i, axes in enumerate(enumerated_axes):
+            key = f"{i}"
+            value.possible_axes[key] = axes
+            value.enumerated.append(key)
+        return value
+
+    @staticmethod
+    def init_chemical_axes(
+        xtal_prim: xtal.Prim,
+        components: Union[str, list[str], None] = None,
+        path: Optional[pathlib.Path] = None,
+        tol: float = casmglobal.TOL,
+    ) -> CompositionAxesType:
         """Initialize with the standard chemical composition axes
 
         Notes
         -----
 
-        - Generates or overwrites the enumerated standard composition axes.
-        - Keeps any custom axes.
+        - Occupants which are the same chemistry but different magnetic spin, or
+          molecular orientation, etc. are treated as the same component.
+
+        Parameters
+        ----------
+        xtal_prim: libcasm.xtal.Prim
+            The prim.
+        components: Union[str, list[str], None] = None
+            The requested component order in the composition vectors. If None, the
+            components are listed in the order found in `allowed_occs`. If the string
+            "sorted", the components are sorted alphabetically. If a list, the components
+            are listed in the order given in the list.
+        path: Optional[pathlib.Path] = None,
+            Path to the axes file, for `load` and `commit`.
+        tol: float = libcasm.casmglobal.TOL
+            Tolerance for comparison. Used to find composition axes such that the
+            parametric composition parameters are non-negative
 
         """
-
-        value = OccupantCompositionAxes()
-        value.calculate(
+        components, allowed_occs = _make_chemical_components(
             xtal_prim=xtal_prim,
-            sort=sort,
+            components=components,
+        )
+        return CompositionAxes.init(
+            allowed_occs=allowed_occs,
+            components=components,
+            path=path,
             tol=tol,
         )
-        return value
 
-    def calculate(
-        self,
+    @staticmethod
+    def init_occupant_axes(
         xtal_prim: xtal.Prim,
-        sort: bool = True,
+        components: Union[str, list[str], None] = None,
+        path: Optional[pathlib.Path] = None,
         tol: float = casmglobal.TOL,
-    ):
-        """Calculate (or re-calculate) the standard composition axes
+    ) -> CompositionAxesType:
+        """Initialize with the standard occupant composition axes
 
         Notes
         -----
 
-        - Generates or overwrites the enumerated standard composition axes.
-        - Keeps any custom axes.
+        - Occupants which are the same chemistry but different magnetic spin, or
+          molecular orientation, etc. are treated as different components.
+
+        Parameters
+        ----------
+        xtal_prim: libcasm.xtal.Prim
+            The prim.
+        components: Union[str, list[str], None] = None
+            The requested component order in the composition vectors. If None, the
+            components are listed in the order found in `allowed_occs`. If the string
+            "sorted", the components are sorted alphabetically. If a list, the components
+            are listed in the order given in the list.
+        path: Optional[pathlib.Path] = None,
+            Path to the axes file, for `load` and `commit`.
+        tol: float = libcasm.casmglobal.TOL
+            Tolerance for comparison. Used to find composition axes such that the
+            parametric composition parameters are non-negative
 
         """
-        for key in self.enumerated:
-            if key in self.possible_axes:
-                del self.possible_axes[key]
 
-        components, self.allowed_occs = make_occupant_components(
+        components, allowed_occs = _make_occupant_components(
             xtal_prim=xtal_prim,
-            sort=sort,
+            components=components,
         )
-
-        if self.components is None:
-            self.components = components
-
-        calculator, enumerated_axes = make_standard_axes(
-            components=self.components,
-            allowed_occs=self.allowed_occs,
+        return CompositionAxes.init(
+            allowed_occs=allowed_occs,
+            components=components,
+            path=path,
             tol=tol,
         )
 
     @staticmethod
     def from_dict(
         data: dict,
-    ) -> OccupantCompositionAxesType:
-        """Construct OccupantCompositionAxesType from a dictionary"""
-        return axes_from_dict(OccupantCompositionAxes, data)
+        path: Optional[pathlib.Path] = None,
+    ) -> CompositionAxesType:
+        """Construct CompositionAxes from a dictionary
+
+        Parameters
+        ----------
+        data: dict
+            The dict representation of CompositionAxes
+        path: Optional[pathlib.Path] = None
+            Path to the axes file, for `load` and `commit`.
+        """
+        value = CompositionAxes(path=path)
+        value._assign_from_dict(data)
+        return value
 
     def to_dict(
         self,
     ) -> dict:
-        """Represent OccupantCompositionAxes as a Python dict
+        """Represent CompositionAxes as a Python dict
 
         The `Composition Axes reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/CompositionAxes/>`_
         documents the format.
         """
-        return axes_to_dict(self)
+        # TODO: update Composition Axes format with `include_va`
+        return {
+            "current_axes": self.current_axes,
+            "enumerated": self.enumerated,
+            "possible_axes": {
+                key: value.to_dict() for key, value in self.possible_axes.items()
+            },
+            "components": self.calculator.components(),
+            "allowed_occs": self.allowed_occs,
+            "include_va": self.include_va,
+        }

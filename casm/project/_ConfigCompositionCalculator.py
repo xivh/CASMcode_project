@@ -37,6 +37,22 @@ class ConfigCompositionCalculator:
         self._calculator = calculator
         self._converter = converter
 
+    @property
+    def calculator(self):
+        """libcasm.composition.CompositionCalculator: Composition calculator"""
+        return self._calculator
+
+    @property
+    def components(self):
+        """List[str]: Order of component names in results"""
+        return self._calculator.components()
+
+    @property
+    def converter(self):
+        """Optional[libcasm.composition.CompositionConverter]: Composition converter
+        (parametric composition axes)"""
+        return self._converter
+
     def per_unitcell(
         self,
         config: Configuration,
@@ -136,6 +152,6 @@ class ConfigCompositionCalculator:
                 "Error in ConfigCompositionCalculator: "
                 "no composition converter (parametric composition axes)"
             )
-        self._converter.param_composition(
+        return self._converter.param_composition(
             self.per_unitcell(config),
         )

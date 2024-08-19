@@ -89,7 +89,7 @@ def read_contents(
             if not quiet:
                 print(printpathstr(datafile_path) + ": does not exist, skipping")
             return default
-    except:
+    except Exception:
         if not quiet:
             print(printpathstr(datafile_path) + ": error reading, skipping")
         return default

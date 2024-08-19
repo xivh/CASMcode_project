@@ -1,11 +1,4 @@
-import numpy as np
-from typing import Iterable, Optional, Union
-import libcasm.configuration as casmconfig
 from casm.project._Project import Project
-from casm.project.json_io import (
-    read_required,
-    safe_dump,
-)
 
 
 class ImportCommand:
