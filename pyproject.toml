@@ -25,6 +25,7 @@ dependencies = [
     "numpy",
     "libcasm-mapping",
     "libcasm-clexmonte",
+    "casm-bset",
 ]
 
 [project.urls]
