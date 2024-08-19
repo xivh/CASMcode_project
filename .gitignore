@@ -84,3 +84,5 @@ stamp-h1
 .ackrc
 .clang
 .nostyle.txt
+.ipynb_checkpoints
+*.egg-info

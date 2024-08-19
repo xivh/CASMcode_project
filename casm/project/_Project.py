@@ -103,7 +103,6 @@ class Project:
         else:
             self.chemical_composition_axes = CompositionAxes.init_chemical_axes(
                 xtal_prim=self.prim.xtal_prim,
-                sort=True,
                 path=self.dir.chemical_composition_axes(),
             )
         self.chemical_composition = self.chemical_composition_axes.config_composition
@@ -123,7 +122,6 @@ class Project:
         else:
             self.occupant_composition_axes = CompositionAxes.init_occupant_axes(
                 xtal_prim=self.prim.xtal_prim,
-                sort=True,
                 path=self.dir.occupant_composition_axes(),
             )
         self.occupant_composition = self.occupant_composition_axes.config_composition

@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
@@ -18,10 +19,13 @@ def execute_notebook(exec_dir: pathlib.Path, notebook_path: pathlib.Path):
 
 
 def test_SiGe_occ_part1():
-    exec_dir = repo_dir / "notebooks" / "SiGe_occ"
+    exec_dir = repo_dir / "notebooks"
     notebook_path = exec_dir / "SiGe_occ_part1.ipynb"
     print(notebook_path)
     execute_notebook(
         exec_dir=notebook_path.parent,
         notebook_path=notebook_path,
     )
+
+    # cleanup
+    shutil.rmtree(exec_dir / "SiGe_occ")
