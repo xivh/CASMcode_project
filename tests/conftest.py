@@ -3,11 +3,9 @@ import pathlib
 import shutil
 import sys
 
-import numpy as np
 import pytest
 
 import libcasm.xtal as xtal
-import libcasm.xtal.prims as xtal_prims
 from casm.project import Project
 
 
@@ -69,4 +67,33 @@ def ZrO_tmp_project(tmp_path):
         f.write(xtal.pretty_json(prim_data))
 
     project = Project.init(path=project_path)
+
+    ## calculation settings ##
+    calctype_settings_dir = project.dir.calctype_settings_dir_v2(
+        calctype="vasp.default",
+    )
+    calctype_settings_dir.mkdir(parents=True, exist_ok=True)
+    with open(calctype_settings_dir / "INCAR", "w") as f:
+        f.write(
+            """ISPIN = 1 #does non spin-polarized calc.
+PREC = Accurate #cutoff + wrap around errors.
+IBRION= 2 #conj. grad. relaxation.
+NSW=61 #numberof ionic steps taken in minimization. Make it odd.
+ISIF= 3 #whether stress tensor is calculated, what is allowed to relax.
+ENMAX=600 #cutoff
+ISMEAR = 1 #BZ integration method (for relaxation runs).
+SIGMA = 0.2 #smearing width (keep T*S < 1meV/atom). 
+LWAVE = .FALSE.
+LCHARG = .FALSE.
+"""
+        )
+    with open(calctype_settings_dir / "KPOINTS", "w") as f:
+        f.write(
+            """Fully automatic mesh
+0              ! 0 -> automatic generation scheme 
+Auto           ! fully automatic
+  10           ! length (R_k)
+"""
+        )
+
     return project

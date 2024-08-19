@@ -35,6 +35,7 @@ class DirectoryStructure:
         self.__enum_dir = "enumerations"
         self.__bset_dir = "basis_sets"
         self.__calc_dir = "training_data"
+        self.__calculation_settings_dir = "calculation_settings"
         self.__set_dir = "settings"
         self.__sym_dir = "symmetry"
         self.__clex_dir = "cluster_expansions"
@@ -191,14 +192,6 @@ class DirectoryStructure:
         """Return crystal_point_group.json path"""
         return self.symmetry_dir() / "crystal_point_group.json"
 
-    # -- Enumerations --------
-    def enum_dir(
-        self,
-        enum: str,
-    ):
-        """Return path to directory contain enumeration info"""
-        return self.path / self.__enum_dir / self.__enum(enum=enum)
-
     # -- Basis sets --------
 
     def _get_bset(
@@ -314,6 +307,8 @@ class DirectoryStructure:
             clex.calctype
         )
 
+    ## v1 calc_settings_dir ##
+
     def calc_settings_dir(self, clex: ClexDescription):
         """Return calculation settings directory path, for global settings from clex"""
         return (
@@ -369,6 +364,54 @@ class DirectoryStructure:
     def ref_dir(self, clex: ClexDescription):
         """Return calculation reference settings directory path, for global settings"""
         return self.calc_settings_dir(clex.calctype) / self.__ref(clex.ref)
+
+    ## v2 calc_settings_dir ##
+
+    # -- Enumerations --------
+
+    def calctype_settings_dir_v2(self, calctype: str):
+        """Return global calculation settings directory path (new v2.0)"""
+        return self.path / self.__calculation_settings_dir / self.__calctype(calctype)
+
+    def enum_dir(self, enum: str):
+        """Return path to directory contain enumeration info (new v2.0)"""
+        return self.path / self.__enum_dir / self.__enum(enum=enum)
+
+    def enum_calctype_dir(self, enum: str, configname: str, calctype: str):
+        """Return global calculation settings directory path (new v2.0)"""
+        return (
+            self.enum_dir(enum)
+            / "training_data"
+            / configname
+            / self.__calctype(calctype)
+        )
+
+    def enum_config_file(self, enum: str, configname: str):
+        """Return path to config.json for a configuration in an enumeration (new v2.0)"""
+        return self.enum_dir(enum) / "training_data" / configname / "config.json"
+
+    def enum_structure_file(self, enum: str, configname: str):
+        """Return path to structure.json for a configuration in an enumeration (new v2.0)"""
+        return self.enum_dir(enum) / "training_data" / configname / "structure.json"
+
+    def enum_POS_file(self, enum: str, configname: str):
+        """Return path to POS for a configuration in an enumeration (new v2.0)"""
+        return self.enum_dir(enum) / "training_data" / configname / "POS"
+
+    def enum_structure_with_properties_file(
+        self, enum: str, configname: str, calctype: str
+    ):
+        """Return path to structure_with_properties.json for a configuration in an
+        enumeration (new v2.0)"""
+        return (
+            self.enum_dir(enum)
+            / "training_data"
+            / configname
+            / self.__calctype(calctype)
+            / "structure_with_properties.json"
+        )
+
+    ## Composition axes ##
 
     def composition_axes(self):
         """Return composition axes file path (deprecated v2.0a1)"""

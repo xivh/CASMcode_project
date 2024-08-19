@@ -1,6 +1,6 @@
-import os
 import io
 from contextlib import redirect_stdout
+
 from casm.project import Project
 
 

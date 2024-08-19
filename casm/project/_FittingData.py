@@ -1,8 +1,9 @@
 import numpy as np
-import libcasm.xtal as xtal
+
 import libcasm.clexulator as clex
 import libcasm.composition as comp
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
 
 
 class FittingData:
@@ -298,7 +299,6 @@ def make_uncalculated_fitting_data(
 
     supercell_set = casmconfig.SupercellSet(casmconfig.Prim(xtal_prim))
     for config_id, config in enumerate(config_list):
-
         config_with_properties = casmconfig.Configuration.from_dict(
             config["configuration_with_properties"], supercell_set
         )
