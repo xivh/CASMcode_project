@@ -13,7 +13,7 @@ def _print_symgroup(
     group: SymGroup,
     lattice: xtal.Lattice,
     coord: str = "frac",
-    index_from: int = 1,
+    index_from: int = 0,
     out: Optional[TextIO] = None,
 ):
     """Print the symmetry group
@@ -27,7 +27,7 @@ def _print_symgroup(
     coord: str = "frac"
         The coordinate mode to use for the SymOp descriptions. Options are "frac" or
         "cart".
-    index_from: int = 1
+    index_from: int = 0
         The index to start numbering the SymOps from.
     out: Optional[stream] = None
         Output stream. Defaults to `sys.stdout`.
@@ -54,7 +54,7 @@ class SymCommand:
     def print_lattice_point_group(
         self,
         coord: str = "frac",
-        index_from: int = 1,
+        index_from: int = 0,
     ):
         """Print the lattice point group"""
         lat = self.proj.prim.xtal_prim.lattice()
@@ -70,7 +70,7 @@ class SymCommand:
     def print_factor_group(
         self,
         coord: str = "frac",
-        index_from: int = 1,
+        index_from: int = 0,
     ):
         """Print the prim factor group"""
         lat = self.proj.prim.xtal_prim.lattice()
@@ -79,7 +79,7 @@ class SymCommand:
     def print_crystal_point_group(
         self,
         coord: str = "frac",
-        index_from: int = 1,
+        index_from: int = 0,
     ):
         """Print the crystal point group"""
         lat = self.proj.prim.xtal_prim.lattice()

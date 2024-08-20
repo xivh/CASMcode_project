@@ -2,6 +2,7 @@ import pathlib
 from typing import Optional, TypeVar, Union
 
 import libcasm.casmglobal as casmglobal
+import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
 import libcasm.configuration.io as config_io
 import libcasm.xtal as xtal
@@ -48,6 +49,19 @@ class Project:
         self.prim = casmconfig.Prim.from_dict(read_required(self.dir.prim()))
         """libcasm.configuration.Prim: Primitive crytal structure and allowed degrees 
         of freedom (DoF) with symmetry information"""
+
+        self.prim_neighbor_list = casmclex.PrimNeighborList(
+            lattice_weight_matrix=self.settings.nlist_weight_matrix,
+            sublattice_indices=self.settings.nlist_sublat_indices,
+            total_n_sublattice=len(self.prim.xtal_prim.occ_dof()),
+        )
+        """casmclex.PrimNeighborList: The :class:`PrimNeighborList` used for 
+        constructing Clexulator.
+        
+        If the `nlist_weight_matrix` or `nlist_sublat_indices` project settings change,
+        the Project should be re-constructed so that the `PrimNeighborList` is updated,
+        and all basis sets will need to be updated with the new neighbor list.
+        """
 
         self.chemical_composition_axes = None
         """CompositionAxes: Project chemical composition axes.
@@ -105,8 +119,10 @@ class Project:
                 path=self.dir.occupant_composition_axes(),
             )
 
-        # Make project.enum persist
+        # Make project.X persist
         self._enum = None
+        self._bset = None
+        self._sym = None
 
     @property
     def chemical_comp_calculator(self):
@@ -135,7 +151,9 @@ class Project:
         expansion basis sets"""
         from casm.project.commands import BsetCommand
 
-        return BsetCommand(proj=self)
+        if self._bset is None:
+            self._bset = BsetCommand(proj=self)
+        return self._bset
 
     @property
     def enum(self):
@@ -153,7 +171,9 @@ class Project:
         information"""
         from casm.project.commands._SymCommand import SymCommand
 
-        return SymCommand(proj=self)
+        if self._sym is None:
+            self._sym = SymCommand(proj=self)
+        return self._sym
 
     @staticmethod
     def init(

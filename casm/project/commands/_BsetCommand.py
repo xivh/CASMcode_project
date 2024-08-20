@@ -1,6 +1,9 @@
+import copy
 import pathlib
 from typing import Optional, Union
+import re
 
+from libcasm.xtal import pretty_json
 from casm.bset import build_cluster_functions, make_clex_basis_specs, write_clexulator
 from casm.bset.cluster_functions import ClexBasisSpecs, ClusterFunctionsBuilder
 from casm.project._ClexDescription import ClexDescription
@@ -19,18 +22,28 @@ from libcasm.occ_events import OccEvent
 
 class BsetData:
     def __init__(self, proj: Project, id: str, meta: Optional[dict] = None):
+
+        if not re.match(
+            R"^\w+",
+            id,
+        ):
+            raise Exception(
+                f"id='{id}' is not a valid basis set name: ",
+                "Must consist alphanumeric characters and underscores only.",
+            )
+
         self.proj = proj
         """Project: CASM project"""
 
         self.id = id
-        """str: Enumeration identifier"""
+        """str: Basis set identifier"""
 
         if meta is None:
             meta = dict()
         self.meta = meta
         """dict: A description of the enumeration, saved as `meta.json`."""
 
-        self.bset_dir = self.proj.dir.bset_dir(id)
+        self.bset_dir = self.proj.dir.bset_dir(bset=id)
         """pathlib.Path: Basis set directory"""
 
         self.clex_basis_specs = None
@@ -47,9 +60,6 @@ class BsetData:
 
         self.local_src_path = None
         """list[pathlib.Path]: Local Clexulator source file paths"""
-
-        self.prim_neighbor_list = None
-        """PrimNeighborList: Prim neighbor list"""
 
         self.basis_dict = None
         """dict: A description of a cluster expansion basis set.
@@ -248,11 +258,6 @@ class BsetData:
 
         Parameters
         ----------
-        prim: Union[libcasm.xtal.Prim, libcasm.configuration.Prim, dict, str, \
-        pathlib.Path]
-            The prim, with symmetry information. May be provided as a Prim instance, a
-            Prim dict, or the path to a file containing the Prim dict.
-
         dofs: Optional[list[str]] = None
             An list of string of dof type names that should be used to construct basis
             functions. The default value is all DoF types included in the prim.
@@ -345,7 +350,6 @@ class BsetData:
 
     def make_cluster_functions(
         self,
-        prim_neighbor_list: Optional[PrimNeighborList] = None,
         make_equivalents: bool = True,
         make_all_local_basis_sets: bool = True,
         verbose: bool = False,
@@ -358,17 +362,6 @@ class BsetData:
 
         Parameters
         ----------
-        prim_neighbor_list: Optional[libcasm.clexulator.PrimNeighborList] = None
-            The :class:`PrimNeighborList` is used to uniquely index sites with local
-            variables included in the cluster functions, relative to a reference unit
-            cell. If not provided, a PrimNeighborList is constructed using default
-            parameters that include all sites with degrees of freedom (DoF) and the
-            default shape used by CASM projects.
-
-            In most cases, the default should be used. If multiple clexulator are being
-            used with a single supercell neighbor list, then the same
-            prim_neighbor_list should be used for all clexulators.
-
         make_equivalents: bool = True
             If True, make all equivalent clusters and functions. Otherwise, only
             construct and return the prototype clusters and functions on the prototype
@@ -391,15 +384,18 @@ class BsetData:
         """
         if self.clex_basis_specs is None:
             raise Exception(
-                "Error in BsetData.build: no basis set specifications found"
+                "Error in BsetData.make_cluster_functions: "
+                "no basis set specifications found"
             )
-        if prim_neighbor_list is not None:
-            self.prim_neighbor_list = prim_neighbor_list
-
+        if self.proj.prim_neighbor_list is None:
+            raise Exception(
+                "Error in BsetData.make_cluster_functions: "
+                "project prim_neighbor_list is None"
+            )
         return build_cluster_functions(
             prim=self.proj.prim,
             clex_basis_specs=self.clex_basis_specs,
-            prim_neighbor_list=self.prim_neighbor_list,
+            prim_neighbor_list=self.proj.prim_neighbor_list,
             make_equivalents=make_equivalents,
             make_all_local_basis_sets=make_all_local_basis_sets,
             verbose=verbose,
@@ -407,32 +403,18 @@ class BsetData:
 
     def write_clexulator(
         self,
-        prim_neighbor_list: Optional[PrimNeighborList] = None,
     ):
-        """Write the Clexulator source file(s) for the basis set
-
-        Parameters
-        ----------
-        prim_neighbor_list: Optional[PrimNeighborList] = None
-            The :class:`PrimNeighborList` is used to uniquely index sites with local
-            variables included in the cluster functions, relative to a reference unit
-            cell. If not provided, a PrimNeighborList is constructed using default
-            parameters that include all sites with degrees of freedom (DoF) and the
-            default shape used by CASM projects.
-
-            In most cases, the default should be used. If multiple clexulator are being
-            used with a single supercell neighbor list, then the same
-            prim_neighbor_list should be used for all clexulators.
-
-        """
-        if prim_neighbor_list is not None:
-            self.prim_neighbor_list = prim_neighbor_list
-
-        self.src_path, self.local_src_path, self.prim_neighbor_list = write_clexulator(
+        """Write the Clexulator source file(s) for the basis set"""
+        if self.proj.prim_neighbor_list is None:
+            raise Exception(
+                "Error in BsetData.write_clexulator: "
+                "project prim_neighbor_list is None"
+            )
+        self.src_path, self.local_src_path, _ = write_clexulator(
             prim=self.proj.prim,
             clex_basis_specs=self.clex_basis_specs,
             bset_dir=self.bset_dir,
-            prim_neighbor_list=self.prim_neighbor_list,
+            prim_neighbor_list=self.proj.prim_neighbor_list,
             project_name=self.proj.name,
             bset_name=self.id,
             version=self.version,
@@ -440,15 +422,26 @@ class BsetData:
             cpp_fmt=None,
         )
 
+        # read basis.json if it exists
+        path = self.proj.dir.basis(bset=self.id)
+        self.basis_dict = read_optional(path, default=None)
+
+        # read equivalents_info.json if it exists
+        path = self.bset_dir / "equivalents_info.json"
+        self.equivalents_info = read_optional(path, default=None)
+
     @property
     def clexulator(self) -> Optional[Clexulator]:
         """Optional[Clexulator]: The Clexulator for the basis set, if available."""
         if self.src_path is None:
-            return None
+            if self.clex_basis_specs is None:
+                return None
+            else:
+                self.write_clexulator()
         if self._clexulator is None:
             self._clexulator = make_clexulator(
                 source=str(self.src_path),
-                prim_neighbor_list=self.prim_neighbor_list,
+                prim_neighbor_list=self.proj.prim_neighbor_list,
             )
         return self._clexulator
 
@@ -461,7 +454,7 @@ class BsetData:
         if self._local_clexulator is None:
             self._local_clexulator = make_local_clexulator(
                 source=str(self.src_path),
-                prim_neighbor_list=self.prim_neighbor_list,
+                prim_neighbor_list=self.proj.prim_neighbor_list,
             )
         return self._local_clexulator
 
@@ -471,6 +464,10 @@ class BsetCommand:
 
     def __init__(self, proj: Project):
         self.proj = proj
+        """Project: CASM project."""
+
+        self.last = None
+        """Optional[BsetData]: Data from the last basis set operation."""
 
     def _check_bset(
         self,
@@ -494,7 +491,7 @@ class BsetCommand:
         """
         return self.proj.dir.all_bset()
 
-    def list(self):
+    def ls(self):
         """Print all basis sets"""
         for id in self.all():
             basis_set = self.get(id)
@@ -515,32 +512,185 @@ class BsetCommand:
         """
         return BsetData(proj=self.proj, id=id)
 
-    def make_bspecs_template(
+    def set_bspecs(
         self,
-        name: str = None,
+        id: str,
+        clex_basis_specs: ClexBasisSpecs,
+        version: str = "v1.basic",
+        linear_function_indices: Optional[set[int]] = None,
+        force: bool = False,
     ):
-        """Create a bspecs.json template file"""
-        return None
+        """Set basis set specs for a basis set
+
+        Notes
+        -----
+        - This will create a new basis set with given id if it does not exist
+        - This will overwrite an existing basis set specs if it does exist, and
+          force is True
+
+        Parameters
+        ----------
+        id : str
+            The enumeration identifier. Must consist alphanumeric characters and
+            underscores only.
+        clex_basis_specs : ClexBasisSpecs
+            The basis set specifications
+        force : bool = False
+            If True, overwrite existing basis set specs; otherwise raise if basis
+            set specs already exist.
+
+        """
+        bset = self.get(id)
+        self.last = bset
+        if bset.clex_basis_specs is not None and force is False:
+            raise Exception(
+                f"Basis set specs already exist for {id}. Use force=True to overwrite."
+            )
+        bset.set_clex_basis_specs(
+            clex_basis_specs=clex_basis_specs,
+            version=version,
+            linear_function_indices=linear_function_indices,
+        )
+        bset.commit()
+
+    def make_bspecs(
+        self,
+        id: str,
+        dofs: Optional[list[str]] = None,
+        max_length: Optional[list[float]] = [],
+        custom_generators: Optional[list[ClusterOrbitGenerator]] = [],
+        phenomenal: Union[Cluster, OccEvent, None] = None,
+        cutoff_radius: Optional[list[float]] = [],
+        occ_site_basis_functions_specs: Union[str, list[dict], None] = None,
+        global_max_poly_order: Optional[int] = None,
+        orbit_branch_max_poly_order: Optional[dict] = None,
+        version: str = "v1.basic",
+        linear_function_indices: Optional[set[int]] = None,
+        force: bool = False,
+    ):
+        """Set basis set specs for a basis set
+
+        Notes
+        -----
+        - This will create a new basis set with given id if it does not exist
+        - This will overwrite an existing basis set specs if it does exist, and
+          force is True
+
+        Parameters
+        ----------
+        id : str
+            The enumeration identifier. Must consist alphanumeric characters and
+            underscores only.
+        dofs: Optional[list[str]] = None
+            An list of string of dof type names that should be used to construct basis
+            functions. The default value is all DoF types included in the prim.
+
+        max_length: list[float] = []
+            The maximum site-to-site distance to allow in clusters, by number of sites
+            in the cluster. Example: `[0.0, 0.0, 5.0, 4.0]` specifies that pair
+            clusters up to distance 5.0 and triplet clusters up to distance 4.0 should
+            be included. The null cluster and point cluster values (elements 0 and 1)
+            are arbitrary.
+
+        custom_generators: list[libcasm.clusterography.ClusterOrbitGenerator] = []]
+            Specifies clusters that should be uses to construct orbits regardless of the
+            `max_length` or `cutoff_radius` parameters.
+
+        phenomenal: Union[libcasm.clusterography.Cluster, libcasm.occ_events.OccEvent, \
+        None] = None
+            If provided, generate local cluster functions using the invariant group of
+            the phenomenal cluster or event. By default, periodic cluster functions are
+            generated.
+
+        cutoff_radius: list[float] = []
+            For local clusters, the maximum distance of sites from any phenomenal
+            cluster site to include in the local environment, by number of sites in the
+            cluster. The null cluster value (element 0) is arbitrary.
+
+        occ_site_basis_functions_specs: Union[str, list[dict], None] = None
+            Provides instructions for constructing occupation site basis functions.
+            The accepted options are "chebychev", "occupation", or a `list[dict]`
+            a specifying sublattice-specific choice of site basis functions. This
+            parameter corresponds to the value of
+
+            .. code-block:: Python
+
+                "dof_specs": {
+                    "occ": {
+                        "site_basis_functions": ...
+                    }
+                }
+
+            as described in detail in the section
+            :ref:`DoF Specifications <sec-dof-specifications>` and is required for
+            functions of occupation DoF.
+
+        global_max_poly_order: Optional[int] = None
+            The maximum order of polynomials of continuous DoF to generate, for any
+            orbit not specified more specifically by `orbit_branch_max_poly_order`.
+
+        orbit_branch_max_poly_order: Optional[dict[int, int]] = None
+            Specifies for continuous DoF the maximum polynomial order to generate by
+            cluster size, according to
+            ``orbit_branch_max_poly_order[cluster_size] = max_poly_order``. By default,
+            for a given cluster orbit, polynomials of order up to the cluster size are
+            created. Higher order polynomials are requested either according to cluster
+            size using `orbit_branch_max_poly_order` or globally using
+            `global_max_poly_order`. The most specific level specified is used.
+
+        version: str = "v1.basic"
+            The Clexulator version to write. One of:
+
+            - "v1.basic": Standard CASM v1 compatible Clexulator, without automatic
+              differentiation
+            - "v1.diff": (TODO) CASM v1 compatible Clexulator, with ``fadbad`` automatic
+              differentiation enabled
+
+        linear_function_indices: Optional[set[int]] = None
+            (Experimental feature) The linear indices of the functions that will be
+            included. If None, all functions will be included in the Clexulator.
+            Otherwise, only the specified functions will be included in the Clexulator.
+            Generally this is not known the first time a Clexulator is generated, but
+            after fitting coefficients it may be used to re-generate the Clexulator
+            with the subset of the basis functions needed.
+        force : bool = False
+            If True, overwrite existing basis set specs; otherwise raise if basis
+            set specs already exist.
+        """
+        bset = self.get(id)
+        self.last = bset
+        if bset.clex_basis_specs is not None and force is False:
+            raise Exception(
+                f"Basis set specs already exist for {id}. Use force=True to overwrite."
+            )
+        bset.make_clex_basis_specs(
+            dofs=dofs,
+            max_length=max_length,
+            custom_generators=custom_generators,
+            phenomenal=phenomenal,
+            cutoff_radius=cutoff_radius,
+            occ_site_basis_functions_specs=occ_site_basis_functions_specs,
+            global_max_poly_order=global_max_poly_order,
+            orbit_branch_max_poly_order=orbit_branch_max_poly_order,
+            version=version,
+            linear_function_indices=linear_function_indices,
+        )
+        bset.commit()
 
     def update(
         self,
-        bset: Optional[str] = None,
-        clex: Optional[ClexDescription] = None,
-        bspecs_data: Optional[dict] = None,
+        id: str,
         no_compile: bool = False,
         only_compile: bool = False,
     ):
         """Write and compile the Clexulator source file for a basis set
+        with existing basis set specs.
 
         Parameters
         ----------
-        bset: Optional[str] = None
-            Specify the basis set by bset name.
-        clex: Optional[ClexDescription] = None
-            Specify the basis set by ClexDescription.
-        bspecs_data: Optional[dict] = None
-            Use provided `bspecs_data` and write to `bspecs.json` instead of reading
-            `bspecs.json`. Will overwrite any existing `bspecs.json` file.
+        id : str
+            The enumeration identifier. Must consist alphanumeric characters and
+            underscores only.
         no_compile: bool = False
             If `no_compile` is True, then the Clexulator source file is written but
             not compiled. By default the Clexulator source file is immediately compiled.
@@ -549,24 +699,133 @@ class BsetCommand:
             re-compile it. By default the Clexulator source file is written and then
             compiled.
         """
-        print("update")
-        # bset = self._check_bset(clex=clex, bset=bset)
-        #
-        # bspecs_path = self.proj.dir.bspecs(clex=clex, bset=bset)
-        # if bspecs_data is None:
-        #     bspecs_data = read_required(bspecs_path)
-        # else:
-        #     safe_dump(data=bspecs_data, path=bspecs_path, force=True)
-        return None
+        bset = self.get(id)
+        self.last = bset
+        if bset.clex_basis_specs is None:
+            raise Exception(f"Basis set specs do not exist for {id}")
+        if not only_compile:
+            bset.write_clexulator()
+        if not no_compile:
+            _ = bset.clexulator
 
-    def orbit_prototypes(
+    def print_orbits(
         self,
-        name: str = None,
+        id: str,
+        linear_orbit_indices: Optional[set[int]] = None,
     ):
-        return None
+        bset = self.get(id)
+        self.last = bset
+        if bset.clex_basis_specs is None:
+            raise Exception(f"Basis set {id} has not been generated yet. Use `update`.")
 
-    def clusters(self):
-        return None
+        import copy
 
-    def functions(self):
-        return None
+        for i, orbit in enumerate(bset.basis_dict.get("orbits")):
+            if linear_orbit_indices is not None and i not in linear_orbit_indices:
+                continue
+
+            print(f"Orbit {i}:")
+            info = copy.deepcopy(orbit)
+
+            print(f"- linear_orbit_index: {info.get('linear_orbit_index')}")
+
+            # multiplicity
+            print(f"- multiplicity: {info.get('mult')}")
+
+            # site-to-site distances
+            proto = info.get("prototype")
+            print(f"- site-to-site distances:")
+            distances = proto.get("distances")
+            if len(distances) == 0:
+                print("  - None")
+            else:
+                for dist in proto.get("distances"):
+                    print(f"  - {dist}")
+            print(f"- min distance: {info.get('min_length')}")
+            print(f"- max distance: {info.get('max_length')}")
+
+            # sites
+            prototype = Cluster.from_dict(
+                data=info.get("prototype"),
+                prim=self.proj.prim.xtal_prim,
+            )
+            print("- sites: {[sublattice, i, j, k]}")
+            if len(prototype) == 0:
+                print("  - None")
+            else:
+                for site in prototype:
+                    print(f"  - {site}")
+
+            # symgroup
+            print("- cluster invariant group: {i} ({prim_factor_group_index}): {desc}")
+            indices = proto.get("invariant_group")
+            desc = proto.get("invariant_group_descriptions")
+            i = 0
+            for fg, desc in zip(indices, desc):
+                print(f"  - {i} ({fg}): {desc}")
+                i += 1
+
+            print()
+
+    # TODO:
+    # def clusters(self, ...):
+    #     return None
+
+    def print_functions(
+        self,
+        id: str,
+        linear_orbit_indices: Optional[set[int]] = None,
+    ):
+        bset = self.get(id)
+        self.last = bset
+        if bset.clex_basis_specs is None:
+            raise Exception(f"Basis set {id} has not been generated yet. Use `update`.")
+
+        import copy
+
+        site_functions = bset.basis_dict.get("site_functions")
+        print("Site functions:")
+        for sublat_func in site_functions:
+            print(f"- sublattice: {sublat_func.get('sublat')}")
+            if "occ" in sublat_func:
+                for phiname, values in sublat_func.get("occ").get("basis").items():
+                    print(f"  - {phiname}:")
+                    for occname, value in values.items():
+                        print(f"    - {occname}: {value}")
+        # print(pretty_json(site_functions))
+        print()
+
+        for i, orbit in enumerate(bset.basis_dict.get("orbits")):
+            if linear_orbit_indices is not None and i not in linear_orbit_indices:
+                continue
+
+            print(f"Orbit {i}:")
+            info = copy.deepcopy(orbit)
+
+            print(f"- linear_orbit_index: {info.get('linear_orbit_index')}")
+
+            # multiplicity
+            print(f"- multiplicity: {info.get('mult')}")
+
+            # sites
+            prototype = Cluster.from_dict(
+                data=info.get("prototype"),
+                prim=self.proj.prim.xtal_prim,
+            )
+            print("- sites: {[sublattice, i, j, k]}")
+            if len(prototype) == 0:
+                print("  - None")
+            else:
+                for site in prototype:
+                    print(f"  - {site}")
+
+            # functions
+            functions = info.get("cluster_functions")
+            print("- cluster functions: {linear_function_index}: {latex_formula}")
+            for func in functions:
+                linear_function_index = func.get("linear_function_index")
+                key = "\\Phi_{" + str(linear_function_index) + "}"
+                latex_formula = func.get(key)
+                print(f"  - {key}: {latex_formula}")
+
+            print()
