@@ -44,11 +44,13 @@ class DirectoryStructure:
     # ** Query filesystem **
 
     def all_enum(self):
-        """Check filesystem directory structure and return list of all enumeration names"""
+        """Check filesystem directory structure and return list of all enumeration
+        names"""
         return self.__all_settings("enum", self.path / self.__enum_dir)
 
     def all_bset(self):
-        """Check filesystem directory structure and return list of all basis set names"""
+        """Check filesystem directory structure and return list of all basis set
+        names"""
         return self.__all_settings("bset", self.path / self.__bset_dir)
 
     def all_calctype(self):
@@ -58,11 +60,13 @@ class DirectoryStructure:
         )
 
     def all_ref(self, calctype: str):
-        """Check filesystem directory structure and return list of all ref names for a given calctype"""
+        """Check filesystem directory structure and return list of all ref names for
+        a given calctype"""
         return self.__all_settings("ref", self.calc_settings_dir(calctype))
 
     def all_clex_name(self):
-        """Check filesystem directory structure and return list of all cluster expansion names"""
+        """Check filesystem directory structure and return list of all cluster
+        expansion names"""
         return self.__all_settings("clex", self.path / self.__clex_dir)
 
     def all_eci(self, property: str, calctype: str, ref: str, bset: str):
@@ -284,7 +288,8 @@ class DirectoryStructure:
         return self.path / self.__calc_dir / calc_subdir / scelname
 
     def configuration_dir(self, configname: str, calc_subdir: str = ""):
-        """Return configuration directory path (configname has format SCELV_A_B_C_D_E_F/I)"""
+        """Return configuration directory path (configname has format
+        SCELV_A_B_C_D_E_F/I)"""
         return self.path / self.__calc_dir / calc_subdir / configname
 
     def POS(self, configname: str, calc_subdir: str = ""):
@@ -302,7 +307,8 @@ class DirectoryStructure:
     def calctype_dir(
         self, configname: str, clex: ClexDescription, calc_subdir: str = ""
     ):
-        R"""Return calctype directory path (e.g. training_data/$(calc_subdir)/SCEL...../0/calctype.default"""
+        R"""Return calctype directory path (e.g.
+        training_data/$(calc_subdir)/SCEL...../0/calctype.default"""
         return self.configuration_dir(configname, calc_subdir) / self.__calctype(
             clex.calctype
         )
@@ -319,7 +325,8 @@ class DirectoryStructure:
         )
 
     def calctype_settings_dir(self, calctype: str):
-        """Return calculation settings directory path, for global settings from calctype"""
+        """Return calculation settings directory path, for global settings from
+        calctype"""
         return self.path / self.__calc_dir / self.__set_dir / self.__calctype(calctype)
 
     def supercell_calc_settings_dir(
@@ -328,7 +335,8 @@ class DirectoryStructure:
         clex: ClexDescription,
         calc_subdir: str = "",
     ):
-        """Return calculation settings directory path, for supercell specific settings"""
+        """Return calculation settings directory path, for supercell specific
+        settings"""
         return (
             self.supercell_dir(scelname, calc_subdir)
             / self.__set_dir
@@ -341,7 +349,8 @@ class DirectoryStructure:
         clex: ClexDescription,
         calc_subdir: str = "",
     ):
-        """Return calculation settings directory path, for configuration specific settings"""
+        """Return calculation settings directory path, for configuration specific
+        settings"""
         return (
             self.configuration_dir(configname, calc_subdir)
             / self.__set_dir
@@ -387,11 +396,13 @@ class DirectoryStructure:
         )
 
     def enum_config_file(self, enum: str, configname: str):
-        """Return path to config.json for a configuration in an enumeration (new v2.0)"""
+        """Return path to config.json for a configuration in an enumeration
+        (new v2.0)"""
         return self.enum_dir(enum) / "training_data" / configname / "config.json"
 
     def enum_structure_file(self, enum: str, configname: str):
-        """Return path to structure.json for a configuration in an enumeration (new v2.0)"""
+        """Return path to structure.json for a configuration in an enumeration
+        (new v2.0)"""
         return self.enum_dir(enum) / "training_data" / configname / "structure.json"
 
     def enum_POS_file(self, enum: str, configname: str):

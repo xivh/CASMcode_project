@@ -133,7 +133,8 @@ class EnumData:
         """Read enumeration data from files in the enumeration directory.
 
         This will replace the current contents of this EnumData object with the
-        contents of the associated files.
+        contents of the associated files, or delete the current contents if the
+        associated files do not exist.
         """
 
         # read meta.json if it exists
@@ -216,7 +217,11 @@ class EnumData:
                     self.configuration_list.append(configuration.copy())
 
     def commit(self, verbose: bool = True):
-        """Write the enumeration data to files in the enumeration directory"""
+        """Write the enumeration data to files in the enumeration directory
+
+        If the data does not exist in this object, this will erase the associated
+        files if they do exist.
+        """
         quiet = not verbose
         self.enum_dir.mkdir(parents=True, exist_ok=True)
 

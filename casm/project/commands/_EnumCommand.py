@@ -266,7 +266,8 @@ class EnumCommand:
         Notes
         -----
 
-        - Results are stored in the CASM project at `<project>/enumerations/enum.<id>/config_set.json`.
+        - Results are stored in the CASM project at
+          `<project>/enumerations/enum.<id>/config_set.json`.
         - Results are stored in a :class:`~libcasm.configuration.ConfigurationSet`.
         - If there is an existing supercell set, the new supercells are inserted in the
           existing set.

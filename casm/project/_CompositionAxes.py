@@ -375,7 +375,7 @@ class CompositionAxes:
         return out.getvalue().strip()
 
     @property
-    def config_composition(self) -> ConfigCompositionCalculator:
+    def config_comp_calculator(self) -> ConfigCompositionCalculator:
         return ConfigCompositionCalculator(
             calculator=self.calculator,
             converter=self.possible_axes.get(self.current_axes),
@@ -398,8 +398,8 @@ class CompositionAxes:
         components: Union[str, list[str], None] = None
             The requested component order in the composition vectors. If None, the
             components are listed in the order found in `allowed_occs`. If the string
-            "sorted", the components are sorted alphabetically. If a list, the components
-            are listed in the order given in the list.
+            "sorted", the components are sorted alphabetically. If a list, the
+            components are listed in the order given in the list.
         path: Optional[pathlib.Path] = None,
             Path to the axes file, for `load` and `commit`.
         tol: float = libcasm.casmglobal.TOL
@@ -448,8 +448,8 @@ class CompositionAxes:
         components: Union[str, list[str], None] = None
             The requested component order in the composition vectors. If None, the
             components are listed in the order found in `allowed_occs`. If the string
-            "sorted", the components are sorted alphabetically. If a list, the components
-            are listed in the order given in the list.
+            "sorted", the components are sorted alphabetically. If a list, the
+            components are listed in the order given in the list.
         path: Optional[pathlib.Path] = None,
             Path to the axes file, for `load` and `commit`.
         tol: float = libcasm.casmglobal.TOL
@@ -490,8 +490,8 @@ class CompositionAxes:
         components: Union[str, list[str], None] = None
             The requested component order in the composition vectors. If None, the
             components are listed in the order found in `allowed_occs`. If the string
-            "sorted", the components are sorted alphabetically. If a list, the components
-            are listed in the order given in the list.
+            "sorted", the components are sorted alphabetically. If a list, the
+            components are listed in the order given in the list.
         path: Optional[pathlib.Path] = None,
             Path to the axes file, for `load` and `commit`.
         tol: float = libcasm.casmglobal.TOL

@@ -58,16 +58,6 @@ class Project:
         even if they have different magnetic spin, molecular orientation, etc.
         """
 
-        self.chemical_composition = None
-        """ChemicalCompositionCalculator: Configuration chemical \
-        composition calculator.
-        
-        The "chemical composition" treats all :class:`~libcasm.xtal.Occupant` that 
-        have the same "chemical name" (:func:`~libcasm.xtal.Occupant.name`) as a 
-        single component, even if they have different magnetic spin, molecular 
-        orientation, etc.
-        """
-
         self.occupant_composition_axes = None
         """CompositionAxes: Project distinct occupant composition \
         axes.
@@ -75,15 +65,6 @@ class Project:
         The occupant composition axes are based on compositions calculated such that
         all :class:`~libcasm.xtal.Occupant` that have different magnetic spin, 
         molecular orientation, etc. are treated as a distinct components. 
-        """
-
-        self.occupant_composition = None
-        """OccupantCompositionCalculator: Configuration distinct \
-        occupants composition calculator.
-
-        The "occupant composition" treats all :class:`~libcasm.xtal.Occupant` that 
-        have different magnetic spin, molecular orientation, etc. as distinct
-        components.
         """
 
         if self.dir.chemical_composition_axes().exists():
@@ -105,7 +86,6 @@ class Project:
                 xtal_prim=self.prim.xtal_prim,
                 path=self.dir.chemical_composition_axes(),
             )
-        self.chemical_composition = self.chemical_composition_axes.config_composition
 
         if self.dir.occupant_composition_axes().exists():
             self.occupant_composition_axes = CompositionAxes.from_dict(
@@ -124,10 +104,30 @@ class Project:
                 xtal_prim=self.prim.xtal_prim,
                 path=self.dir.occupant_composition_axes(),
             )
-        self.occupant_composition = self.occupant_composition_axes.config_composition
 
         # Make project.enum persist
         self._enum = None
+
+    @property
+    def chemical_comp_calculator(self):
+        """ConfigCompositionCalculator: Configuration chemical composition calculator.
+
+        The "chemical composition" treats all :class:`~libcasm.xtal.Occupant` that
+        have the same "chemical name" (:func:`~libcasm.xtal.Occupant.name`) as a
+        single component, even if they have different magnetic spin, molecular
+        orientation, etc.
+        """
+        return self.chemical_composition_axes.config_comp_calculator
+
+    @property
+    def occupant_comp_calculator(self):
+        """ConfigCompositionCalculator: Configuration occupant composition calculator.
+
+        The "occupant composition" treats all :class:`~libcasm.xtal.Occupant` that
+        have different magnetic spin, molecular orientation, etc. as distinct
+        components.
+        """
+        return self.chemical_composition_axes.config_comp_calculator
 
     @property
     def bset(self):
@@ -172,7 +172,8 @@ class Project:
         ----------
         path: Union[str, pathlib.Path, None] = None
             The project root directory. If None, the current working directory is used.
-        prim: Union[libcasm.xtal.Prim, libcasm.configuration.Prim, dict, str, pathlib.Path, None] = None
+        prim: Union[libcasm.xtal.Prim, libcasm.configuration.Prim, dict, str, \
+        pathlib.Path, None] = None
             The prim, or the path to the prim.json file. If None, a `prim.json` file
             is expected in the project directory specified by `path`. Unless the
             `force` option is used, the prim must be in primitive, canonical form, and
@@ -339,8 +340,14 @@ class Project:
                 )
 
                 msg += "\n"
-                msg += f"- Writing canonical, symmetrized prim: {canonical_symmetrized_path}\n"
-                msg += f"- Canonical, symmetrized prim: \n{canonical_symmetrized_prim_str}\n"
+                msg += (
+                    f"- Writing canonical, symmetrized prim: "
+                    f"{canonical_symmetrized_path}\n"
+                )
+                msg += (
+                    f"- Canonical, symmetrized prim: "
+                    f"{canonical_symmetrized_prim_str}\n"
+                )
 
                 with open(canonical_symmetrized_path, "w") as f:
                     f.write(canonical_symmetrized_prim_str)
