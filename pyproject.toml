@@ -22,6 +22,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "latex2mathml",
     "numpy",
     "libcasm-mapping",
     "libcasm-clexmonte",

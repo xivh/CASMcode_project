@@ -1,0 +1,19 @@
+{
+  "basis": [
+    {
+      "coordinate": [0.0, 0.0, 0.0],
+      "occupant_dof": ["Si", "Ge"]
+    },
+    {
+      "coordinate": [0.25, 0.25, 0.25],
+      "occupant_dof": ["Si", "Ge"]
+    }
+  ],
+  "coordinate_mode": "Fractional",
+  "lattice_vectors": [
+    [0.0, 2.8, 2.8],
+    [2.8, 0.0, 2.8],
+    [2.8, 2.8, 0.0]
+  ],
+  "title": "SiGe_occ"
+}

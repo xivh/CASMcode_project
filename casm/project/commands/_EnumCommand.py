@@ -57,7 +57,7 @@ class EnumCommand:
         """
         return self.proj.dir.all_enum()
 
-    def list(self):
+    def print_all(self):
         """Print all enumerations"""
         for id in self.all():
             enum = self.get(id)
