@@ -1,0 +1,75 @@
+{
+    "prim": {
+        "basis": [
+            {
+                "coordinate": [
+                    0.000000000000,
+                    0.000000000000,
+                    0.000000000000
+                ],
+                "occupant_dof": [
+                    "Si",
+                    "Ge"
+                ]
+            },
+            {
+                "coordinate": [
+                    0.250000000000,
+                    0.250000000000,
+                    0.250000000000
+                ],
+                "occupant_dof": [
+                    "Si",
+                    "Ge"
+                ]
+            }
+        ],
+        "coordinate_mode": "Fractional",
+        "lattice_vectors": [
+            [
+                0.000000000000,
+                2.800000000000,
+                2.800000000000
+            ],
+            [
+                2.800000000000,
+                0.000000000000,
+                2.800000000000
+            ],
+            [
+                2.800000000000,
+                2.800000000000,
+                0.000000000000
+            ]
+        ],
+        "title": "SiGe_occ"
+    },
+    "composition_axes": {
+        "a": [
+            2.000000000000,
+            0.000000000000
+        ],
+        "components": [
+            "Si",
+            "Ge"
+        ],
+        "independent_compositions": 1,
+        "mol_formula": "Si(2a)Ge(2-2a)",
+        "origin": [
+            0.000000000000,
+            2.000000000000
+        ],
+        "param_formula": "a(0.5+0.25Si-0.25Ge)"
+    },
+    "basis_sets": {
+        "formation_energy": {
+            "source": "SiGe_occ_Clexulator_default.cc"
+        }
+    },
+    "clex": {
+        "formation_energy": {
+            "basis_set": "formation_energy",
+            "coefficients": "eci.json"
+        }
+    }
+}

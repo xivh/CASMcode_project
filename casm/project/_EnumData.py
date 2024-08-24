@@ -39,7 +39,7 @@ class EnumData:
 
     """
 
-    def __init__(self, proj: Project, id: str, meta: Optional[dict] = None):
+    def __init__(self, proj: Project, id: str):
         """
 
         .. rubric:: Constructor
@@ -56,11 +56,6 @@ class EnumData:
         id: str
             The enumeration identifier. Enumeration data is stored in the enumeration
             directory at `<project>/enumerations/enum.<id>/`.
-        meta: Optional[dict] = None
-            An optional `meta.json` file can be used to store a description of the
-            enumeration and other custom information. If "desc" is found in `meta`, it
-            will be printed by `print`.
-
         """
 
         self.proj = proj
@@ -69,14 +64,14 @@ class EnumData:
         self.id = id
         """str: Enumeration identifier"""
 
-        if meta is None:
-            meta = dict()
-        self.meta = meta
-        """dict: A description of the enumeration, saved as `meta.json`."""
-
         enum_dir = self.proj.dir.enum_dir(id)
         self.enum_dir = enum_dir
         """pathlib.Path: Enumeration directory"""
+
+        ### Data loaded / committed ###
+
+        self.meta = dict()
+        """dict: A description of the enumeration, saved as `meta.json`."""
 
         self.supercell_set = SupercellSet(prim=self.proj.prim)
         """SupercellSet: A SupercellSet, saved as `scel_set.json`.

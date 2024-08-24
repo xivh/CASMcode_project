@@ -249,7 +249,7 @@ class DirectoryStructure:
     ):
         """Returns path to directory containing global clexulator"""
         bset = self._get_bset(clex=clex, bset=bset)
-        return self.bset_dir(clex)
+        return self.bset_dir(bset=bset)
 
     def clexulator_src(
         self,

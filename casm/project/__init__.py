@@ -1,3 +1,4 @@
+from ._BsetData import BsetData
 from ._ClexDescription import ClexDescription
 from ._CompositionAxes import CompositionAxes
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator

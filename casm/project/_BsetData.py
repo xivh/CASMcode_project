@@ -24,6 +24,87 @@ from libcasm.clusterography import Cluster, ClusterOrbitGenerator
 from libcasm.occ_events import OccEvent
 
 
+class BsetOutputData:
+    def __init__(self, proj: Project, id: str):
+        self.proj = proj
+        self.id = id
+        self.bset_dir = self.proj.dir.bset_dir(bset=id)
+
+        ### Data from generated files (load only) ###
+        # written by write_clexulator
+
+    @property
+    def basis_dict(self):
+        """Optional[dict]: A description of a cluster expansion basis set.
+
+        See the CASM documentation for the
+        `basis.json format <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/ClexBasis/>`_.
+        """
+        return read_optional(self.bset_dir / "basis.json")
+
+    @property
+    def equivalents_info(self):
+        """Optional[dict]: The equivalents info provides the phenomenal cluster and local-cluster
+        orbits for all symmetrically equivalent local-cluster expansions, and the
+        indices of the factor group operations used to construct each equivalent
+        local cluster expansion from the prototype local-cluster expansion.
+
+        When there is an orientation to the local-cluster expansion this information
+        allows generating the proper diffusion events, etc. from the prototype.
+
+        See the CASM documentation for the
+        `equivalents_info.json format <TODO>`_.
+        """
+        self.equivalents_info = read_optional(self.bset_dir / "equivalents_info.json")
+
+    @property
+    def generated_files(self):
+        """Optional[dict]: Information on generated files.
+
+        Format:
+
+        - `all`: dict, All generated files, relative to the bset_dir
+        - `src_path`: str, Clexulator or prototype local clexulator source file path,
+          relative to the bset_dir
+        - `local_src_path: list[str], Local Clexulator source file paths, relative to
+          the bset_dir
+
+        """
+        return read_optional(self.bset_dir / "generated_files.json")
+
+    @property
+    def src_path(self):
+        """Optional[pathlib.Path]: Clexulator source file path"""
+        x = self.generated_files
+        if x is None:
+            return None
+        y = x.get("src_path")
+        if y is None:
+            return None
+        return pathlib.Path(y)
+
+    @property
+    def local_src_path(self):
+        """Optional[list[pathlib.Path]]: Local Clexulator source file paths"""
+        x = self.generated_files
+        if x is None:
+            return None
+        y = x.get("local_src_path")
+        if y is None:
+            return None
+        return [pathlib.Path(p) for p in y]
+
+    @property
+    def variables(self):
+        """Optional[dict]: Clexulator variables"""
+        return read_optional(self.bset_dir / "variables.json")
+
+    @property
+    def local_variables(self, i_equiv: int):
+        """Optional[list[dict]]: Local Clexulator variables"""
+        return read_optional(self.bset_dir / str(i_equiv) / "variables.json")
+
+
 class BsetData:
     """Manage basis set data for a CASM project
 
@@ -108,7 +189,7 @@ class BsetData:
 
     """
 
-    def __init__(self, proj: Project, id: str, meta: Optional[dict] = None):
+    def __init__(self, proj: Project, id: str):
 
         if not re.match(
             R"^\w+",
@@ -125,63 +206,43 @@ class BsetData:
         self.id = id
         """str: Basis set identifier"""
 
-        if meta is None:
-            meta = dict()
-        self.meta = meta
-        """dict: A description of the enumeration, saved as `meta.json`."""
-
         self.bset_dir = self.proj.dir.bset_dir(bset=id)
         """pathlib.Path: Basis set directory"""
 
-        self.clex_basis_specs = None
-        """ClexBasisSpecs: Clexulator basis set specifications"""
+        ### Data (load & commit) ###
 
-        self.version = None
-        """str: Version of the Clexulator to write"""
+        self.meta = dict()
+        """dict: A description of the enumeration, saved as `meta.json`."""
+
+        self.clex_basis_specs = None
+        """Optional[ClexBasisSpecs]: Clexulator basis set specifications"""
+
+        self.version = "v1.basic"
+        """str: Version of the Clexulator to write
+        
+        Expected to be one of:
+        
+        - "v1.basic": Standard CASM v1 compatible Clexulator, without automatic
+          differentiation
+        - "v1.diff": (TODO) CASM v1 compatible Clexulator, with ``fadbad`` automatic
+          differentiation enabled
+        
+        """
 
         self.linear_function_indices = None
-        """Optional[set[int]]: Linear function indices to include in the Clexulator"""
-
-        self.basis_dict = None
-        """dict: A description of a cluster expansion basis set.
-
-        See the CASM documentation for the
-        `basis.json format <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/ClexBasis/>`_.
-        """
-
-        self.equivalents_info = None
-        """dict: The equivalents info provides the phenomenal cluster and local-cluster
-        orbits for all symmetrically equivalent local-cluster expansions, and the
-        indices of the factor group operations used to construct each equivalent
-        local cluster expansion from the prototype local-cluster expansion. 
-
-        When there is an orientation to the local-cluster expansion this information
-        allows generating the proper diffusion events, etc. from the prototype.
-
-        See the CASM documentation for the
-        `equivalents_info.json format <TODO>`_.
-        """
-
-        self.generated_files = None
-        """Optional[dict]: Information on generated files.
+        """Optional[set[int]]: Linear function indices to include in the Clexulator
         
-        Format:
-    
-        - `all`: dict, All generated files, relative to the bset_dir
-        - `src_path`: str, Clexulator or prototype local clexulator source file path,
-          relative to the bset_dir
-        - `local_src_path: list[str], Local Clexulator source file paths, relative to
-          the bset_dir  
-        
+        If None, all functions will be included in the Clexulator.
+        Otherwise, only the specified functions will be included in the Clexulator.
+        Generally this is not known the first time a Clexulator is generated, but
+        after fitting coefficients it may be used to re-generate the Clexulator
+        with the subset of the basis functions needed.
         """
 
-        self.src_path = None
-
-        self.local_src_path = None
-        """list[pathlib.Path]: Local Clexulator source file paths"""
-
-        self._variables = None
-        self._local_variables = None
+        ### Data (load only) ###
+        # written by write_clexulator
+        self.out = BsetOutputData(proj=proj, id=id)
+        """Optional[BsetOutputData]: Output data from the write_clexulator process."""
 
         self.load()
 
@@ -205,93 +266,87 @@ class BsetData:
                 data=data,
                 prim=self.proj.prim,
             )
-            self.linear_function_indices = data.get("linear_function_indices", None)
-            self.version = data.get("version", "v1.basic")
 
         else:
             self.clex_basis_specs = None
             self.linear_function_indices = None
             self.version = None
 
-    def basis_dict(self) -> Optional[dict]:
-        return read_optional(self.bset_dir / "basis.json")
+        # read writer_params.json if it exists
+        data = read_optional(self.bset_dir / "writer_params.json", default={})
+        self.linear_function_indices = data.get("linear_function_indices", None)
+        self.version = data.get("version", "v1.basic")
 
-    def equivalents_info(self) -> Optional[dict]:
-        return read_optional(self.bset_dir / "equivalents_info.json")
+    def commit(self):
+        """Write bspecs.json, meta.json, writer_params.json (will overwrite or delete)
 
-    def generated_files(self) -> Optional[dict]:
-        path = self.bset_dir / "equivalents_info.json"
-        return read_optional(path)
+        Notes:
 
-    def src_path(self) -> Optional[pathlib.Path]:
-        """Returns Clexulator or prototype local clexulator source file path
+        - This will overwrite existing files.
+        - If an attribute is None, the corresponding file will be deleted.
 
-        Returns
-        -------
-        Optional[pathlib.Path]
-            Clexulator or prototype local clexulator source file path, as read
-            from generated_files.json; otherwise None.
         """
-        gen = self.generated_files()
-        if gen is None:
-            return None
-        _src_path = gen.get("src_path")
-        if _src_path is None:
-            return None
-        return self.bset_dir / _src_path
 
-    def local_src_path(self) -> Optional[list[pathlib.Path]]:
-        """Returns list of LocalClexulator source file paths
+        # validate clex_basis_specs
+        if not isinstance(self.clex_basis_specs, ClexBasisSpecs):
+            raise TypeError(
+                "Error in BsetData.commit: "
+                "BsetData.clex_basis_specs must be a ClexBasisSpecs"
+            )
+        versions = ["v1.basic"]
+        if not self.version in versions:
+            raise TypeError(
+                f"Error in BsetData.commit: version={self.version}; "
+                f"must be one of {versions}"
+            )
 
-        Returns
-        -------
-        Optional[list[pathlib.Path]]
-            List of LocalClexulator source file paths, as read
-            from generated_files.json; otherwise None.
-        """
-        gen = self.generated_files()
-        if gen is None:
-            return None
-        _local_src_path = gen.get("local_src_path")
-        if _local_src_path is None:
-            return None
-        return [self.bset_dir / p for p in _local_src_path]
+        # validate meta
+        if not isinstance(self.meta, dict):
+            raise TypeError("Error in BsetData.commit: BsetData.meta must be a dict")
 
-    def variables(self, i_equiv: Optional[int] = None) -> Optional[dict]:
-        """Returns variables dict
-
-        A file for each Clexulator (including local Clexulator) which
-        contains the variables used by the jinja2 templates as well as information like
-        basis function formulas generated during the write process. Values in this file
-        correspond to documented attributes of the following classes:
-
-        - For version `v1.basic`: :class:`~casm.bset.clexwriter.WriterV1Basic`
-        - For version `v1.diff`: :class:`~casm.bset.clexwriter.WriterV1Diff` (TODO)
-
-        Parameters
-        ----------
-        i_equiv: Optional[int] = None
-            The equivalent index. If None, the variables.json file in the basis set
-            directory is read; otherwise, the variables.json file in the `i_equiv`-th
-            equivalent local basis set directory is read.
-
-        Returns
-        -------
-        Optional[dict]
-            Contents of variables.json, or None if the file does not exist.
-        """
-        if i_equiv is None:
-            return read_optional(self.bset_dir / "variables.json")
+        # write bspecs.json
+        path = self.proj.dir.bspecs(bset=self.id)
+        if self.clex_basis_specs is not None:
+            data = self.clex_basis_specs.to_dict()
+            safe_dump(
+                data=data,
+                path=path,
+                quiet=False,
+                force=True,
+            )
         else:
-            # read variables.json if it exists
-            path = self.bset_dir / str(i_equiv) / "variables.json"
-            return read_optional(path)
+            if path.exists():
+                path.unlink()
+
+        # write writer_params.json
+        data = {
+            "version": self.version,
+            "linear_function_indices": self.linear_function_indices,
+        }
+        safe_dump(
+            data=data,
+            path=self.bset_dir / "writer_params.json",
+            quiet=False,
+            force=True,
+        )
+
+        # write meta.json:
+        path = self.bset_dir / "meta.json"
+        if len(self.meta) > 0:
+            safe_dump(
+                data=self.meta,
+                path=path,
+                quiet=False,
+                force=True,
+            )
+        elif path.exists():
+            path.unlink()
 
     def clean(self, verbose: bool = True):
         """Remove all generated files associated with the basis set, as read from
         generated_files.json"""
         # read generated_files.json if it exists
-        generated_files = self.generated_files()
+        generated_files = self.out.generated_files
 
         if generated_files is None:
             if verbose:
@@ -306,101 +361,22 @@ class BsetData:
                     print(f"Removing {printpathstr(path)}")
                 path.unlink()
 
-    def commit(self, verbose: bool = True):
-        """Write the basis set meta data
-
-        This will erase the associated file if `self.meta` is None.
-        """
-        quiet = not verbose
-        self.bset_dir.mkdir(parents=True, exist_ok=True)
-
-        # write meta.json:
-        path = self.bset_dir / "meta.json"
-        if len(self.meta) > 0:
-            if not isinstance(self.meta, dict):
-                raise TypeError(
-                    "Error in BsetData.commit: BsetData.meta must be a dict"
-                )
-            safe_dump(
-                data=self.meta,
-                path=path,
-                quiet=quiet,
-                force=True,
-            )
-        elif path.exists():
-            path.unlink()
-
-        # # write bspecs.json
-        # path = self.proj.dir.bspecs(bset=self.id)
-        # if self.clex_basis_specs is not None:
-        #     data = self.clex_basis_specs.to_dict()
-        #
-        #     # additional data
-        #     if self.linear_function_indices is not None:
-        #         data["linear_function_indices"] = self.linear_function_indices
-        #     if self.version is not None:
-        #         data["version"] = self.version
-        #     if self.src_path is not None:
-        #         data["src_path"] = str(self.src_path)
-        #     if self.local_src_path is not None:
-        #         data["local_src_path"] = [str(p) for p in self.local_src_path]
-        #
-        #     safe_dump(data=data, path=path, quiet=quiet, force=True)
-        # elif path.exists():
-        #     path.unlink()
-        #
-        # # write basis.json
-        # path = self.proj.dir.basis(bset=self.id)
-        # if self.basis_dict is not None:
-        #     safe_dump(data=self.basis_dict, path=path, quiet=quiet, force=True)
-        # elif path.exists():
-        #     path.unlink()
-        #
-        # # write equivalents_info.json
-        # path = self.bset_dir / "equivalents_info.json"
-        # if self.equivalents_info is not None:
-        #     safe_dump(data=self.equivalents_info, path=path, quiet=quiet, force=True)
-        # elif path.exists():
-        #     path.unlink()
-
-    def set_clex_basis_specs(
+    def set_bspecs(
         self,
         clex_basis_specs: ClexBasisSpecs,
-        version: str = "v1.basic",
-        linear_function_indices: Optional[set[int]] = None,
+        force: bool = False,
     ):
-        """Reset the basis set data and set the ClexBasisSpecs
-
-        Does not delete any files. Does not change the id, meta, or bset_dir.
+        """Set :attr:`~casm.project.BsetData.clex_basis_specs`
 
         Parameters
         ----------
         clex_basis_specs : ClexBasisSpecs
             The ClexBasisSpecs object
-        version: str = "v1.basic"
-            The Clexulator version to write. One of:
-
-            - "v1.basic": Standard CASM v1 compatible Clexulator, without automatic
-              differentiation
-            - "v1.diff": (TODO) CASM v1 compatible Clexulator, with ``fadbad`` automatic
-              differentiation enabled
-
-        linear_function_indices: Optional[set[int]] = None
-            (Experimental feature) The linear indices of the functions that will be
-            included. If None, all functions will be included in the Clexulator.
-            Otherwise, only the specified functions will be included in the Clexulator.
-            Generally this is not known the first time a Clexulator is generated, but
-            after fitting coefficients it may be used to re-generate the Clexulator
-            with the subset of the basis functions needed.
 
         """
-        self.reset()
-
         self.clex_basis_specs = clex_basis_specs
-        self.version = version
-        self.linear_function_indices = linear_function_indices
 
-    def make_clex_basis_specs(
+    def make_bspecs(
         self,
         dofs: Optional[list[str]] = None,
         max_length: Optional[list[float]] = [],
@@ -410,12 +386,8 @@ class BsetData:
         occ_site_basis_functions_specs: Union[str, list[dict], None] = None,
         global_max_poly_order: Optional[int] = None,
         orbit_branch_max_poly_order: Optional[dict] = None,
-        version: str = "v1.basic",
-        linear_function_indices: Optional[set[int]] = None,
     ):
-        """Reset the basis set data and set the ClexBasisSpecs
-
-        Does not delete any files. Does not change the id, meta, or bset_dir.
+        """Construct :attr:`~casm.project.BsetData.clex_basis_specs`
 
         Parameters
         ----------
@@ -475,26 +447,7 @@ class BsetData:
             created. Higher order polynomials are requested either according to cluster
             size using `orbit_branch_max_poly_order` or globally using
             `global_max_poly_order`. The most specific level specified is used.
-
-        version: str = "v1.basic"
-            The Clexulator version to write. One of:
-
-            - "v1.basic": Standard CASM v1 compatible Clexulator, without automatic
-              differentiation
-            - "v1.diff": (TODO) CASM v1 compatible Clexulator, with ``fadbad`` automatic
-              differentiation enabled
-
-        linear_function_indices: Optional[set[int]] = None
-            (Experimental feature) The linear indices of the functions that will be
-            included. If None, all functions will be included in the Clexulator.
-            Otherwise, only the specified functions will be included in the Clexulator.
-            Generally this is not known the first time a Clexulator is generated, but
-            after fitting coefficients it may be used to re-generate the Clexulator
-            with the subset of the basis functions needed.
-
         """
-        self.reset()
-
         self.clex_basis_specs = make_clex_basis_specs(
             prim=self.proj.prim,
             dofs=dofs,
@@ -506,8 +459,6 @@ class BsetData:
             global_max_poly_order=global_max_poly_order,
             orbit_branch_max_poly_order=orbit_branch_max_poly_order,
         )
-        self.version = version
-        self.linear_function_indices = linear_function_indices
 
     def build(
         self,
@@ -545,14 +496,14 @@ class BsetData:
         """
         if self.clex_basis_specs is None:
             raise Exception(
-                "Error in BsetData.make_cluster_functions: "
-                "no basis set specifications found"
+                "Error in BsetData.make_cluster_functions: no bspecs loaded"
             )
         if self.proj.prim_neighbor_list is None:
             raise Exception(
                 "Error in BsetData.make_cluster_functions: "
                 "project prim_neighbor_list is None"
             )
+
         return build_cluster_functions(
             prim=self.proj.prim,
             clex_basis_specs=self.clex_basis_specs,
@@ -567,7 +518,8 @@ class BsetData:
         no_compile: bool = False,
         only_compile: bool = False,
     ):
-        """Write the Clexulator source file(s) for the basis set
+        """Write the Clexulator source file(s) for the basis set, and/or compile the
+        Clexulator(s)
 
         Parameters
         ----------
@@ -584,14 +536,11 @@ class BsetData:
                 "Error in BsetData.write_clexulator: "
                 "project prim_neighbor_list is None"
             )
-
-        self.load()
         if self.clex_basis_specs is None:
             raise Exception(
                 "Error in BsetData.write_clexulator: "
                 "no basis set specifications found"
             )
-
         if only_compile is False:
             write_clexulator(
                 prim=self.proj.prim,
@@ -608,51 +557,48 @@ class BsetData:
         if no_compile:
             return
 
-        src_path = self.src_path()
+        src_path = self.out.src_path
         if src_path is None:
             raise ValueError("Error in BsetData.update: No Clexulator src_path.")
 
-        make_clexulator(
-            source=str(src_path),
-            prim_neighbor_list=self.proj.prim_neighbor_list,
-        )
-
-        if self.local_src_path() is not None:
+        # compile Clexulator
+        if self.local_src_path is None:
+            make_clexulator(
+                source=str(src_path),
+                prim_neighbor_list=self.proj.prim_neighbor_list,
+            )
+        else:
             make_local_clexulator(
                 source=str(src_path),
                 prim_neighbor_list=self.proj.prim_neighbor_list,
             )
 
-    def clexulator(self) -> Optional[Clexulator]:
+    def make_clexulator(self) -> Optional[Clexulator]:
         """Optional[Clexulator]: The Clexulator for the basis set, available if
         :attr:`BsetData.clex_basis_specs` is not None.
 
         When accessed, the Clexulator will be written if it has not yet been written,
         and compiled if it has not yet been compiled.
         """
-        src_path = self.src_path()
+        src_path = self.out.src_path
         if src_path is None:
             return None
-
         return make_clexulator(
             source=str(src_path),
             prim_neighbor_list=self.proj.prim_neighbor_list,
         )
 
-    def local_clexulator(self) -> Optional[LocalClexulator]:
+    def make_local_clexulator(self) -> Optional[LocalClexulator]:
         """Optional[LocalClexulator]: The LocalClexulator for the basis set, if
         available.
 
         When accessed, the LocalClexulator will be written if it has not yet been
         written, and compiled if it has not yet been compiled.
         """
-        src_path = self.src_path()
-        if src_path is None:
-            return None
-        local_src_path = self.local_src_path()
+        local_src_path = self.out.local_src_path
         if local_src_path is None:
             return None
         return make_local_clexulator(
-            source=str(src_path),
+            source=str(self.out.src_path),
             prim_neighbor_list=self.proj.prim_neighbor_list,
         )
