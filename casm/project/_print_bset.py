@@ -1,5 +1,5 @@
-from typing import Optional, TextIO
 import sys
+from typing import Optional, TextIO
 
 import libcasm.configuration as casmconfig
 
@@ -45,7 +45,7 @@ def pretty_print_cluster(
             print(f"  - {site}", file=out)
 
     # site-to-site distances
-    print(f"- site-to-site distances:", file=out)
+    print("- site-to-site distances:", file=out)
     distances = cluster.get("distances")
     if len(distances) == 0:
         print("  - None", file=out)

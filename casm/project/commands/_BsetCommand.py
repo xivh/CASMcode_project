@@ -1,12 +1,6 @@
-from typing import Optional, TextIO, Union
-import sys
+from typing import Optional
 
-from casm.bset.cluster_functions import ClexBasisSpecs, ClusterFunctionsBuilder
-from casm.project._Project import Project
-from casm.project import BsetData
-from casm.project.json_io import safe_dump, read_optional, read_required
-from libcasm.clusterography import Cluster, ClusterOrbitGenerator
-from libcasm.occ_events import OccEvent
+from casm.project import BsetData, Project
 
 
 class BsetCommand:
@@ -41,11 +35,11 @@ class BsetCommand:
         """
         return self.proj.dir.all_bset()
 
-    def print_all(self):
+    def list(self):
         """Print all basis sets"""
         for id in self.all():
-            basis_set = self.get(id)
-            print(basis_set)
+            bset = self.get(id)
+            print(bset)
 
     def get(self, id: str):
         """Load basis set data
@@ -62,80 +56,35 @@ class BsetCommand:
         """
         return BsetData(proj=self.proj, id=id)
 
-    def print_orbits(
-        self,
-        id: str,
-        linear_orbit_indices: Optional[set[int]] = None,
-        print_invariant_group: bool = False,
-    ):
-        bset = self.get(id)
-        self.last = bset
-        if bset.clex_basis_specs is None:
-            raise Exception(f"Basis set {id} has not been generated yet.")
-
-        options = PrettyPrintBasisOptions()
-        options.linear_orbit_indices = linear_orbit_indices
-        options.print_invariant_group = print_invariant_group
-
-        pretty_print_orbits(
-            basis_dict=bset.basis_dict,
-            prim=self.proj.prim,
-            options=options,
-        )
-
-    # TODO:
-    # def clusters(self, ...):
-    #     return None
-
-    def print_functions(
-        self,
-        id: str,
-        linear_orbit_indices: Optional[set[int]] = None,
-        print_invariant_group: bool = False,
-    ):
-        bset = self.get(id)
-        self.last = bset
-        if bset.clex_basis_specs is None:
-            raise Exception(f"Basis set {id} has not been generated yet. Use `update`.")
-
-        options = PrettyPrintBasisOptions()
-        options.linear_orbit_indices = linear_orbit_indices
-        options.print_invariant_group = print_invariant_group
-
-        pretty_print_functions(
-            basis_dict=bset.basis_dict,
-            prim=self.proj.prim,
-            options=options,
-        )
-
-    def display_functions(
-        self,
-        id: str,
-        linear_orbit_indices: Optional[set[int]] = None,
-    ):
-        """Display cluster function formulas using IPython.display
+    def remove(self, id: str):
+        """Remove basis set data
 
         Parameters
         ----------
-        id: str
-            The basis set identifier. Must consist alphanumeric characters and
-            underscores only.
-        linear_orbit_indices: Optional[set[int]] = None
-            Linear cluster orbit indices to print associated functions for. If None,
-            functions are printed for all cluster orbits.
-
+        id : str
+            The basis set identifier
         """
-        bset = self.get(id)
-        self.last = bset
-        if bset.clex_basis_specs is None:
-            raise Exception(f"Basis set {id} has not been generated yet. Use `update`.")
+        import shutil
 
-        options = PrettyPrintBasisOptions()
-        options.linear_orbit_indices = linear_orbit_indices
-        options.print_invariant_group = False
+        bset_dir = self.proj.dir.bset_dir(id)
+        if not bset_dir.exists():
+            raise FileNotFoundError(f"Basis set {id} does not exist.")
+        shutil.rmtree(self.proj.dir.bset_dir(id))
 
-        display_functions(
-            basis_dict=bset.basis_dict,
-            prim=self.proj.prim,
-            options=options,
-        )
+    def copy(self, src_id: str, dest_id: str):
+        """Copy basis set data
+
+        Parameters
+        ----------
+        src_id : str
+            The source basis set identifier
+        dest_id : str
+            The destination basis set identifier
+        """
+        data = self.get(src_id)
+        data.id = dest_id
+
+        bset_dir = self.proj.dir.bset_dir(dest_id)
+        bset_dir.mkdir(parents=True, exist_ok=False)
+        data.bset_dir = bset_dir
+        data.commit()

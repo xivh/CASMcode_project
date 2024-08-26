@@ -256,30 +256,54 @@ class DirectoryStructure:
         projectname: str,
         clex: Optional[ClexDescription] = None,
         bset: Optional[str] = None,
+        i_equiv: Optional[int] = None,
     ):
         """Returns path to global clexulator source file"""
         bset = self._get_bset(clex=clex, bset=bset)
-        return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.cc")
+        if i_equiv is None:
+            return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.cc")
+        else:
+            return (
+                self.bset_dir(bset=bset)
+                / str(i_equiv)
+                / (projectname + f"_Clexulator_{bset}.cc")
+            )
 
     def clexulator_o(
         self,
         projectname: str,
         clex: Optional[ClexDescription] = None,
         bset: Optional[str] = None,
+        i_equiv: Optional[int] = None,
     ):
         """Returns path to global clexulator.o file"""
         bset = self._get_bset(clex=clex, bset=bset)
-        return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.o")
+        if i_equiv is None:
+            return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.o")
+        else:
+            return (
+                self.bset_dir(bset=bset)
+                / str(i_equiv)
+                / (projectname + f"_Clexulator_{bset}.o")
+            )
 
     def clexulator_so(
         self,
         projectname: str,
         clex: Optional[ClexDescription] = None,
         bset: Optional[str] = None,
+        i_equiv: Optional[int] = None,
     ):
         """Returns path to global clexulator so file"""
         bset = self._get_bset(clex=clex, bset=bset)
-        return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.so")
+        if i_equiv is None:
+            return self.bset_dir(bset=bset) / (projectname + f"_Clexulator_{bset}.so")
+        else:
+            return (
+                self.bset_dir(bset=bset)
+                / str(i_equiv)
+                / (projectname + f"_Clexulator_{bset}.so")
+            )
 
     # -- Calculations and reference --------
 

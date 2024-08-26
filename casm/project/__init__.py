@@ -1,7 +1,9 @@
-from ._BsetData import BsetData
+from ._BsetData import BsetData, BsetOutputData
 from ._ClexDescription import ClexDescription
 from ._CompositionAxes import CompositionAxes
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator
+from ._ConfigCorrCalculator import ConfigCorrCalculator
+from ._ConfigEnumRunner import ConfigEnumRunner
 from ._DirectoryStructure import DirectoryStructure
 from ._EnumData import EnumData
 from ._FittingData import (

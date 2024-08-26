@@ -1,14 +1,40 @@
-from typing import Optional, TextIO
 import sys
+from typing import Optional, TextIO
 
 import libcasm.configuration as casmconfig
-from ._print_bset import PrettyPrintBasisOptions
+
+
+class DisplayBasisOptions:
+    """Options for displaying a basis set with IPython"""
+
+    def __init__(
+        self,
+        display_invariant_group: bool = True,
+        linear_orbit_indices: Optional[set[int]] = None,
+    ):
+        self.display_invariant_group = display_invariant_group
+        """bool: Display the invariant group of the cluster"""
+
+        self.linear_orbit_indices = linear_orbit_indices
+        """Optional[set[int]]: Linear cluster orbit indices to display. If None, all 
+        orbits are printed."""
+
+
+def display_orbits(
+    basis_dict: dict,
+    prim: casmconfig.Prim,
+    options: Optional[DisplayBasisOptions] = None,
+    out: Optional[TextIO] = None,
+):
+    # TODO
+    raise Exception("display_orbits: TODO, not implemented yet")
+    return None
 
 
 def display_occ_site_functions(
     site_functions_dict: dict,
     prim: casmconfig.Prim,
-    options: Optional[PrettyPrintBasisOptions] = None,
+    options: Optional[DisplayBasisOptions] = None,
     out: Optional[TextIO] = None,
 ):
     """Pretty print information about occupation site basis functions
@@ -22,14 +48,14 @@ def display_occ_site_functions(
         file.
     prim: casmconfig.Prim
         The prim.
-    options: Optional[PrettyPrintBasisOptions] = None
+    options: Optional[DisplayBasisOptions] = None
         Options for pretty-printing the basis set. If None, default options are used.
     out: Optional[stream] = None
         Output stream. Defaults to `sys.stdout`.
 
     """
-    import latex2mathml.converter
     import IPython.display
+    import latex2mathml.converter
 
     def display(s: str):
         IPython.display.display(IPython.display.HTML(latex2mathml.converter.convert(s)))
@@ -37,7 +63,7 @@ def display_occ_site_functions(
     if out is None:
         out = sys.stdout
     if options is None:
-        options = PrettyPrintBasisOptions()
+        options = DisplayBasisOptions()
 
     has_occ_site_functions = False
     for sublat_func in site_functions_dict:
@@ -84,7 +110,7 @@ def display_occ_site_functions(
 def display_functions(
     basis_dict: dict,
     prim: casmconfig.Prim,
-    options: Optional[PrettyPrintBasisOptions] = None,
+    options: Optional[DisplayBasisOptions] = None,
     out: Optional[TextIO] = None,
 ):
     """Display cluster function formulas using IPython.display
@@ -96,19 +122,19 @@ def display_functions(
         file.
     prim: casmconfig.Prim
         The prim.
-    options: Optional[PrettyPrintBasisOptions] = None
+    options: Optional[DisplayBasisOptions] = None
         Options for pretty-printing the basis set. If None, default options are used.
     out: Optional[stream] = None
         Output stream. Defaults to `sys.stdout`.
 
     """
-    import latex2mathml.converter
     import IPython.display
+    import latex2mathml.converter
 
     if out is None:
         out = sys.stdout
     if options is None:
-        options = PrettyPrintBasisOptions()
+        options = DisplayBasisOptions()
 
     # prints nothing if no occupation site basis functions are found
     display_occ_site_functions(

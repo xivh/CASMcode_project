@@ -1,19 +1,15 @@
 import sys
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional
 
 from libcasm.configuration import (
     Configuration,
 )
 
-from ._EnumData import EnumData
 
-_ConfigEnumRunnerType = TypeVar("_ConfigEnumRunnerType")
-
-
-class _ConfigEnumRunner:
+class ConfigEnumRunner:
     """Configuration enumeration runner
 
-    _ConfigEnumRunner helps by:
+    ConfigEnumRunner helps by:
 
     - checking a filter function and adding configurations to a configuration set
       or skipping them based on the value
@@ -21,7 +17,7 @@ class _ConfigEnumRunner:
     - periodically committing an enumeration to disk
     - printing information about the enumeration process
 
-    If the configuration enumerator has an enum_index attribute, _ConfigEnumRunner
+    If the configuration enumerator has an enum_index attribute, ConfigEnumRunner
     can print information about the number of configurations generated, new, and
     filtered for each step.
 
@@ -32,10 +28,10 @@ class _ConfigEnumRunner:
     def __init__(
         self,
         config_enum: Any,
-        curr: EnumData,
+        curr: "EnumData",
         desc: str,
-        filter_f: Optional[Callable[[Configuration, EnumData], bool]] = None,
-        print_steps_f: Optional[Callable[[_ConfigEnumRunnerType], None]] = None,
+        filter_f: Optional[Callable[[Configuration, "EnumData"], bool]] = None,
+        print_steps_f: Optional[Callable[["ConfigEnumRunner"], None]] = None,
         n_per_commit: int = 100000,
         print_commits: bool = True,
         verbose: bool = False,
@@ -48,16 +44,17 @@ class _ConfigEnumRunner:
         ----------
         config_enum: Any
             The current configuration enumerator.
-        curr: EnumData
+        curr: casm.project.EnumData
             The current enumeration data. This is used to store and commit
             configurations.
         desc: str
             A brief description of the enumeration method.
-        filter_f: Optional[Callable[[Configuration, EnumData], bool]] = None
+        filter_f: Optional[Callable[[libcasm.configuration.Configuration, \
+        casm.project.EnumData], bool]] = None
             A custom filter function which, if provided, should return True to keep
             a configuration, or False to skip. The arguments are the current
             configuration and the current enumeration data.
-        print_steps_f: Optional[Callable[[_ConfigEnumRunner], None]] = None
+        print_steps_f: Optional[Callable[[casm.project.ConfigEnumRunner], None]] = None
             If provided, call this method with this instance for each change in
             config_enum.enum_index to print information about the current enumeration
             step.
@@ -74,21 +71,23 @@ class _ConfigEnumRunner:
         """Any: The current configuration enumerator."""
 
         self.curr = curr
-        """EnumData: The current enumeration data. This is used to store and commit
-        configurations."""
+        """casm.project.EnumData: The current enumeration data. This is used to store 
+        and commit configurations."""
 
         self.desc = desc
         """str: A brief description of the enumeration method."""
 
         if filter_f is None:
 
-            def filter_f(config, enum_data):
+            def filter_f(config: Configuration, enum: "EnumData"):
                 return True
 
         self.filter_f = filter_f
-        """Callable[[Configuration, EnumData], bool]: A custom filter function which, 
-        if provided, should return True to keep a configuration, or False to skip. The 
-        arguments are the current configuration and the current enumeration data."""
+        """Callable[[libcasm.configuration.Configuration, casm.project.EnumData], \
+        bool]: A custom filter function which, if provided, should return True to keep 
+        a configuration, or False to skip. 
+        
+        The arguments are the current configuration and the current enumeration data."""
 
         self.n_since_last_commit = 0
         """int: The number of configurations enumerated since the last commit"""
@@ -101,9 +100,10 @@ class _ConfigEnumRunner:
 
         self.curr_enum_index = None
         """Optional[int]: During enumeration, `curr_enum_index` is set to the index of 
-        the current enumeration step obtained from `config_enum.enum_index`. If the
-        enumerator does not have an `enum_index` attribute it is treated as having a
-        single step."""
+        the current enumeration step obtained from `config_enum.enum_index`. 
+        
+        If the enumerator does not have an `enum_index` attribute it is treated as 
+        having a single step."""
 
         self.n_config_init = len(self.curr.configuration_set)
         """int: The size of `configuration_set` before enumeration begins"""
@@ -124,9 +124,9 @@ class _ConfigEnumRunner:
         background and sites, and excluded by a user's filter"""
 
         self.print_steps_f = print_steps_f
-        """Optional[Callable[[_ConfigEnumRunner], None]]: If provided, call this method
-        with this instance for each change in enum_index to print information about
-        the current enumeration step"""
+        """Optional[Callable[[casm.project.ConfigEnumRunner], None]]: If provided, call 
+        this method with this instance for each change in enum_index to print 
+        information about the current enumeration step"""
 
         self.print_commits = print_commits
         """bool: If True, print information about each commit"""
@@ -243,3 +243,5 @@ class _ConfigEnumRunner:
 
         if not self.dry_run:
             self.curr.commit(verbose=self.verbose)
+            if self.verbose:
+                print()

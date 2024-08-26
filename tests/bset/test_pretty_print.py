@@ -1,20 +1,16 @@
 import io
-import pathlib
-import tempfile
-
-from libcasm.xtal import pretty_json
-import libcasm.configuration as casmconfig
-from casm.project.json_io import read_required
-from casm.project.commands._BsetCommand import (
-    pretty_print_occ_site_functions,
-    pretty_print_functions,
-)
 
 import latex2mathml.converter
 
+import libcasm.configuration as casmconfig
+from casm.project._print_bset import (
+    pretty_print_functions,
+    pretty_print_occ_site_functions,
+)
+from casm.project.json_io import read_required
+
 
 def test_latex_to_html():
-
     ### Example usage: ###
 
     # from IPython.display import display, HTML

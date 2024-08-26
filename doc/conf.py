@@ -14,6 +14,9 @@ intersphinx_libcasm_packages = [
     ("clexulator", "2.0"),
     ("configuration", "2.0"),
 ]
+intersphinx_casm_packages = [
+    ("bset", "2.0"),
+]
 # autodoc_type_aliases = {
 #     "BsetCommand": "casm.project.commands.BsetCommand",
 #     "EnumCommand": "EnumCommand",
@@ -63,6 +66,14 @@ for package, vers in intersphinx_libcasm_packages:
         url = (
             f"https://prisms-center.github.io/CASMcode_pydocs/libcasm/{package}/{vers}/"
         )
+        inventory = None
+    else:
+        url = os.path.join(pydocs_path, f"{package}/{vers}/html")
+        inventory = os.path.join(pydocs_path, f"{package}/{vers}/objects.inv")
+    intersphinx_mapping[package] = (url, inventory)
+for package, vers in intersphinx_casm_packages:
+    if pydocs_path is None:
+        url = f"https://prisms-center.github.io/CASMcode_pydocs/casm/{package}/{vers}/"
         inventory = None
     else:
         url = os.path.join(pydocs_path, f"{package}/{vers}/html")

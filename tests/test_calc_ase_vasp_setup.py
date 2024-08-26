@@ -9,13 +9,11 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
     enum_id = "occ_by_supercell.1"
     calctype_id = "vasp.default"
 
-    project.enum.occ_by_supercell(
+    enum = project.enum.get(enum_id)
+    enum.occ_by_supercell(
         max=3,
         min=1,
-        id=enum_id,
     )
-
-    enum_data = project.enum.get(enum_id)
 
     calctype_settings_dir = project.dir.calctype_settings_dir_v2(
         calctype="vasp.default",
@@ -33,7 +31,7 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
         xc="pbe",
     )
 
-    for record in enum_data.configuration_set:
+    for record in enum.configuration_set:
         structure = record.configuration.to_structure()
         calc_dir = project.dir.enum_calctype_dir(
             enum=enum_id,
