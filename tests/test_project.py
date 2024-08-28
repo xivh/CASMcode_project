@@ -4,6 +4,7 @@ import tempfile
 from typing import Optional, Union
 
 import numpy as np
+import pytest
 
 import libcasm.configuration as casmconfig
 from casm.project import (
@@ -203,6 +204,17 @@ def test_FCC_Cmagspin_prim():
         prim=prim,
         max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
         occ_site_basis_functions_specs="chebychev",
+    )
+
+
+@pytest.mark.xfail(reason="todo: fail nicely")
+def test_FCC_Cmagspin_prim_occ():
+    name = "FCC_Cmagspin_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+    periodic_project_checks(
+        prim=prim,
+        max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
+        occ_site_basis_functions_specs="occupation",
     )
 
 
