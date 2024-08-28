@@ -92,7 +92,7 @@ def test_bset_periodic_1(SiGe_occ_tmp_project):
     enum.occ_by_supercell(max=4)
 
     ## Evaluate correlations
-    corr = bset.corr_calculator().per_unitcell_array(enum.configuration_set)
+    corr = bset.corr_calculator().per_unitcell(enum.configuration_set)
     assert isinstance(corr, np.ndarray)
     assert corr.shape[0] == len(enum.configuration_set)
     assert corr.shape[1] == clexulator.n_functions()

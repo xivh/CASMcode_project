@@ -4,7 +4,6 @@ from typing import Optional, TypeVar, Union
 import libcasm.casmglobal as casmglobal
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
-import libcasm.configuration.io as config_io
 import libcasm.xtal as xtal
 
 from ._CompositionAxes import CompositionAxes
@@ -15,6 +14,7 @@ from ._methods import (
     project_path,
 )
 from ._ProjectSettings import ProjectSettings
+from ._symgroup import symgroup_to_dict_with_group_classification
 from .json_io import (
     printpathstr,
     read_optional,
@@ -269,6 +269,19 @@ class Project:
                 "Failed to construct Prim (unknown reason)"
             )
 
+        ### Warn if prim is not atomic:
+        if not prim.is_atomic:
+            print(
+                "\n"
+                "** WARNING *********************************************************\n"
+                "The prim is not atomic. Some CASM methods, such as structure mapping\n"
+                "and conversions between configuration and structure, may not be     \n"
+                "implemented. If possible, use atomic properties instead of molecular\n"
+                "properties.                                                         \n"
+                "********************************************************************\n"
+                "\n"
+            )
+
         ### Checks to see if the prim is a standard prim and not tolerance sensitive ###
         # Check primitive, canonical form
         xtal_prim = prim.xtal_prim
@@ -424,8 +437,8 @@ class Project:
 
         # Write symmetry info (overwrite existing files)
         # - write lattice_point_group.json,
-        lattice_point_group_data = config_io.symgroup_to_dict_with_group_classification(
-            prim.xtal_prim.lattice(),
+        lattice_point_group_data = symgroup_to_dict_with_group_classification(
+            prim,
             prim.lattice_point_group,
         )
         safe_dump(
@@ -435,7 +448,7 @@ class Project:
         )
 
         # - write factor_group.json,
-        factor_group_data = config_io.symgroup_to_dict_with_group_classification(
+        factor_group_data = symgroup_to_dict_with_group_classification(
             prim,
             prim.factor_group,
         )
@@ -446,7 +459,7 @@ class Project:
         )
 
         # - write crystal_point_group.json
-        crystal_point_group_data = config_io.symgroup_to_dict_with_group_classification(
+        crystal_point_group_data = symgroup_to_dict_with_group_classification(
             prim,
             prim.crystal_point_group,
         )
@@ -474,16 +487,35 @@ class Project:
             f"{type_info['international_full']}, "
             f"{type_info['international_short']}\n"
             f"- schoenflies={type_info['schoenflies']}\n"
-            f"- spacegroup={type_info['number']}\n"
+            f"- spacegroup={type_info['number']}\n",
+            end="",
         )
+        if "magnetic_spacegroup_type" in factor_group_data["group_classification"]:
+            type_info = factor_group_data["group_classification"][
+                "magnetic_spacegroup_type"
+            ]
+            print(f"- magnetic spacegroup uni_number={type_info['uni_number']}\n")
+        else:
+            print()
 
         type_info = crystal_point_group_data["group_classification"]["spacegroup_type"]
         print(
             "Crystal point group: \n"
             f"- size={len(prim.crystal_point_group.elements)}\n"
             f"- international={type_info['pointgroup_international']}\n"
-            f"- schoenflies={type_info['pointgroup_schoenflies']}\n"
+            f"- schoenflies={type_info['pointgroup_schoenflies']}\n",
+            end="",
         )
+        if (
+            "magnetic_spacegroup_type"
+            in crystal_point_group_data["group_classification"]
+        ):
+            type_info = crystal_point_group_data["group_classification"][
+                "magnetic_spacegroup_type"
+            ]
+            print(f"- magnetic spacegroup uni_number={type_info['uni_number']}\n")
+        else:
+            print()
 
         print("DONE")
 

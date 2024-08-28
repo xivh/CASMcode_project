@@ -23,6 +23,11 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
     assert "1  Zr(2)Va(2)  Zr(2)VaO  Zr(2)Va(2-a)O(a)" in out
     assert "No composition axes selected" in out
 
+    from libcasm.xtal import pretty_json
+
+    print(pretty_json(project.prim.to_dict()))
+    assert False
+
 
 def test_ZrO_composition_axes_2(ZrO_tmp_project):
     project = ZrO_tmp_project

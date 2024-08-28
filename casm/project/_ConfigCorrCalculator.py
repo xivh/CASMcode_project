@@ -1,5 +1,4 @@
-from collections.abc import Iterable
-from typing import Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 
@@ -12,7 +11,6 @@ from libcasm.clexulator import (
 from libcasm.configuration import (
     Configuration,
     ConfigurationRecord,
-    ConfigurationSet,
     ConfigurationWithProperties,
 )
 
@@ -78,6 +76,7 @@ class ConfigCorrCalculator:
         """libcasm.clexulator.Correlations: The Correlations calculator."""
 
     def _get(self, config: Configuration) -> Correlations:
+        # handles constructing the supercell neighbor list and Correlations calculator
         if self._supercell is not config.supercell:
             self._supercell = config.supercell
             self._supercell_neighbor_list = SuperNeighborList(
@@ -124,79 +123,66 @@ class ConfigCorrCalculator:
     def linear_function_indices(self):
         return self._linear_function_indices
 
-    def per_supercell(self, config: Configuration):
+    def per_supercell(self, x: Any):
         """Calculate and return correlations for a configuration, normalized
         per supercell
 
         Parameters
         ----------
-        config: libcasm.configuration.Configuration
-            A Configuration
+        x : Any
+            May be a Configuration, ConfigurationWithProperties, ConfigurationRecord,
+            or an iterable of these.
 
         Returns
         -------
-        corr: numpy.ndarray[numpy.float64[n_functions]]
-            The correlations, normalized per supercell.
+        corr: numpy.ndarray
+            The correlations, normalized per supercell. If the input `x` is a single
+            Configuration, the output is a 1d array with shape=(n_functions,). If the
+            input is an iterable, the output is a 2d array with
+            shape=(n_config, n_functions).
 
         """
+        if isinstance(x, Configuration):
+            config = x
+        elif isinstance(x, (ConfigurationWithProperties, ConfigurationRecord)):
+            config = x.configuration
+        else:
+            return np.vstack(
+                [self.per_supercell(xi) for xi in x],
+            )
         return self.get(config).per_supercell().copy()
 
-    def per_unitcell(self, config: Configuration):
-        """Calculate and return correlations for a configuration, normalized
-        per unitcell
+    def per_unitcell(
+        self,
+        x: Any,
+    ):
+        """Calculate and return correlations
 
         Parameters
         ----------
-        config: libcasm.configuration.Configuration
-            A Configuration
+        x : Any
+            May be a Configuration, ConfigurationWithProperties, ConfigurationRecord,
+            or an iterable of these.
 
         Returns
         -------
-        corr: numpy.ndarray[numpy.float64[n_functions]]
-            The correlations, normalized per unitcell.
+        corr: numpy.ndarray
+            The correlations, normalized per unitcell. If the input `x` is a single
+            Configuration, the output is a 1d array with shape=(n_functions,). If the
+            input is an iterable, the output is a 2d array with
+            shape=(n_config, n_functions).
 
         """
+        if isinstance(x, Configuration):
+            config = x
+        elif isinstance(x, (ConfigurationWithProperties, ConfigurationRecord)):
+            config = x.configuration
+        else:
+            return np.vstack(
+                [self.per_unitcell(xi) for xi in x],
+            )
         corr_calculator = self._get(config)
         return corr_calculator.per_unitcell(corr_calculator.per_supercell()).copy()
-
-    def per_unitcell_array(
-        self,
-        config_container: Iterable[
-            Union[Configuration, ConfigurationWithProperties, ConfigurationRecord]
-        ],
-    ):
-        """Calculate and return correlations for multiple configurations as a 2d array
-
-        Parameters
-        ----------
-        config: libcasm.configuration.Configuration
-            A Configuration
-        include_all_sites: bool = True
-            If true, include a row for every site, even if there are no point
-            correlations associated with that site (in which case the row is all zeros).
-            If false, rows are only included for sites from sublattices included in the
-            prim neighbor list (rows are still ordered according to increasing site
-            index).
-
-        Returns
-        -------
-        corr: numpy.ndarray[numpy.float64[n_config, n_functions]]
-            All correlations, as rows of a matrix.
-
-        """
-
-        C = np.zeros((len(config_container), self._clexulator.n_functions()))
-        if isinstance(config_container, ConfigurationSet):
-            for i, xi in enumerate(config_container):
-                if isinstance(xi, Configuration):
-                    C[i, :] = self.per_unitcell(xi)
-                elif isinstance(xi, ConfigurationWithProperties):
-                    C[i, :] = self.per_unitcell(xi.configuration)
-                elif isinstance(xi, ConfigurationRecord):
-                    C[i, :] = self.per_unitcell(xi.configuration)
-                else:
-                    raise TypeError(f"Unknown type {type(xi)}")
-        return C
 
     def all_points(
         self,

@@ -1,7 +1,15 @@
+import copy
 import sys
 from typing import Optional, TextIO
 
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
+from casm.bset.misc import (
+    irrational_to_tex_string,
+)
+from libcasm.sym_info import (
+    SymGroup,
+)
 
 
 class PrettyPrintBasisOptions:
@@ -10,14 +18,90 @@ class PrettyPrintBasisOptions:
     def __init__(
         self,
         print_invariant_group: bool = True,
+        invariant_group_coordinate_mode: str = "cart",
         linear_orbit_indices: Optional[set[int]] = None,
+        print_prototypes: bool = False,
+        site_coordinate_mode: str = "integral",
     ):
+        """
+
+        .. rubric:: Constructor
+
+        Parameters
+        ----------
+        print_invariant_group: bool = True
+            Print the invariant group of the cluster
+        invariant_group_coordinate_mode: str = "cart"
+            Coordinate mode for printing invariant group elements. Options are:
+
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        linear_orbit_indices: Optional[set[int]] = None
+            Linear cluster orbit indices to print. If None, all orbits are printed.
+        print_prototypes: bool = False
+            Print the function prototypes if True, orbit basis functions otherwise
+        site_coordinate_mode: str = "integral"
+            Coordinate mode for printing cluster sites. Options are:
+
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        """
         self.print_invariant_group = print_invariant_group
         """bool: Print the invariant group of the cluster"""
 
+        self.invariant_group_coordinate_mode = invariant_group_coordinate_mode
+        """str: Coordinate mode for printing invariant group elements.
+        
+        Options are:
+        
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+        """
+
         self.linear_orbit_indices = linear_orbit_indices
-        """Optional[set[int]]: Linear cluster orbit indices to print. If None, all 
-        orbits are printed."""
+        """Optional[set[int]]: Linear cluster orbit indices to print. 
+        
+        If None, all orbits are printed.
+        """
+
+        self.print_prototypes = print_prototypes
+        """bool: Print the function prototypes if True, orbit basis functions 
+        otherwise"""
+
+        self.site_coordinate_mode = site_coordinate_mode
+        """str: Coordinate mode for printing cluster sites
+        
+        Mode for printing coordinates. Options are:
+
+        - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+          ([b, i, j, k])
+        - 'cart': Use Cartesian coordinates
+        - 'frac': Use fractional coordinates, with respect to the Prim lattice
+          vectors
+        """
+
+
+def print_site(
+    site: xtal.IntegralSiteCoordinate,
+    prim: casmconfig.Prim,
+    options: PrettyPrintBasisOptions,
+    out: TextIO,
+):
+    if options.site_coordinate_mode == "integral":
+        print(f"  - {site}", file=out)
+    elif options.site_coordinate_mode == "cart":
+        print(f"  - {site.coordinate_cart(prim.xtal_prim)}", file=out)
+    elif options.site_coordinate_mode == "frac":
+        print(f"  - {site.coordinate_frac(prim.xtal_prim)}", file=out)
+    else:
+        raise ValueError(f"Invalid coordinate mode: {options.site_coordinate_mode}")
 
 
 def pretty_print_cluster(
@@ -34,15 +118,29 @@ def pretty_print_cluster(
     cluster = cluster_dict
 
     # sites
-    print("- sites:", file=out)
-    print("  - {[b, i, j, k]}", file=out)
+    if options.site_coordinate_mode == "integral":
+        print("- sites: (integral coordinates)", file=out)
+        print("  - {[b, i, j, k]}", file=out)
+    elif options.site_coordinate_mode == "cart":
+        print("- sites: (Cartesian coordinates)", file=out)
+        print("  - {x, y, z}", file=out)
+    elif options.site_coordinate_mode == "frac":
+        print("- sites: (fractional coordinates)", file=out)
+        print("  - {a, b, c}", file=out)
+    else:
+        raise ValueError(f"Invalid coordinate mode: {options.site_coordinate_mode}")
 
     sites = cluster.get("sites")
     if len(sites) == 0:
         print("  - None", file=out)
     else:
         for site in sites:
-            print(f"  - {site}", file=out)
+            print_site(
+                site=xtal.IntegralSiteCoordinate.from_list(site),
+                prim=prim,
+                options=options,
+                out=out,
+            )
 
     # site-to-site distances
     print("- site-to-site distances:", file=out)
@@ -61,9 +159,28 @@ def pretty_print_cluster(
             file=out,
         )
         indices = cluster.get("invariant_group")
-        desc = cluster.get("invariant_group_descriptions")
+
+        cluster_group = SymGroup.from_elements(
+            elements=[prim.factor_group.elements[i] for i in indices],
+            lattice=prim.xtal_prim.lattice(),
+            sort=False,
+        )
+
+        # desc = cluster.get("invariant_group_descriptions")
         i = 0
-        for fg, desc in zip(indices, desc):
+        for fg in indices:
+            info = xtal.SymInfo(
+                op=prim.factor_group.elements[fg],
+                lattice=prim.xtal_prim.lattice(),
+            )
+            if options.invariant_group_coordinate_mode == "cart":
+                desc = info.brief_cart()
+            elif options.invariant_group_coordinate_mode == "frac":
+                desc = info.brief_frac()
+            else:
+                raise ValueError(
+                    f"Invalid coordinate mode: {options.invariant_group_coordinate_mode}"
+                )
             print(f"  - {i} ({fg}): {desc}", file=out)
             i += 1
 
@@ -129,7 +246,7 @@ def pretty_print_orbits(
 
 
 def pretty_print_occ_site_functions(
-    site_functions_dict: dict,
+    variables: dict,
     prim: casmconfig.Prim,
     options: Optional[PrettyPrintBasisOptions] = None,
     out: Optional[TextIO] = None,
@@ -140,9 +257,8 @@ def pretty_print_occ_site_functions(
 
     Parameters
     ----------
-    site_functions_dict: dict
-        A description of the site_functions, from the contents of a `basis.json`
-        file.
+    variables: dict
+        The contents of a `variables.json` file.
     prim: casmconfig.Prim
         The prim.
     options: Optional[PrettyPrintBasisOptions] = None
@@ -156,19 +272,35 @@ def pretty_print_occ_site_functions(
     if options is None:
         options = PrettyPrintBasisOptions()
 
-    has_occ_site_functions = False
-    for sublat_func in site_functions_dict:
-        if "occ" in sublat_func:
-            has_occ_site_functions = True
-            break
-    if not has_occ_site_functions:
+    occ_site_functions = variables.get("occ_site_functions")
+    if len(occ_site_functions) == 0:
         return
 
+    info = variables.get("occ_site_functions_info")
+    occ_var_name = info.get("occ_var_name")
+    occ_var_indices = info.get("occ_var_indices")
+
+    if options.print_prototypes:
+        site_labels = "  - n: cluster site index"
+    else:
+        site_labels = "  - n: neighborhood site index"
+
     print("Occupation site functions:", file=out)
-    print("- \\phi_{i_sublattice, i_function}: {[value1, ...]}", file=out)
+    print(f"- {occ_var_name}" + "(\\vec{r}_{n}): [value1, ...]", end="", file=out)
+    if len(occ_var_indices) > 0:
+        print(", where:", file=out)
+        for name, desc in occ_var_indices:
+            print(f"  - {name}: {desc}", file=out)
+        print(site_labels, file=out)
+        print("  - \\vec{r}_{n}: site position", file=out)
+    else:
+        print(", where:", file=out)
+        print(site_labels, file=out)
+        print("  - \\vec{r}_{n}: site position", file=out)
     occ_dof = prim.xtal_prim.occ_dof()
-    for sublat_func in site_functions_dict:
-        b = sublat_func.get("sublat")
+    for sublat_func in occ_site_functions:
+        b = sublat_func.get("sublattice_index")
+        m_constant = sublat_func.get("constant_function_index")
 
         # sublat header, ex: - sublattice: 0, occ_dof: [Si, Ge]
         s = f"- sublattice: {b}, occ_dof: ["
@@ -179,14 +311,36 @@ def pretty_print_occ_site_functions(
         print(s, file=out)
 
         # each occ site basis function:
-        if "occ" in sublat_func:
-            value = sublat_func.get("occ").get("value")
-            for i_function, function_values in enumerate(value):
-                print(f"  - \\phi_{{{b}, {i_function}}}: {function_values}", file=out)
+        value = sublat_func.get("value")
+        for m, function_values in enumerate(value):
+            _values = "["
+            first = True
+            for v in function_values:
+                if not first:
+                    _values += ", "
+                first = False
+                limit = 24
+                max_pow = 2
+                v_tex = irrational_to_tex_string(
+                    v, limit=limit, max_pow=max_pow, abs_tol=1e-5
+                )
+                _values += v_tex
+            _values += "]"
+
+            if m == m_constant:
+                varname = "\\phi_{I}(\\vec{r}_{n})"
+                print(f"  - {varname:>16} = {_values}", file=out)
+            else:
+                varname = occ_var_name.format(b=b, m=m) + "(\\vec{r}_{n})"
+                print(
+                    f"  - {varname:>16} = {_values}",
+                    file=out,
+                )
 
 
 def pretty_print_functions(
     basis_dict: dict,
+    variables: dict,
     prim: casmconfig.Prim,
     options: Optional[PrettyPrintBasisOptions] = None,
     out: Optional[TextIO] = None,
@@ -196,8 +350,9 @@ def pretty_print_functions(
     Parameters
     ----------
     basis_dict: dict
-        A description of a cluster expansion basis set, the contents of a `basis.json`
-        file.
+        The contents of a `basis.json` file.
+    variables: dict
+        The contents of a `variables.json` file.
     prim: casmconfig.Prim
         The prim.
     options: Optional[PrettyPrintBasisOptions] = None
@@ -213,12 +368,17 @@ def pretty_print_functions(
 
     # prints nothing if no occupation site basis functions are found
     pretty_print_occ_site_functions(
-        site_functions_dict=basis_dict.get("site_functions"),
+        variables=variables,
         prim=prim,
         options=options,
         out=out,
     )
     print(file=out)
+
+    orbit_bfuncs = variables.get("orbit_bfuncs")
+    orbit_bfuncs_by_index = {}
+    for x in orbit_bfuncs:
+        orbit_bfuncs_by_index[x.get("linear_function_index")] = copy.deepcopy(x)
 
     for orbit in basis_dict.get("orbits"):
         linear_orbit_index = orbit.get("linear_orbit_index")
@@ -232,11 +392,23 @@ def pretty_print_functions(
 
         # functions
         functions = orbit.get("cluster_functions")
-        print("- cluster functions:", file=out)
+        if options.print_prototypes is False:
+            print("- cluster functions: (orbit formulas)", file=out)
+        else:
+            print("- cluster functions: (prototype cluster formulas)", file=out)
         print("  - \\Phi_{linear_function_index}: {latex_formula}", file=out)
         for func in functions:
             linear_function_index = func.get("linear_function_index")
             key = "\\Phi_{" + str(linear_function_index) + "}"
-            latex_formula = func.get(key)
+
+            latex_formula = "(skipped)"
+            if linear_function_index in orbit_bfuncs_by_index:
+                orbit_bfunc = orbit_bfuncs_by_index.get(linear_function_index)
+                if options.print_prototypes:
+                    latex_formula = orbit_bfunc.get("latex_prototype").replace(
+                        "\n", "\n  "
+                    )
+                else:
+                    latex_formula = orbit_bfunc.get("latex_orbit").replace("\n", "\n  ")
             print(f"  - {key} = {latex_formula}", file=out)
         print(file=out)

@@ -16,11 +16,11 @@ def pretty_json(
 
 
 def printpathstr(path):
-    abspath = os.path.abspath(path)
+    abspath = pathlib.Path(path).resolve()
     try:
-        return os.path.relpath(abspath)
+        return str(abspath.relative_to(pathlib.Path.cwd()))
     except ValueError:
-        return abspath
+        return str(abspath)
 
 
 def read_required(path: pathlib.Path, gz: bool = False):

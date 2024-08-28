@@ -18,3 +18,6 @@ from ._methods import (
 )
 from ._Project import Project
 from ._ProjectSettings import ProjectSettings
+from ._symgroup import (
+    symgroup_to_dict_with_group_classification,
+)

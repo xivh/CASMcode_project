@@ -12,7 +12,10 @@ from libcasm.composition import (
     print_axes_table,
 )
 
-from ._ConfigCompositionCalculator import ConfigCompositionCalculator
+from ._ConfigCompositionCalculator import (
+    ConfigCompositionCalculator,
+    _independent_compositions,
+)
 from .json_io import (
     read_required,
     safe_dump,
@@ -30,10 +33,10 @@ def _update_components(
     )
 
     if components is None:
-        components = unique_components
+        return unique_components
     elif isinstance(components, str):
         if components == "sorted":
-            components = sorted(unique_components)
+            return sorted(unique_components)
         else:
             raise invalid_value_error
     elif isinstance(components, list):
@@ -208,6 +211,9 @@ class CompositionAxes:
         self.calculator = None
         """Optional[CompositionCalculator]: Composition calculator"""
 
+        self.independent_compositions = None
+        """Optional[int]: Number independent composition axes, :math:`k`."""
+
         self.enumerated = []
         """list[str]: Keys of enumerated standard axes
 
@@ -262,6 +268,11 @@ class CompositionAxes:
             allowed_occs=self.allowed_occs,
         )
         self.include_va = data.get("include_va", False)
+
+        self.independent_compositions = _independent_compositions(
+            components=self.calculator.components(),
+            allowed_occs=self.allowed_occs,
+        )
 
     def load(self):
         if self.path is None:
@@ -376,9 +387,12 @@ class CompositionAxes:
 
     @property
     def config_comp_calculator(self) -> ConfigCompositionCalculator:
+        converter = None
+        if self.current_axes is not None:
+            converter = self.possible_axes.get(self.current_axes)
         return ConfigCompositionCalculator(
             calculator=self.calculator,
-            converter=self.possible_axes.get(self.current_axes),
+            converter=converter,
         )
 
     @staticmethod
@@ -414,6 +428,18 @@ class CompositionAxes:
         """
         value = CompositionAxes(path=path)
         value.allowed_occs = allowed_occs
+        value.independent_compositions = _independent_compositions(
+            components=components,
+            allowed_occs=allowed_occs,
+        )
+
+        if value.independent_compositions == 0:
+            value.calculator = CompositionCalculator(
+                components=components,
+                allowed_occs=allowed_occs,
+            )
+            return value
+
         value.calculator, enumerated_axes = make_standard_axes(
             components=components,
             allowed_occs=allowed_occs,

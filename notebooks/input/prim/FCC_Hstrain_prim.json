@@ -1,0 +1,18 @@
+{
+  "basis": [
+    {
+      "coordinate": [0.0, 0.0, 0.0],
+      "occupants": ["A"]
+    }
+  ],
+  "dofs": {
+    "Hstrain": {}
+  },
+  "coordinate_mode": "Fractional",
+  "lattice_vectors": [
+    [0.0, 2.0, 2.0],
+    [2.0, 0.0, 2.0],
+    [2.0, 2.0, 0.0]
+  ],
+  "title": "prim"
+}

@@ -46,11 +46,12 @@ def test_site_functions(shared_datadir):
     prim = casmconfig.Prim.from_dict(
         data=read_required(shared_datadir / "SiGe_prim.json"),
     )
-    basis_dict = read_required(shared_datadir / "SiGe_basis.json")
+    # basis_dict = read_required(shared_datadir / "SiGe_basis.json")
+    variables = read_required(shared_datadir / "SiGe_variables.json")
 
     s = io.StringIO()
     pretty_print_occ_site_functions(
-        site_functions_dict=basis_dict.get("site_functions"),
+        variables=variables,
         prim=prim,
         out=s,
     )
@@ -59,13 +60,15 @@ def test_site_functions(shared_datadir):
     assert (
         s.getvalue()
         == R"""Occupation site functions:
-- \phi_{i_sublattice, i_function}: {[value1, ...]}
+- \phi(s_n): [value1, ...], where:
+  - n: neighborhood site index
+  - s_n: occupation index on site n
 - sublattice: 0, occ_dof: [Si, Ge]
-  - \phi_{0, 0}: [1.0, 1.0]
-  - \phi_{0, 1}: [-1.0, 1.0]
+  -    \phi_{I}(s_n) = [1.0, 1.0]
+  -        \phi(s_n) = [-1.0, 1.0]
 - sublattice: 1, occ_dof: [Si, Ge]
-  - \phi_{1, 0}: [1.0, 1.0]
-  - \phi_{1, 1}: [-1.0, 1.0]
+  -    \phi_{I}(s_n) = [1.0, 1.0]
+  -        \phi(s_n) = [-1.0, 1.0]
 """
     )
 
@@ -75,9 +78,11 @@ def test_functions(shared_datadir):
         data=read_required(shared_datadir / "SiGe_prim.json"),
     )
     basis_dict = read_required(shared_datadir / "SiGe_basis.json")
+    variables = read_required(shared_datadir / "SiGe_variables.json")
 
     pretty_print_functions(
         basis_dict=basis_dict,
+        variables=variables,
         prim=prim,
     )
 

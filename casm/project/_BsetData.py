@@ -1,5 +1,7 @@
 import pathlib
 import re
+import sys
+import time
 from typing import Optional, Union
 
 import numpy as np
@@ -152,7 +154,7 @@ class BsetOutputData:
         - For version `v1.basic`: :class:`~casm.bset.clexwriter.WriterV1Basic`
         - For version `v1.diff`: :class:`~casm.bset.clexwriter.WriterV1Diff` (TODO)
         """
-        return read_optional(self.bset_dir / "variables.json")
+        return read_optional(self.bset_dir / "variables.json.gz", gz=True)
 
     @property
     def local_variables(self, i_equiv: int):
@@ -164,7 +166,9 @@ class BsetOutputData:
         - For version `v1.basic`: :class:`~casm.bset.clexwriter.WriterV1Basic`
         - For version `v1.diff`: :class:`~casm.bset.clexwriter.WriterV1Diff` (TODO)
         """
-        return read_optional(self.bset_dir / str(i_equiv) / "variables.json")
+        return read_optional(
+            self.bset_dir / str(i_equiv) / "variables.json.gz", gz=True
+        )
 
 
 class BsetData:
@@ -178,17 +182,18 @@ class BsetData:
                 ├── bspecs.json
                 ├── meta.json
                 ├── basis.json
+                ├── cluster_functions.json.gz
                 ├── equivalents_info.json
-                ├── variables.json
+                ├── variables.json.gz
                 ├── generated_files.json
                 ├── writer_params.json
                 ├── <projectname>_Clexulator_<id>.json
                 ├── 0/
                 │   ├── <projectname>_Clexulator_<id>_0.cpp
-                │   └── variables.json
+                │   └── variables.json.gz
                 ├── 1/
                 │   └── <projectname>_Clexulator_<id>_1.cpp
-                │   └── variables.json
+                │   └── variables.json.gz
                 ...
 
     Input files summary:
@@ -212,7 +217,11 @@ class BsetData:
       local cluster expansion from the prototype local-cluster expansion.
     - `<Project>_Clexulator_<id>.cpp`: The Clexulator source file, or a prototype local
       Clexulator source file.
-    - `variables.json`: A file for each Clexulator (including local Clexulator) which
+    - `cluster_functions.json.gz`: A file which contains the clusters, functions, and
+      matrix representations used to construct the functions. Values in this file
+      correspond to documented attributes of
+      :class:`~casm.bset.cluster_functions.ClusterFunctionsBuilder`.
+    - `variables.json.gz`: A file for each Clexulator (including local Clexulator) which
       contains the variables used by the jinja2 templates as well as information like
       basis function formulas generated during the write process. Values in this file
       correspond to documented attributes of the following classes:
@@ -400,21 +409,21 @@ class BsetData:
         # read generated_files.json if it exists
         generated_files = self.out.generated_files
 
-        if generated_files is None:
-            if verbose:
-                print("No generated files to remove")
-                print()
-            return
-
         if verbose:
             print("Cleaning generated files:")
+
+        if generated_files is None:
+            if verbose:
+                print("- No generated files to remove")
+                print()
+            return
 
         files = generated_files.get("all", [])
         for file in files:
             path = self.bset_dir / file
             if path.exists():
                 if verbose:
-                    print(f"Removing {printpathstr(path)}")
+                    print(f"- Removing {printpathstr(path)}")
                 path.unlink()
 
         if verbose:
@@ -618,6 +627,8 @@ class BsetData:
         self,
         no_compile: bool = False,
         only_compile: bool = False,
+        verbose: bool = True,
+        very_verbose: bool = False,
     ):
         """Write the Clexulator source file(s) for the basis set, and/or compile the
         Clexulator(s)
@@ -630,10 +641,13 @@ class BsetData:
         ----------
         no_compile: bool = False
             If True, do not compile the Clexulator or LocalClexulator.
-
         only_compile: bool = False
             If True, only compile the Clexulator or LocalClexulator from existing
             source files, do not write the source file(s).
+        verbose: bool = True
+            Print progress statements
+        very_verbose: bool = False
+            Print detailed progress statements from the cluster functions builder.
         """
         if self.proj.prim_neighbor_list is None:
             raise Exception(
@@ -646,7 +660,12 @@ class BsetData:
                 "no basis set specifications found"
             )
         if only_compile is False:
-            self.clean()
+            self.clean(verbose=verbose)
+
+            if verbose:
+                start = time.time()
+                print("Generating clexulator...")
+                sys.stdout.flush()
             write_clexulator(
                 prim=self.proj.prim,
                 clex_basis_specs=self.clex_basis_specs,
@@ -657,7 +676,19 @@ class BsetData:
                 version=self.version,
                 linear_function_indices=self.linear_function_indices,
                 cpp_fmt=None,
+                verbose=verbose,
+                very_verbose=very_verbose,
             )
+            if verbose:
+                print("Generated files:")
+                for file in self.out.generated_files.get("all", []):
+                    print(f"- {printpathstr(self.bset_dir / file)}")
+                print()
+                print("Generating clexulator DONE")
+                elapsed_time = time.time() - start
+                print(f"generation time: {elapsed_time:0.4f} (s)")
+                print()
+                sys.stdout.flush()
 
         if no_compile:
             return
@@ -668,9 +699,21 @@ class BsetData:
 
         # compile Clexulator
         if self.out.local_src_path is None:
-            return self.make_clexulator()
+            if verbose:
+                print("Compiling clexulator...")
+                sys.stdout.flush()
+            clexulator = self.make_clexulator()
+            if verbose:
+                print("Compiling clexulator DONE")
+                sys.stdout.flush()
         else:
-            return self.make_local_clexulator()
+            if verbose:
+                print("Compiling local clexulator...")
+                sys.stdout.flush()
+            local_clexulator = self.make_local_clexulator()
+            if verbose:
+                print("Compiling local clexulator DONE")
+                sys.stdout.flush()
 
     def _update_generated_files(self, abspaths: list[pathlib.Path]):
         """Update the generated_files.json file with the given absolute paths"""
@@ -791,6 +834,8 @@ class BsetData:
         self,
         linear_orbit_indices: Optional[set[int]] = None,
         print_invariant_group: bool = False,
+        invariant_group_coordinate_mode: str = "cart",
+        site_coordinate_mode: str = "integral",
     ):
         basis_dict = self.out.basis_dict
         if basis_dict is None:
@@ -802,6 +847,9 @@ class BsetData:
         options = PrettyPrintBasisOptions()
         options.linear_orbit_indices = linear_orbit_indices
         options.print_invariant_group = print_invariant_group
+        options.invariant_group_coordinate_mode = invariant_group_coordinate_mode
+        options.print_prototypes = True
+        options.site_coordinate_mode = site_coordinate_mode
 
         pretty_print_orbits(
             basis_dict=basis_dict,
@@ -809,15 +857,12 @@ class BsetData:
             options=options,
         )
 
-    # TODO:
-    # def print_clusters(self, ...):
-    #     return None
-
-    def print_functions(
+    def print_clusters(
         self,
-        id: str,
         linear_orbit_indices: Optional[set[int]] = None,
         print_invariant_group: bool = False,
+        invariant_group_coordinate_mode: str = "cart",
+        site_coordinate_mode: str = "integral",
     ):
         basis_dict = self.out.basis_dict
         if basis_dict is None:
@@ -829,9 +874,54 @@ class BsetData:
         options = PrettyPrintBasisOptions()
         options.linear_orbit_indices = linear_orbit_indices
         options.print_invariant_group = print_invariant_group
+        options.invariant_group_coordinate_mode = invariant_group_coordinate_mode
+        options.print_prototypes = False
+        options.site_coordinate_mode = site_coordinate_mode
+
+        pretty_print_orbits(
+            basis_dict=basis_dict,
+            prim=self.proj.prim,
+            options=options,
+        )
+
+    def print_functions(
+        self,
+        linear_orbit_indices: Optional[set[int]] = None,
+        print_invariant_group: bool = False,
+        invariant_group_coordinate_mode: str = "cart",
+        print_prototypes: bool = False,
+        site_coordinate_mode: str = "integral",
+    ):
+        # basis_dict = self.out.basis_dict
+        # if basis_dict is None:
+        #     if self.clex_basis_specs is None:
+        #         raise Exception("No basis.json. No basis set specifications.")
+        #     else:
+        #         raise Exception("No basis.json. Do you need to run update?.")
+
+        variables = self.out.variables
+        if variables is None:
+            if self.clex_basis_specs is None:
+                raise Exception("No variables.json.gz. No basis set specifications.")
+            else:
+                raise Exception("No variables.json.gz. Do you need to run update?.")
+        basis_dict = self.out.basis_dict
+        if basis_dict is None:
+            if self.clex_basis_specs is None:
+                raise Exception("No basis.json. No basis set specifications.")
+            else:
+                raise Exception("No basis.json. Do you need to run update?.")
+
+        options = PrettyPrintBasisOptions()
+        options.linear_orbit_indices = linear_orbit_indices
+        options.print_invariant_group = print_invariant_group
+        options.invariant_group_coordinate_mode = invariant_group_coordinate_mode
+        options.print_prototypes = print_prototypes
+        options.site_coordinate_mode = site_coordinate_mode
 
         pretty_print_functions(
             basis_dict=basis_dict,
+            variables=variables,
             prim=self.proj.prim,
             options=options,
         )
