@@ -1,15 +1,21 @@
-from casm.project import EnumData, Project
+from typing import TYPE_CHECKING
+
+from ._EnumData import EnumData
+
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class EnumCommand:
     """Methods to enumerate supercells, configurations, events, etc."""
 
-    def __init__(self, proj: Project):
+    def __init__(self, proj: "Project"):
         self.proj = proj
-        """Project: CASM project."""
+        """casm.project.Project: CASM project."""
 
         self.last = None
-        """Optional[EnumData]: Data from the last enumeration operation."""
+        """Optional[casm.project.enum.EnumData]: Data from the last enumeration 
+        operation."""
 
     def _new_id(self, id_base: str):
         """Return id=f"{id_base}.{i}" where `i` is the first available integer,
@@ -58,7 +64,7 @@ class EnumCommand:
 
         Returns
         -------
-        enum: EnumData
+        enum: casm.project.enum.EnumData
             The enumeration data
         """
         return EnumData(proj=self.proj, id=id)

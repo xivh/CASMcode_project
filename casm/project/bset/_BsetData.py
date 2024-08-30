@@ -2,12 +2,13 @@ import pathlib
 import re
 import sys
 import time
-from typing import Optional, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 
 from casm.bset import build_cluster_functions, make_clex_basis_specs, write_clexulator
 from casm.bset.cluster_functions import ClexBasisSpecs, ClusterFunctionsBuilder
+from casm.project.json_io import printpathstr, read_optional, safe_dump
 from libcasm.clexulator import (
     Clexulator,
     LocalClexulator,
@@ -27,7 +28,6 @@ from ._print_bset import (
     pretty_print_functions,
     pretty_print_orbits,
 )
-from casm.project.json_io import printpathstr, read_optional, safe_dump
 
 if TYPE_CHECKING:
     from casm.project import Project

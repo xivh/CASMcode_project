@@ -1,12 +1,14 @@
 import sys
-from typing import Optional, TextIO
+from typing import TYPE_CHECKING, Optional, TextIO
 
 import numpy as np
 
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
-from casm.project._Project import Project
 from libcasm.sym_info import SymGroup
+
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 def _print_symgroup(
@@ -48,7 +50,7 @@ def _print_symgroup(
 class SymCommand:
     """Methods to analyse and print symmetry information"""
 
-    def __init__(self, proj: Project):
+    def __init__(self, proj: "Project"):
         self.proj = proj
 
     def print_lattice_point_group(

@@ -1,5 +1,5 @@
 import pathlib
-from typing import Optional, TypeVar, Union
+from typing import Optional, Union
 
 import libcasm.casmglobal as casmglobal
 import libcasm.clexulator as casmclex
@@ -21,8 +21,6 @@ from .json_io import (
     read_required,
     safe_dump,
 )
-
-ProjectType = TypeVar("Project")
 
 
 class Project:
@@ -169,7 +167,7 @@ class Project:
     def enum(self):
         """casm.project.commands.EnumCommand: Methods to enumerate supercells, \
         configurations, events, etc."""
-        from casm.project.commands._EnumCommand import EnumCommand
+        from casm.project.enum._EnumCommand import EnumCommand
 
         if self._enum is None:
             self._enum = EnumCommand(proj=self)
@@ -179,7 +177,7 @@ class Project:
     def sym(self):
         """casm.project.commands.SymCommand: Methods to analyse and print symmetry \
         information"""
-        from casm.project.commands._SymCommand import SymCommand
+        from casm.project.sym._SymCommand import SymCommand
 
         if self._sym is None:
             self._sym = SymCommand(proj=self)
@@ -192,7 +190,7 @@ class Project:
         name: Optional[str] = None,
         crystallography_tol: float = casmglobal.TOL,
         force: bool = False,
-    ) -> ProjectType:
+    ) -> "Project":
         """Initialize a CASM project
 
         This constructs a CASM project at the specified path and returns a

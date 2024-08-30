@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 
@@ -19,9 +19,9 @@ from libcasm.enumerate import (
 )
 
 from ._ConfigEnumRunner import ConfigEnumRunner
-from ._Project import Project
 
-# EnumDataType = TypeVar("EnumDataType", bound="EnumData")
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class EnumData:
@@ -50,7 +50,7 @@ class EnumData:
 
     """
 
-    def __init__(self, proj: Project, id: str):
+    def __init__(self, proj: "Project", id: str):
         """
 
         .. rubric:: Constructor
@@ -62,7 +62,7 @@ class EnumData:
 
         Parameters
         ----------
-        proj: Project
+        proj: casm.project.Project
             The CASM project
         id: str
             The enumeration identifier. Enumeration data is stored in the enumeration
@@ -70,7 +70,7 @@ class EnumData:
         """
 
         self.proj = proj
-        """Project: CASM project"""
+        """casm.project.Project: CASM project"""
 
         self.id = id
         """str: Enumeration identifier"""

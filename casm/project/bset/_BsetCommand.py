@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Optional
+
 from ._BsetData import BsetData
 
 if TYPE_CHECKING:

@@ -1,9 +1,7 @@
 from ._ClexDescription import ClexDescription
 from ._CompositionAxes import CompositionAxes
 from ._ConfigCompositionCalculator import ConfigCompositionCalculator
-from ._ConfigEnumRunner import ConfigEnumRunner
 from ._DirectoryStructure import DirectoryStructure
-from ._EnumData import EnumData
 from ._FittingData import (
     FittingData,
     make_calculated_fitting_data,

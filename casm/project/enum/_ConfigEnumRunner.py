@@ -6,7 +6,7 @@ from libcasm.configuration import (
 )
 
 if TYPE_CHECKING:
-    from casm.project import EnumData
+    from casm.project.enum import ConfigEnumRunner, EnumData
 
 
 class ConfigEnumRunner:
