@@ -167,22 +167,24 @@ def pretty_print_cluster(
         )
 
         # desc = cluster.get("invariant_group_descriptions")
-        i = 0
-        for fg in indices:
+        i_cg = 0
+        for op in cluster_group.elements:
             info = xtal.SymInfo(
-                op=prim.factor_group.elements[fg],
+                op=op,
                 lattice=prim.xtal_prim.lattice(),
             )
+            i_fg = cluster_group.head_group_index[i_cg]
             if options.invariant_group_coordinate_mode == "cart":
                 desc = info.brief_cart()
             elif options.invariant_group_coordinate_mode == "frac":
                 desc = info.brief_frac()
             else:
                 raise ValueError(
-                    f"Invalid coordinate mode: {options.invariant_group_coordinate_mode}"
+                    f"Invalid coordinate mode: "
+                    f"{options.invariant_group_coordinate_mode}"
                 )
-            print(f"  - {i} ({fg}): {desc}", file=out)
-            i += 1
+            print(f"  - {i_cg} ({i_fg}): {desc}", file=out)
+            i_cg += 1
 
 
 def pretty_print_orbit(

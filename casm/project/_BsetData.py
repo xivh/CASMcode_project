@@ -702,7 +702,7 @@ class BsetData:
             if verbose:
                 print("Compiling clexulator...")
                 sys.stdout.flush()
-            clexulator = self.make_clexulator()
+            _ = self.make_clexulator()
             if verbose:
                 print("Compiling clexulator DONE")
                 sys.stdout.flush()
@@ -710,7 +710,7 @@ class BsetData:
             if verbose:
                 print("Compiling local clexulator...")
                 sys.stdout.flush()
-            local_clexulator = self.make_local_clexulator()
+            _ = self.make_local_clexulator()
             if verbose:
                 print("Compiling local clexulator DONE")
                 sys.stdout.flush()

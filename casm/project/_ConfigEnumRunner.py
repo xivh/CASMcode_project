@@ -1,9 +1,12 @@
 import sys
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from libcasm.configuration import (
     Configuration,
 )
+
+if TYPE_CHECKING:
+    from casm.project import EnumData
 
 
 class ConfigEnumRunner:

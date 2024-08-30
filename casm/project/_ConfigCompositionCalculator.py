@@ -132,7 +132,7 @@ class ConfigCompositionCalculator:
         x: Any,
         sublattice_index: Optional[int] = None,
     ):
-        """Configuration composition as number per supercell
+        R"""Configuration composition as number per supercell
 
         Parameters
         ----------
