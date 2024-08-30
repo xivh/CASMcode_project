@@ -124,26 +124,36 @@ class Project:
         self._bset = None
         self._sym = None
 
-    @property
-    def chemical_comp_calculator(self):
-        """ConfigCompositionCalculator: Configuration chemical composition calculator.
+    def make_chemical_comp_calculator(self):
+        """Make a chemical composition calculator using the current axes.
 
         The "chemical composition" treats all :class:`~libcasm.xtal.Occupant` that
         have the same "chemical name" (:func:`~libcasm.xtal.Occupant.name`) as a
         single component, even if they have different magnetic spin, molecular
         orientation, etc.
-        """
-        return self.chemical_composition_axes.config_comp_calculator
 
-    @property
-    def occupant_comp_calculator(self):
-        """ConfigCompositionCalculator: Configuration occupant composition calculator.
+        Returns
+        -------
+        chemical_comp_calculator: casm.configuration.ConfigCompositionCalculator
+            A configuration composition calculator for the chemical composition axes,
+            using the currently selected parametric composition axes (may be None).
+        """
+        return self.chemical_composition_axes.make_config_comp_calculator()
+
+    def make_occupant_comp_calculator(self):
+        """Make an occupant composition calculator using the current axes.
 
         The "occupant composition" treats all :class:`~libcasm.xtal.Occupant` that
         have different magnetic spin, molecular orientation, etc. as distinct
         components.
+
+        Returns
+        -------
+        occupant_comp_calculator: casm.configuration.ConfigCompositionCalculator
+            A configuration composition calculator for the occupant composition axes,
+            using the currently selected parametric composition axes (may be None).
         """
-        return self.chemical_composition_axes.config_comp_calculator
+        return self.occupant_composition_axes.make_config_comp_calculator()
 
     @property
     def bset(self):
@@ -274,10 +284,15 @@ class Project:
             print(
                 "\n"
                 "** WARNING *********************************************************\n"
-                "The prim is not atomic. Some CASM methods, such as structure mapping\n"
-                "and conversions between configuration and structure, may not be     \n"
-                "implemented. If possible, use atomic properties instead of molecular\n"
-                "properties.                                                         \n"
+                "The prim is not atomic. An atomic prim:                             \n"
+                "- allows 1 or more occupants on each site,                          \n"
+                "- all occupants have a single atom without coordinate offset,       \n"
+                "- there are no Occupant properties, only AtomComponent properties.  \n"
+                "                                                                    \n"
+                "Some CASM methods, such as structure mapping and conversions between\n"
+                "configuration and structure, may not be implemented. If possible,   \n"
+                "use AtomComponent properties for magspin instead of Occupant        \n"
+                "properties .                                                        \n"
                 "********************************************************************\n"
                 "\n"
             )

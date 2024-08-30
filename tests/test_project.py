@@ -38,7 +38,7 @@ def periodic_project_checks(
     print("n_config", n_config)
 
     ## Get compositions ##
-    comp_calculator = project.chemical_comp_calculator
+    comp_calculator = project.make_chemical_comp_calculator()
     n_components = comp_calculator.n_components
     k = project.chemical_composition_axes.independent_compositions
     print("Composition axes: (chemical)")
@@ -62,13 +62,13 @@ def periodic_project_checks(
 
     if k > 0:
         project.chemical_composition_axes.set_current_axes("0")
-        comp_calculator = project.chemical_comp_calculator
+        comp_calculator = project.make_chemical_comp_calculator()
         assert k == comp_calculator.independent_compositions
         param_composition = comp_calculator.param_composition(enum.configuration_set)
         assert isinstance(param_composition, np.ndarray)
         assert param_composition.shape == (n_config, k)
 
-    comp_calculator_occ = project.occupant_comp_calculator
+    comp_calculator_occ = project.make_occupant_comp_calculator()
     if comp_calculator.components != comp_calculator_occ.components:
         n_components_occ = comp_calculator_occ.n_components
         k_occ = project.occupant_composition_axes.independent_compositions
@@ -84,19 +84,19 @@ def periodic_project_checks(
 
         comp_n = comp_calculator_occ.per_unitcell(enum.configuration_set)
         assert isinstance(comp_n, np.ndarray)
-        assert comp_n.shape == (n_config, n_components)
+        assert comp_n.shape == (n_config, n_components_occ)
 
         comp_N = comp_calculator_occ.per_supercell(enum.configuration_set)
         assert isinstance(comp_N, np.ndarray)
-        assert comp_N.shape == (n_config, n_components)
+        assert comp_N.shape == (n_config, n_components_occ)
 
         species_frac = comp_calculator_occ.species_frac(enum.configuration_set)
         assert isinstance(species_frac, np.ndarray)
-        assert species_frac.shape == (n_config, n_components)
+        assert species_frac.shape == (n_config, n_components_occ)
 
         if k_occ > 0:
-            project.chemical_composition_axes.set_current_axes("0")
-            comp_calculator_occ = project.chemical_comp_calculator_occ
+            project.occupant_composition_axes.set_current_axes("0")
+            comp_calculator_occ = project.make_occupant_comp_calculator()
             assert k_occ == comp_calculator_occ.independent_compositions
             param_composition = comp_calculator_occ.param_composition(
                 enum.configuration_set
@@ -117,7 +117,7 @@ def periodic_project_checks(
     assert project.dir.clexulator_src(projectname=project.name, bset=bset_id).exists()
 
     ## Evaluate correlations
-    corr_calculator = bset.corr_calculator()
+    corr_calculator = bset.make_corr_calculator()
     n_functions = corr_calculator.n_functions
     print("n_functions", n_functions)
 
@@ -176,6 +176,16 @@ def test_FCC_ternary_prim():
     )
 
 
+def test_FCC_ternary_prim_null():
+    name = "FCC_ternary_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+    periodic_project_checks(
+        prim=prim,
+        max_length=[0.0],
+        occ_site_basis_functions_specs="chebychev",
+    )
+
+
 def test_FCC_Hstrain_prim():
     name = "FCC_Hstrain_prim.json"
     prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
@@ -184,6 +194,17 @@ def test_FCC_Hstrain_prim():
         max_length=[0.0],
         occ_site_basis_functions_specs=None,
         global_max_poly_order=3,
+    )
+
+
+def test_FCC_Hstrain_prim_null():
+    name = "FCC_Hstrain_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+    periodic_project_checks(
+        prim=prim,
+        max_length=[0.0],
+        occ_site_basis_functions_specs=None,
+        global_max_poly_order=0,
     )
 
 
@@ -207,15 +228,18 @@ def test_FCC_Cmagspin_prim():
     )
 
 
-@pytest.mark.xfail(reason="todo: fail nicely")
 def test_FCC_Cmagspin_prim_occ():
     name = "FCC_Cmagspin_prim.json"
     prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
-    periodic_project_checks(
-        prim=prim,
-        max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
-        occ_site_basis_functions_specs="occupation",
-    )
+
+    with pytest.raises(
+        ValueError, match="Invalid choice of occupation DoF site basis functions."
+    ):
+        periodic_project_checks(
+            prim=prim,
+            max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
+            occ_site_basis_functions_specs="occupation",
+        )
 
 
 def test_FCC_binary_Cmagspin_prim():
@@ -226,6 +250,53 @@ def test_FCC_binary_Cmagspin_prim():
         max_length=[0.0, 0.0, 10.01, 8.01, 4.01],
         occ_site_basis_functions_specs="chebychev",
     )
+
+
+def test_FCC_mol_prim():
+    name = "FCC_mol_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+    periodic_project_checks(
+        prim=prim,
+        max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
+        occ_site_basis_functions_specs="chebychev",
+    )
+
+
+def test_FCC_mol_prim_occ():
+    name = "FCC_mol_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+
+    with pytest.raises(
+        ValueError, match="Invalid choice of occupation DoF site basis functions."
+    ):
+        periodic_project_checks(
+            prim=prim,
+            max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
+            occ_site_basis_functions_specs="occupation",
+        )
+
+
+def test_FCC_mol_prim_comp():
+    name = "FCC_mol_prim.json"
+    prim = casmconfig.Prim.from_dict(data=read_required(prim_dir / name))
+
+    with pytest.raises(
+        ValueError, match="Invalid choice of occupation DoF site basis functions."
+    ):
+        periodic_project_checks(
+            prim=prim,
+            max_length=[0.0, 0.0, 8.01, 6.01, 4.01],
+            occ_site_basis_functions_specs=[
+                {
+                    "sublat_indices": [0],
+                    "composition": {
+                        "mol.x": 0.3,
+                        "mol.y": 0.4,
+                        "mol.z": 0.3,
+                    },
+                }
+            ],
+        )
 
 
 def test_FCC_binary_Hstrain_disp_prim():

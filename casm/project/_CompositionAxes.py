@@ -385,8 +385,15 @@ class CompositionAxes:
         self.print_current_axes(out=out)
         return out.getvalue().strip()
 
-    @property
-    def config_comp_calculator(self) -> ConfigCompositionCalculator:
+    def make_config_comp_calculator(self) -> ConfigCompositionCalculator:
+        """Make a configuration composition calculator using the current axes.
+
+        Returns
+        -------
+        chemical_comp_calculator: casm.configuration.ConfigCompositionCalculator
+            A configuration composition calculator for the chemical composition axes,
+            using the currently selected parametric composition axes (may be None).
+        """
         converter = None
         if self.current_axes is not None:
             converter = self.possible_axes.get(self.current_axes)

@@ -799,7 +799,7 @@ class BsetData:
 
         return local_clexulator
 
-    def corr_calculator(
+    def make_corr_calculator(
         self,
         linear_function_indices: Optional[list[int]] = None,
     ):

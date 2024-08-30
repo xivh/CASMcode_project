@@ -1,0 +1,56 @@
+{
+  "basis": [
+    {
+      "coordinate": [0.0, 0.0, 0.0],
+      "occupants": ["mol.x", "mol.y", "mol.z"]
+    }
+  ],
+  "coordinate_mode": "Cartesian",
+  "lattice_vectors": [
+    [0.0, 2.0, 2.0],
+    [2.0, 0.0, 2.0],
+    [2.0, 2.0, 0.0]
+  ],
+  "species": {
+    "mol.x": {
+      "atoms": [
+        {
+          "coordinate": [-0.1, 0.0, 0.0],
+          "name": "B"
+        },
+        {
+          "coordinate": [0.1, 0.0, 0.0],
+          "name": "B"
+        }
+      ],
+      "name": "mol"
+    },
+    "mol.y": {
+      "atoms": [
+        {
+          "coordinate": [0.0, -0.1, 0.0],
+          "name": "B"
+        },
+        {
+          "coordinate": [0.0, 0.1, 0.0],
+          "name": "B"
+        }
+      ],
+      "name": "mol"
+    },
+    "mol.z": {
+      "atoms": [
+        {
+          "coordinate": [0.0, 0.0, -0.1],
+          "name": "B"
+        },
+        {
+          "coordinate": [0.0, 0.0, 0.1],
+          "name": "B"
+        }
+      ],
+      "name": "mol"
+    }
+  },
+  "title": "prim"
+}
