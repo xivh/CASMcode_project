@@ -330,8 +330,9 @@ def pretty_print_occ_site_functions(
             _values += "]"
 
             if m == m_constant:
-                varname = "\\phi_{I}(\\vec{r}_{n})"
-                print(f"  - {varname:>16} = {_values}", file=out)
+                # varname = "\\phi_{I}(\\vec{r}_{n})"
+                # print(f"  - {varname:>16} = {_values}", file=out)
+                pass
             else:
                 varname = occ_var_name.format(b=b, m=m) + "(\\vec{r}_{n})"
                 print(
