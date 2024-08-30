@@ -1,14 +1,16 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+from ._BsetData import BsetData
 
-from casm.project import BsetData, Project
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class BsetCommand:
     """Methods to construct and print cluster expansion basis sets"""
 
-    def __init__(self, proj: Project):
+    def __init__(self, proj: "Project"):
         self.proj = proj
-        """Project: CASM project."""
+        """casm.project.Project: CASM project."""
 
         self.last = None
         """Optional[BsetData]: Data from the last basis set operation."""

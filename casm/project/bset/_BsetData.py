@@ -2,7 +2,7 @@ import pathlib
 import re
 import sys
 import time
-from typing import Optional, Union
+from typing import Optional, TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -27,8 +27,10 @@ from ._print_bset import (
     pretty_print_functions,
     pretty_print_orbits,
 )
-from ._Project import Project
-from .json_io import printpathstr, read_optional, safe_dump
+from casm.project.json_io import printpathstr, read_optional, safe_dump
+
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class BsetOutputData:
@@ -37,7 +39,7 @@ class BsetOutputData:
 
     """
 
-    def __init__(self, proj: Project, id: str):
+    def __init__(self, proj: "Project", id: str):
         self.proj = proj
         """Project: CASM project reference"""
 
@@ -239,7 +241,7 @@ class BsetData:
 
     """
 
-    def __init__(self, proj: Project, id: str):
+    def __init__(self, proj: "Project", id: str):
         if not re.match(
             R"^\w+",
             id,
@@ -250,7 +252,7 @@ class BsetData:
             )
 
         self.proj = proj
-        """Project: CASM project reference"""
+        """casm.project.Project: CASM project reference"""
 
         self.id = id
         """str: Basis set identifier"""

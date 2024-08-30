@@ -159,7 +159,7 @@ class Project:
     def bset(self):
         """casm.project.commands.BsetCommand: Methods to construct and print cluster \
         expansion basis sets"""
-        from casm.project.commands import BsetCommand
+        from casm.project.bset import BsetCommand
 
         if self._bset is None:
             self._bset = BsetCommand(proj=self)

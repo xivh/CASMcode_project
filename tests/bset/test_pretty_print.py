@@ -1,7 +1,7 @@
 import io
 
 import libcasm.configuration as casmconfig
-from casm.project._print_bset import (
+from casm.project.bset._print_bset import (
     pretty_print_functions,
     pretty_print_occ_site_functions,
 )
