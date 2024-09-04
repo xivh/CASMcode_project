@@ -1,2 +1,3 @@
+from ._methods import map_structure
 from ._StructureImportCommand import StructureImportCommand
 from ._StructureImportData import StructureImportData

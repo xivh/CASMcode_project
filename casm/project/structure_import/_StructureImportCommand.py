@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 class StructureImportCommand:
     """Methods to import calculated structures as configurations with properties"""
 
-    def __init__(self, proj: Project):
+    def __init__(self, proj: "Project"):
         self.proj = proj
         """casm.project.Project: CASM project."""
 
