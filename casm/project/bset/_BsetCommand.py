@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ._BsetData import BsetData
 
@@ -12,21 +12,6 @@ class BsetCommand:
     def __init__(self, proj: "Project"):
         self.proj = proj
         """casm.project.Project: CASM project."""
-
-        self.last = None
-        """Optional[BsetData]: Data from the last basis set operation."""
-
-    def _check_bset(
-        self,
-        bset: Optional[str] = None,
-    ):
-        if bset is None:
-            if self.proj.settings.default_clex is None:
-                raise Exception(
-                    "No default clex found in project. One of bset, clex is required."
-                )
-            bset = self.proj.settings.default_clex.bset
-        return bset
 
     def all(self):
         """Return the identifiers of all basis sets
@@ -55,7 +40,7 @@ class BsetCommand:
         Returns
         -------
         bset: BsetData
-            The enumeration data
+            The basis set data
         """
         return BsetData(proj=self.proj, id=id)
 

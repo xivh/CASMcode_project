@@ -155,7 +155,7 @@ class Project:
 
     @property
     def bset(self):
-        """casm.project.commands.BsetCommand: Methods to construct and print cluster \
+        """casm.project.bset.BsetCommand: Methods to construct and print cluster \
         expansion basis sets"""
         from casm.project.bset import BsetCommand
 
@@ -165,9 +165,9 @@ class Project:
 
     @property
     def enum(self):
-        """casm.project.commands.EnumCommand: Methods to enumerate supercells, \
+        """casm.project.enum.EnumCommand: Methods to enumerate supercells, \
         configurations, events, etc."""
-        from casm.project.enum._EnumCommand import EnumCommand
+        from casm.project.enum import EnumCommand
 
         if self._enum is None:
             self._enum = EnumCommand(proj=self)
@@ -175,13 +175,54 @@ class Project:
 
     @property
     def sym(self):
-        """casm.project.commands.SymCommand: Methods to analyse and print symmetry \
+        """casm.project.sym.SymCommand: Methods to analyse and print symmetry \
         information"""
-        from casm.project.sym._SymCommand import SymCommand
+        from casm.project.sym import SymCommand
 
         if self._sym is None:
             self._sym = SymCommand(proj=self)
         return self._sym
+
+    @property
+    def calc(self):
+        """casm.project.calc.CalcCommand: Methods to help setup, perform, and collect
+        DFT calculations"""
+        from casm.project.calc import CalcCommand
+
+        if self._calc is None:
+            self._calc = CalcCommand(proj=self)
+        return self._calc
+
+    @property
+    def structure_import(self):
+        """casm.project.structure_import.StructureImportCommand: Methods to import and
+        map structures"""
+        from casm.project.structure_import import StructureImportCommand
+
+        if self._structure_import is None:
+            self._structure_import = StructureImportCommand(proj=self)
+        return self._structure_import
+
+    # TODO:
+    # @property
+    # def fit(self):
+    #     """casm.project.fit.FitCommand: Methods to fit cluster expansions"""
+    #     from casm.project.fit import FitCommand
+    #
+    #     if self._fit is None:
+    #         self._fit = FitCommand(proj=self)
+    #     return self._fit
+
+    # TODO:
+    # @property
+    # def system(self):
+    #     """casm.project.system.SystemCommand: Methods to setup and use model systems
+    #     """
+    #     from casm.project.system import SystemCommand
+    #
+    #     if self._system is None:
+    #         self._system = SystemCommand(proj=self)
+    #     return self._system
 
     @staticmethod
     def init(
