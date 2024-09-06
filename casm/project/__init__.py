@@ -1,12 +1,13 @@
-from ._ClexDescription import ClexDescription
-from ._CompositionAxes import CompositionAxes
-from ._ConfigCompositionCalculator import ConfigCompositionCalculator
-from ._DirectoryStructure import DirectoryStructure
-from ._FittingData import (
+from casm.project.fit._FittingData import (
     FittingData,
     make_calculated_fitting_data,
     make_uncalculated_fitting_data,
 )
+
+from ._ClexDescription import ClexDescription
+from ._CompositionAxes import CompositionAxes
+from ._ConfigCompositionCalculator import ConfigCompositionCalculator
+from ._DirectoryStructure import DirectoryStructure
 from ._methods import (
     make_symmetrized_lattice,
     make_symmetrized_prim,

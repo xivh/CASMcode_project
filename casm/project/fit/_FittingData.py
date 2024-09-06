@@ -1,9 +1,15 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 import libcasm.clexulator as clex
 import libcasm.composition as comp
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
+from casm.project.json_io import read_optional, safe_dump
+
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class FittingData:
@@ -20,27 +26,111 @@ class FittingData:
     attributes except `formation_energies` will be filled
     """
 
-    def __init__(self):
-        """
-        Attributes
-        ----------
-        names : Optional[list[str]] = None
-            Names of the configurations
-        parametric_compositions : Optional[np.ndarray] = None
-            Paramteric compositions of all the configurations
-        mol_compositions : Optional[np.ndarray] = None
-            Number of components per unitcell of all the configurations
-        correlations_per_unitcell : Optional[np.ndarray] = None
-            Correlations per unitcell of all the configurations
-        formation_energies : Optional[np.ndarray] = None
-            Formation energy per unitcell of all the configurations
+    def __init__(self, proj: "Project", id: str):
         """
 
+        .. rubric:: Constructor
+
+        Parameters
+        ----------
+        proj: casm.project.Project
+            The CASM project
+        id: str
+            The fit identifier. Fitting data is stored in the
+            fits directory at `<project>/fits/fit.<id>/`.
+        """
+
+        self.proj = proj
+        """Project: CASM project reference"""
+
+        self.id = id
+        """str: Fit identifier"""
+
+        self.fit_dir = self.proj.dir.fit_dir(fit=id)
+        """pathlib.Path: Fitting data directory"""
+
+        ### Data (load & commit) ###
+
+        self.meta = dict()
+        """dict: A description of the fit, read from `meta.json`."""
+
         self.names = None
+        """Optional[list[str]]: Names of the configurations, a length `n_configs` list, 
+        if given."""
+
         self.parametric_compositions = None
+        """Optional[np.ndarray]: Parametric compositions of all the configurations, a 
+        shape=(n_configs, n_axes) array, if given."""
+
         self.mol_compositions = None
+        """ Optional[np.ndarray]: Number of components per unitcell of all the 
+        configurations, a shape=(n_configs, n_components) array, if given."""
+
         self.correlations_per_unitcell = None
+        """ Optional[np.ndarray]: Correlations per unitcell of all the configurations, a
+        shape=(n_configs, n_corr_size) array, if given."""
+
         self.formation_energies = None
+        """ Optional[np.ndarray]: Formation energy per unitcell of all the 
+        configurations, a shape=(n_configs,) array, if given."""
+
+        # load data
+        self.load()
+
+    def load(self):
+        """Read meta.json
+
+        This will replace the current contents of this FittingData object with
+        the contents of the associated files, or set the current contents to None if the
+        associated files do not exist.
+        """
+
+        # read meta.json if it exists
+        path = self.fit_dir / "meta.json"
+        self.meta = read_optional(path, default=dict())
+
+    def commit(self, verbose: bool = True):
+        """Write meta.json
+
+        If the data does not exist in this object, this will erase the associated
+        files if they do exist.
+        """
+        quiet = not verbose
+        self.fit_dir.mkdir(parents=True, exist_ok=True)
+
+        # write meta.json
+        path = self.fit_dir / "meta.json"
+        if len(self.meta) > 0:
+            if not isinstance(self.meta, dict):
+                raise TypeError(
+                    "Error in FittingData.commit: FittingData.meta must be a dict"
+                )
+            safe_dump(
+                data=self.meta,
+                path=path,
+                quiet=quiet,
+                force=True,
+            )
+        elif path.exists():
+            path.unlink()
+
+    def clear(self):
+        """Clear fitting data"""
+        # TODO
+        pass
+
+    def __repr__(self):
+        from libcasm.xtal import pretty_json
+
+        s = "FittingData:\n"
+        s += f"- id: {self.id}\n"
+
+        if self.meta is not None and "desc" in self.meta:
+            s += f'- desc: {pretty_json(self.meta["desc"]).strip()}\n'
+
+        # TODO:
+
+        return s.strip()
 
     @staticmethod
     def from_dict(data):

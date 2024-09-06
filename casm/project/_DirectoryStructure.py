@@ -36,6 +36,8 @@ class DirectoryStructure:
         self.__bset_dir = "basis_sets"
         self.__calc_dir = "training_data"
         self.__calculation_settings_dir = "calculation_settings"
+        self.__import_dir = "imports"
+        self.__fit_dir = "fits"
         self.__set_dir = "settings"
         self.__sym_dir = "symmetry"
         self.__clex_dir = "cluster_expansions"
@@ -81,7 +83,13 @@ class DirectoryStructure:
             / self.__bset(bset),
         )
 
-    def all_systems(self):
+    def all_import(self):
+        return self.__all_settings("import", self.__import_dir)
+
+    def all_fit(self):
+        return self.__all_settings("fit", self.__fit_dir)
+
+    def all_system(self):
         return self.__all_settings("system", self.__system_dir)
 
     # ** File and Directory paths **
@@ -337,7 +345,7 @@ class DirectoryStructure:
             clex.calctype
         )
 
-    ## v1 calc_settings_dir ##
+    # -- calc_settings_dir - v1 --------
 
     def calc_settings_dir(self, clex: ClexDescription):
         """Return calculation settings directory path, for global settings from clex"""
@@ -398,13 +406,13 @@ class DirectoryStructure:
         """Return calculation reference settings directory path, for global settings"""
         return self.calc_settings_dir(clex.calctype) / self.__ref(clex.ref)
 
-    ## v2 calc_settings_dir ##
-
-    # -- Enumerations --------
+    # -- calc_settings_dir - v2 --------
 
     def calctype_settings_dir_v2(self, calctype: str):
         """Return global calculation settings directory path (new v2.0)"""
         return self.path / self.__calculation_settings_dir / self.__calctype(calctype)
+
+    # -- Enumerations --------
 
     def enum_dir(self, enum: str):
         """Return path to directory contain enumeration info (new v2.0)"""
@@ -446,7 +454,7 @@ class DirectoryStructure:
             / "structure_with_properties.json"
         )
 
-    ## Composition axes ##
+    # -- Composition axes --------
 
     def composition_axes(self):
         """Return composition axes file path (deprecated v2.0a1)"""
@@ -476,7 +484,7 @@ class DirectoryStructure:
         """Return chemical reference file path"""
         return self.ref_dir(clex) / "chemical_reference.json"
 
-    # -- Cluster expansions --------
+    # -- Cluster expansions - v1 --------
 
     def property_dir(self, clex: ClexDescription):
         """Returns path to eci directory"""
@@ -520,11 +528,157 @@ class DirectoryStructure:
         """
         return self.eci_dir(clex) / "eci.json"
 
-    # -- Systems --------
+    # -- Imports - v2 --------
 
-    def system_dir(self, system: str):
-        """Return path to directory contain system info"""
-        return self.path / self.__system_dir / self.__system(system)
+    def import_dir(self, id: str):
+        """Return path to directory contain structure import info"""
+        return self.path / self.__import_dir / self.__import(id)
+
+    def import_settings(self, id: str):
+        """Return path to the file contain structure import settings"""
+        return self.path / self.__import_dir / self.__import(id) / "settings.json"
+
+    # -- Fits - v2 --------
+
+    def fit_dir(self, fit: str):
+        """Return path to directory containing fitting data"""
+        return self.path / self.__fit_dir / self.__fit(fit)
+
+    # -- Systems - v2 --------
+
+    def system_dir(self, system: str, index: Optional[int] = None):
+        """Return path to directory containing system info
+
+        For a basic system with a single set of parameters, the system information
+        is expected to be stored in a directory named `system.<id>`:
+
+        .. code-block:: shell
+
+            systems/
+            └── system.<id>/
+                ├── formation_energy_eci.json
+                ├── system.json
+                ...
+
+        For statistics, related systems may be stored in subdirectories as:
+
+        .. code-block:: shell
+
+            systems/
+            └── system.<id>/
+                ├── 0/
+                │   ├── formation_energy_eci.0.json
+                │   ├── system.0.json
+                │   ...
+                ├── 1/
+                │   ├── formation_energy_eci.1.json
+                │   ├── system.1.json
+                │   ...
+                └── 2/
+                    ├── formation_energy_eci.2.json
+                    ├── system.2.json
+                    ...
+
+        Parameters
+        ----------
+        system: str
+            The system identifier
+        index: Optional[int] = None
+            The index of the sampled system. If None, then the path to the
+            system directory is returned; otherwise the path to the sampled
+            system subdirectory is returned
+
+        Returns
+        -------
+        system_dir: pathlib.Path
+            Path to the system directory or sampled system subdirectory
+
+        """
+        if index is None:
+            return self.path / self.__system_dir / self.__system(system)
+        else:
+            return self.path / self.__system_dir / self.__system(system) / str(index)
+
+    def system_count(self, system: str):
+        """Return number of sampled systems
+
+        For a system with a single set of parameters, the system information
+        is expected to be stored in a directory named `system.<id>`:
+
+        .. code-block:: shell
+
+            systems/
+            └── system.<id>/
+                ├── formation_energy_eci.json
+                ├── system.json
+                ...
+
+        For statistics, sampled systems may be stored in subdirectories as:
+
+        .. code-block:: shell
+
+            systems/
+            └── system.<id>/
+                ├── 0/
+                │   ├── formation_energy_eci.0.json
+                │   ├── system.0.json
+                │   ...
+                ├── 1/
+                │   ├── formation_energy_eci.1.json
+                │   ├── system.1.json
+                │   ...
+                └── 2/
+                    ├── formation_energy_eci.2.json
+                    ├── system.2.json
+                    ...
+
+
+        The `system_count` gives the number of sampled systems.
+
+        Returns
+        -------
+        count: int
+            The number of sampled systems. If no subdirectory `0` exists, then
+            0 is returned.
+
+        """
+        path = self.system_dir(system=system)
+        count = 0
+        subdir = path / str(count)
+        if not subdir.exists():
+            return None
+        while subdir.exists():
+            count += 1
+            subdir = path / str(count)
+        return count
+
+    def system_file(self, system: str, index: Optional[int] = None):
+        """Return path to a system file
+
+        Parameters
+        ----------
+        system: str
+            The system identifier
+        index: Optional[int] = None
+            The index of the related system. If None, then the path to the
+            system file is returned, otherwise the path to the sampled
+            system file is returned.
+
+        Returns
+        -------
+        system_file: pathlib.Path
+            Path to the system or sampled system file
+        """
+        if index is None:
+            return self.path / self.__system_dir / self.__system(system) / "system.json"
+        else:
+            return (
+                self.path
+                / self.__system_dir
+                / self.__system(system)
+                / str(index)
+                / "system.json"
+            )
 
     # private:
 
@@ -545,6 +699,12 @@ class DirectoryStructure:
 
     def __eci(self, eci: str):
         return "eci." + eci
+
+    def __import(self, import_id: str):
+        return "import." + import_id
+
+    def __fit(self, fit: str):
+        return "fit." + fit
 
     def __system(self, system: str):
         return "system." + system

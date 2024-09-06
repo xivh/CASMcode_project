@@ -245,10 +245,6 @@ class StructureImportData:
                 ├── settings.json
                 └── structures.json
 
-    The files in an enumeration directory are optional, and their existence depends on
-    the enumeration method. If a file exists, it will be read in to the corresponding
-    EnumData attribute on construction.
-
     The `settings.json` file contains a JSON dict with settings for structure import
     and mapping including:
 
@@ -453,7 +449,6 @@ class StructureImportData:
         # - Create a mapping_report.json output? Could hold summary information such
         #   as the number of structures that map to the same configuration, number of
         #   unique configurations, etc.
-
         pass
 
     def merge(self):

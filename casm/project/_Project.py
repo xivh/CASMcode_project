@@ -121,6 +121,10 @@ class Project:
         self._enum = None
         self._bset = None
         self._sym = None
+        self._calc = None
+        self._structure_import = None
+        self._fit = None
+        self._system = None
 
     def make_chemical_comp_calculator(self):
         """Make a chemical composition calculator using the current axes.
@@ -203,26 +207,23 @@ class Project:
             self._structure_import = StructureImportCommand(proj=self)
         return self._structure_import
 
-    # TODO:
-    # @property
-    # def fit(self):
-    #     """casm.project.fit.FitCommand: Methods to fit cluster expansions"""
-    #     from casm.project.fit import FitCommand
-    #
-    #     if self._fit is None:
-    #         self._fit = FitCommand(proj=self)
-    #     return self._fit
+    @property
+    def fit(self):
+        """casm.project.fit.FitCommand: Methods to fit cluster expansions"""
+        from casm.project.fit import FitCommand
 
-    # TODO:
-    # @property
-    # def system(self):
-    #     """casm.project.system.SystemCommand: Methods to setup and use model systems
-    #     """
-    #     from casm.project.system import SystemCommand
-    #
-    #     if self._system is None:
-    #         self._system = SystemCommand(proj=self)
-    #     return self._system
+        if self._fit is None:
+            self._fit = FitCommand(proj=self)
+        return self._fit
+
+    @property
+    def system(self):
+        """casm.project.system.SystemCommand: Methods to setup and use model systems"""
+        from casm.project.system import SystemCommand
+
+        if self._system is None:
+            self._system = SystemCommand(proj=self)
+        return self._system
 
     @staticmethod
     def init(

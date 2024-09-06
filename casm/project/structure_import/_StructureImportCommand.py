@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from ._StructureImportData import StructureImportData
 
@@ -29,20 +29,28 @@ class StructureImportCommand:
             structure_import = self.get(id)
             print(structure_import)
 
-    def get(self, id: str):
+    def get(self, id: str, enum_id: Optional[str] = None):
         """Load structure import data
 
         Parameters
         ----------
         id : str
             The structure import identifier
+        enum_id: Optional[str] = None
+            An enumeration identifier. Mapped supercells and configurations are stored
+            in the enumeration directory at `<project>/enumerations/enum.<enum_id>/`.
+            The first time `StructureImportData` is constructed, an `enum_id` is
+            required. Once the `StructureImportData` is saved with a `commit`, then the
+            `enum_id` is stored in `settings.json`. On subsequent constructions, the
+            `enum_id` will be read from `settings.json` and is not needed by the
+            constructor.
 
         Returns
         -------
         structure_import: StructureImportData
             The structure import data
         """
-        return StructureImportData(proj=self.proj, id=id)
+        return StructureImportData(proj=self.proj, id=id, enum_id=enum_id)
 
     def remove(self, id: str):
         """Remove structure import data
