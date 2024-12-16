@@ -176,6 +176,8 @@ class BsetOutputData:
 class BsetData:
     """Manage basis set data for a CASM project
 
+    The CASM project basis set directory structure:
+
     .. code-block:: shell
 
         <project>/

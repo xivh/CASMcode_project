@@ -34,19 +34,54 @@ class EnumData:
         <project>/
         └── enumerations/
             └── enum.<id>/
+                ├── training_data/
                 ├── meta.json
                 ├── scel_set.json
                 ├── scel_list.json
                 ├── config_set.json
                 └── config_list.json
 
-    The files in an enumeration directory are optional, and their existence depends on
-    the enumeration method. If a file exists, it will be read in to the corresponding
+    The particular files required in an enumeration directory depends on the enumeration
+    method. If a file exists, it will be read in to the corresponding
     EnumData attribute on construction.
+
+    The file `scel_set.json` is used to store a SupercellSet. The file `scel_list.json`
+    is used to store a list of supercells. The file `config_set.json` is used to store a
+    ConfigurationSet. The file `config_list.json` is used to store a list of
+    configurations.
 
     An optional `meta.json` file can be used to store a description of the enumeration
     and other custom information. If "desc" is found in `meta`, it will be printed by
     `print`.
+
+    .. rubric Using enumerations to set up calculations
+
+    The directory `training_data` is a standard location for generating input files
+    for calculations based on the enumerated configurations. The training data
+    directory has the standard structure:
+
+    .. code-block:: none
+
+        training_data/
+        └── calctype.<calctype_id>/
+            └── <supercell_name>/
+                └── <configuration_id>/
+                    ├── (calculation specific input & output files)
+                    ├── POS
+                    ├── config.json
+                    ├── structure.json
+                    └── structure_with_properties.json
+
+    The `calculationg_settings` directory is a standard location for storing calculation
+    settings for a particular calculation type inside a CASM project directory:
+
+    .. code-block:: none
+
+        <project>/
+        └── calculation_settings/
+            ├── calctype.<calctype_id>/
+
+
 
     """
 

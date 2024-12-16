@@ -1,5 +1,4 @@
 from casm.project.fit._FittingData import (
-    FittingData,
     make_calculated_fitting_data,
     make_uncalculated_fitting_data,
 )

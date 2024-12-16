@@ -33,10 +33,10 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
 
     for record in enum.configuration_set:
         structure = record.configuration.to_structure()
-        calc_dir = project.dir.enum_calctype_dir(
+        calc_dir = project.dir.enum_calc_dir(
             enum=enum_id,
-            configname=record.configuration_name,
             calctype=calctype_id,
+            configname=record.configuration_name,
         )
         x.setup(
             casm_structure=structure,

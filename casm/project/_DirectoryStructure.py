@@ -414,32 +414,43 @@ class DirectoryStructure:
 
     # -- Enumerations --------
 
+    # Re-organized in v2 use hierarchy: calctype / supercell / config
+    # to make it easier to work with all calculations of a given type
+
     def enum_dir(self, enum: str):
         """Return path to directory contain enumeration info (new v2.0)"""
         return self.path / self.__enum_dir / self.__enum(enum=enum)
 
-    def enum_calctype_dir(self, enum: str, configname: str, calctype: str):
+    def enum_calctype_dir(self, enum: str, calctype: str):
         """Return global calculation settings directory path (new v2.0)"""
-        return (
-            self.enum_dir(enum)
-            / "training_data"
-            / configname
-            / self.__calctype(calctype)
-        )
+        return self.enum_dir(enum) / "training_data" / self.__calctype(calctype)
 
-    def enum_config_file(self, enum: str, configname: str):
+    def enum_calc_dir(self, enum: str, calctype: str, configname: str):
+        """Return global calculation settings directory path (new v2.0)"""
+        return self.enum_calctype_dir(enum=enum, calctype=calctype) / configname
+
+    def enum_config_file(self, enum: str, configname: str, calctype: str):
         """Return path to config.json for a configuration in an enumeration
         (new v2.0)"""
-        return self.enum_dir(enum) / "training_data" / configname / "config.json"
+        return (
+            self.enum_calc_dir(enum=enum, calctype=calctype, configname=configname)
+            / "config.json"
+        )
 
-    def enum_structure_file(self, enum: str, configname: str):
+    def enum_structure_file(self, enum: str, configname: str, calctype: str):
         """Return path to structure.json for a configuration in an enumeration
         (new v2.0)"""
-        return self.enum_dir(enum) / "training_data" / configname / "structure.json"
+        return (
+            self.enum_calc_dir(enum=enum, calctype=calctype, configname=configname)
+            / "structure.json"
+        )
 
-    def enum_POS_file(self, enum: str, configname: str):
+    def enum_POS_file(self, enum: str, configname: str, calctype: str):
         """Return path to POS for a configuration in an enumeration (new v2.0)"""
-        return self.enum_dir(enum) / "training_data" / configname / "POS"
+        return (
+            self.enum_calc_dir(enum=enum, calctype=calctype, configname=configname)
+            / "POS"
+        )
 
     def enum_structure_with_properties_file(
         self, enum: str, configname: str, calctype: str
@@ -447,10 +458,7 @@ class DirectoryStructure:
         """Return path to structure_with_properties.json for a configuration in an
         enumeration (new v2.0)"""
         return (
-            self.enum_dir(enum)
-            / "training_data"
-            / configname
-            / self.__calctype(calctype)
+            self.enum_calc_dir(enum=enum, calctype=calctype, configname=configname)
             / "structure_with_properties.json"
         )
 
