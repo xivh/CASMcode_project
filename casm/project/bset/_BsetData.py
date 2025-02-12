@@ -21,11 +21,12 @@ from libcasm.occ_events import OccEvent
 from ._ConfigCorrCalculator import ConfigCorrCalculator
 from ._display_bset import (
     DisplayBasisOptions,
-    display_functions,
+    display_functions_v2,
+    display_occ_site_functions_v2,
 )
 from ._print_bset import (
     PrettyPrintBasisOptions,
-    pretty_print_functions,
+    pretty_print_functions_by_orbit,
     pretty_print_orbits,
 )
 
@@ -841,6 +842,32 @@ class BsetData:
         invariant_group_coordinate_mode: str = "cart",
         site_coordinate_mode: str = "integral",
     ):
+        """Pretty print information about the cluster orbits in a basis set
+
+        Parameters
+        ----------
+        linear_orbit_indices: Optional[set[int]] = None
+            Linear cluster orbit indices to print. If None, all orbits are printed.
+        print_invariant_group: bool = True
+            Print the invariant group of the cluster
+        invariant_group_coordinate_mode: str = "cart"
+            Coordinate mode for printing invariant group elements. Options are:
+
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        site_coordinate_mode: str = "integral"
+            Coordinate mode for printing cluster sites. Options are:
+
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        """
+
         basis_dict = self.out.basis_dict
         if basis_dict is None:
             if self.clex_basis_specs is None:
@@ -868,6 +895,32 @@ class BsetData:
         invariant_group_coordinate_mode: str = "cart",
         site_coordinate_mode: str = "integral",
     ):
+        """Pretty print information about the clusters in a basis set
+
+        Parameters
+        ----------
+        linear_orbit_indices: Optional[set[int]] = None
+            Linear cluster orbit indices to print. If None, all orbits are printed.
+        print_invariant_group: bool = True
+            Print the invariant group of the cluster
+        invariant_group_coordinate_mode: str = "cart"
+            Coordinate mode for printing invariant group elements. Options are:
+
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        site_coordinate_mode: str = "integral"
+            Coordinate mode for printing cluster sites. Options are:
+
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        """
+
         basis_dict = self.out.basis_dict
         if basis_dict is None:
             if self.clex_basis_specs is None:
@@ -888,20 +941,66 @@ class BsetData:
             options=options,
         )
 
-    def print_functions(
+    def print_functions_by_orbit(
         self,
         linear_orbit_indices: Optional[set[int]] = None,
+        function_type: str = "prototype",
+        basis_site_index: Optional[int] = None,
         print_invariant_group: bool = False,
         invariant_group_coordinate_mode: str = "cart",
-        print_prototypes: bool = False,
         site_coordinate_mode: str = "integral",
     ):
-        # basis_dict = self.out.basis_dict
-        # if basis_dict is None:
-        #     if self.clex_basis_specs is None:
-        #         raise Exception("No basis.json. No basis set specifications.")
-        #     else:
-        #         raise Exception("No basis.json. Do you need to run update?.")
+        """Pretty print information about the functions of a basis set, by cluster orbit
+
+        Parameters
+        ----------
+        linear_orbit_indices: Optional[set[int]] = None
+            If not None, only display functions associated with orbits in with linear
+            orbit index in this set.
+        function_type: str = "orbit"
+            Type of functions to print. Options are:
+
+            - "prototype": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using neighbor list indices.
+            - "prototype_with_cluster_indices": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using indices into sites in the prototype cluster.
+            - "orbit": Print equivalent cluster basis functions on all clusters in an
+              orbit, for the contribution associated with the origin unit cell.
+              Variables are indexed using neighbor list indices.
+            - "site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+            - "occ_delta_site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+              Functions give the change in basis function values when the occupation
+              of the site is changed.
+
+        basis_site_index: Optional[int] = None
+            If `function_type` is "site" or "occ_delta_site", the site-centric
+            functions are displayed for the `basis_site_index`-th basis site in the
+            origin unit cell.
+        print_invariant_group: bool = True
+            Print the invariant group of the cluster
+        invariant_group_coordinate_mode: str = "cart"
+            Coordinate mode for printing invariant group elements. Options are:
+
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        site_coordinate_mode: str = "integral"
+            Coordinate mode for printing cluster sites. Options are:
+
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
+        """
 
         variables = self.out.variables
         if variables is None:
@@ -918,12 +1017,13 @@ class BsetData:
 
         options = PrettyPrintBasisOptions()
         options.linear_orbit_indices = linear_orbit_indices
+        options.function_type = function_type
+        options.basis_site_index = basis_site_index
         options.print_invariant_group = print_invariant_group
         options.invariant_group_coordinate_mode = invariant_group_coordinate_mode
-        options.print_prototypes = print_prototypes
         options.site_coordinate_mode = site_coordinate_mode
 
-        pretty_print_functions(
+        pretty_print_functions_by_orbit(
             basis_dict=basis_dict,
             variables=variables,
             prim=self.proj.prim,
@@ -938,36 +1038,100 @@ class BsetData:
     # def display_clusters(self, ...):
     #     return None
 
+    def display_occ_site_functions(self):
+        """Display occupation site basis functions using IPython.display"""
+        variables = self.out.variables
+        if variables is None:
+            if self.clex_basis_specs is None:
+                raise Exception("No variables.json.gz. No basis set specifications.")
+            else:
+                raise Exception("No variables.json.gz. Do you need to run update?.")
+
+        display_occ_site_functions_v2(
+            occ_site_functions=variables.get("occ_site_functions"),
+            occ_site_functions_info=variables.get("occ_site_functions_info"),
+            prim=self.proj.prim,
+        )
+
     def display_functions(
         self,
-        id: str,
+        linear_function_indices: Optional[set[int]] = None,
         linear_orbit_indices: Optional[set[int]] = None,
+        max_terms_per_line: int = 3,
+        function_type: str = "prototype",
+        basis_site_index: Optional[int] = None,
+        print_cluster_info: bool = False,
+        site_coordinate_mode: str = "integral",
     ):
         """Display cluster function formulas using IPython.display
 
         Parameters
         ----------
-        id: str
-            The basis set identifier. Must consist alphanumeric characters and
-            underscores only.
+        linear_function_indices: Optional[set[int]] = None
+            If not None, only display functions with linear function index in this set.
         linear_orbit_indices: Optional[set[int]] = None
-            Linear cluster orbit indices to print associated functions for. If None,
-            functions are printed for all cluster orbits.
+            If not None, only display functions associated with orbits in with linear
+            orbit index in this set.
+        max_terms_per_line: int = 3
+            Maximum number of terms per line when displaying cluster functions.
+        function_type: str = "orbit"
+            Type of functions to print. Options are:
+
+            - "prototype": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using neighbor list indices.
+            - "prototype_with_cluster_indices": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using indices into sites in the prototype cluster.
+            - "orbit": Print equivalent cluster basis functions on all clusters in an
+              orbit, for the contribution associated with the origin unit cell.
+              Variables are indexed using neighbor list indices.
+            - "site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+            - "occ_delta_site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+              Functions give the change in basis function values when the occupation
+              of the site is changed.
+
+        basis_site_index: Optional[int] = None
+            If `function_type` is "site" or "occ_delta_site", the site-centric
+            functions are displayed for the `basis_site_index`-th basis site in the
+            origin unit cell.
+        print_cluster_info: bool = False
+            If True, print functions by cluster orbit and print cluster information.
+        site_coordinate_mode: str = "integral"
+            Coordinate mode for printing cluster sites, if `print_cluster_info` is True.
+            Options are:
+
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
+            - 'cart': Use Cartesian coordinates
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
+
 
         """
-        basis_dict = self.out.basis_dict
-        if basis_dict is None:
+        variables = self.out.variables
+        if variables is None:
             if self.clex_basis_specs is None:
-                raise Exception("No basis.json. No basis set specifications.")
+                raise Exception("No variables.json.gz. No basis set specifications.")
             else:
-                raise Exception("No basis.json. Do you need to run update?.")
+                raise Exception("No variables.json.gz. Do you need to run update?.")
 
         options = DisplayBasisOptions()
+        options.linear_function_indices = linear_function_indices
         options.linear_orbit_indices = linear_orbit_indices
-        options.display_invariant_group = False
+        options.max_terms_per_line = max_terms_per_line
+        options.function_type = function_type
+        options.basis_site_index = basis_site_index
+        options.print_cluster_info = print_cluster_info
+        options.site_coordinate_mode = site_coordinate_mode
 
-        display_functions(
-            basis_dict=basis_dict,
+        display_functions_v2(
+            # basis_dict=basis_dict,
+            variables=variables,
             prim=self.proj.prim,
             options=options,
         )

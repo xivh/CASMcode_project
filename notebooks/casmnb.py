@@ -27,10 +27,10 @@ def prim_dir():
 
 
 def list_example_prim():
-    prim_files = glob.glob(str(prim_dir() / "*_prim.json"))
+    prim_files = glob.glob(str(prim_dir() / "**" / "*_prim.json"), recursive=True)
     print("Example prims:")
     for file in prim_files:
-        print(f"- {pathlib.Path(file).name}")
+        print(f"- {pathlib.Path(file).relative_to(prim_dir())}")
 
 
 def autoconfigure():

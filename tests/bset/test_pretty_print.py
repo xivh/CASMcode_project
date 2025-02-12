@@ -2,7 +2,7 @@ import io
 
 import libcasm.configuration as casmconfig
 from casm.project.bset._print_bset import (
-    pretty_print_functions,
+    pretty_print_functions_by_orbit,
     pretty_print_occ_site_functions,
 )
 from casm.project.json_io import read_required
@@ -45,7 +45,7 @@ def test_functions(shared_datadir):
     variables = read_required(shared_datadir / "SiGe_variables.json")
 
     s = io.StringIO()
-    pretty_print_functions(
+    pretty_print_functions_by_orbit(
         basis_dict=basis_dict,
         variables=variables,
         prim=prim,

@@ -29,3 +29,16 @@ def test_SiGe_occ_part1():
 
     # cleanup
     shutil.rmtree(exec_dir / "SiGe_occ")
+
+
+def test_Bset_basics():
+    exec_dir = repo_dir / "notebooks"
+    notebook_path = exec_dir / "Bset_basics.ipynb"
+    print(notebook_path)
+    execute_notebook(
+        exec_dir=notebook_path.parent,
+        notebook_path=notebook_path,
+    )
+
+    # cleanup
+    shutil.rmtree(exec_dir / "Proj")

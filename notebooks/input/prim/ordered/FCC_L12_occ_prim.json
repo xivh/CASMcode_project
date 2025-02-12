@@ -1,0 +1,27 @@
+{
+  "basis": [
+    {
+      "coordinate": [0.0, 0.0, 0.0],
+      "occupants": ["A", "B"]
+    },
+    {
+      "coordinate": [0.0, 0.5, 0.5],
+      "occupants": ["B", "C"]
+    },
+    {
+      "coordinate": [0.5, 0.0, 0.5],
+      "occupants": ["B", "C"]
+    },
+    {
+      "coordinate": [0.5, 0.5, 0.0],
+      "occupants": ["B", "C"]
+    }
+  ],
+  "coordinate_mode": "Fractional",
+  "lattice_vectors": [
+    [4.0, 0.0, 0.0],
+    [0.0, 4.0, 0.0],
+    [0.0, 0.0, 4.0]
+  ],
+  "title": "prim"
+}

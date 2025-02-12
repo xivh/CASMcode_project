@@ -1,4 +1,4 @@
 numpy
-libcasm-mapping
-libcasm-clexmonte
-casm-bset
+libcasm-mapping>=2.0a6
+libcasm-clexmonte>=2.0a6
+casm-bset>=2.0a4

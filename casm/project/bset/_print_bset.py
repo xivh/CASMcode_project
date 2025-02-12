@@ -17,10 +17,12 @@ class PrettyPrintBasisOptions:
 
     def __init__(
         self,
+        linear_function_indices: Optional[set[int]] = None,
+        linear_orbit_indices: Optional[set[int]] = None,
+        function_type: str = "orbit",
+        basis_site_index: Optional[int] = None,
         print_invariant_group: bool = True,
         invariant_group_coordinate_mode: str = "cart",
-        linear_orbit_indices: Optional[set[int]] = None,
-        print_prototypes: bool = False,
         site_coordinate_mode: str = "integral",
     ):
         """
@@ -29,6 +31,37 @@ class PrettyPrintBasisOptions:
 
         Parameters
         ----------
+        linear_function_indices: Optional[set[int]] = None
+            Linear basis function indices to display. If None, all functions are
+            displayed.
+        linear_orbit_indices: Optional[set[int]] = None
+            Linear cluster orbit indices to print. If None, all orbits are printed.
+        function_type: str = "orbit"
+            Type of functions to print. Options are:
+
+            - "prototype": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using neighbor list indices.
+            - "prototype_with_cluster_indices": Print the equivalent cluster basis
+              functions that are associated with the prototype cluster only. Variables
+              are indexed using indices into sites in the prototype cluster.
+            - "orbit": Print equivalent cluster basis functions on all clusters in an
+              orbit, for the contribution associated with the origin unit cell.
+              Variables are indexed using neighbor list indices.
+            - "site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+            - "occ_delta_site": Print equivalent cluster basis functions for all cluster
+              functions that include a particular site. Variables are indexed using
+              neighbor list indices. The site is specified by `basis_site_index`.
+              Functions give the change in basis function values when the occupation
+              of the site is changed.
+
+        basis_site_index: Optional[int] = None
+            If `function_type` is "site" or "occ_delta_site", the site-centric
+            functions are displayed for the `basis_site_index`-th basis site in the
+            origin unit cell.
+
         print_invariant_group: bool = True
             Print the invariant group of the cluster
         invariant_group_coordinate_mode: str = "cart"
@@ -38,10 +71,6 @@ class PrettyPrintBasisOptions:
             - 'frac': Use fractional coordinates, with respect to the Prim lattice
               vectors
 
-        linear_orbit_indices: Optional[set[int]] = None
-            Linear cluster orbit indices to print. If None, all orbits are printed.
-        print_prototypes: bool = False
-            Print the function prototypes if True, orbit basis functions otherwise
         site_coordinate_mode: str = "integral"
             Coordinate mode for printing cluster sites. Options are:
 
@@ -52,6 +81,45 @@ class PrettyPrintBasisOptions:
               vectors
 
         """
+        self.linear_function_indices = linear_function_indices
+        """Optional[set[int]]: Linear function indices to display. If None, all 
+        functions are displayed."""
+
+        self.linear_orbit_indices = linear_orbit_indices
+        """Optional[set[int]]: Linear cluster orbit indices to print. 
+
+        If None, all orbits are printed.
+        """
+
+        self.function_type = function_type
+        """str: Type of functions to print. 
+
+        Options are:
+
+        - "prototype": Print the equivalent cluster basis
+          functions that are associated with the prototype cluster only. Variables
+          are indexed using neighbor list indices.
+        - "prototype_with_cluster_indices": Print the equivalent cluster basis
+          functions that are associated with the prototype cluster only. Variables
+          are indexed using indices into sites in the prototype cluster.
+        - "orbit": Print equivalent cluster basis functions on all clusters in an
+          orbit, for the contribution associated with the origin unit cell.
+          Variables are indexed using neighbor list indices.
+        - "site": Print equivalent cluster basis functions for all cluster
+          functions that include a particular site. Variables are indexed using
+          neighbor list indices. The site is specified by `basis_site_index`.
+        - "occ_delta_site": Print equivalent cluster basis functions for all cluster
+          functions that include a particular site. Variables are indexed using
+          neighbor list indices. The site is specified by `basis_site_index`.
+          Functions give the change in basis function values when the occupation
+          of the site is changed.
+
+        """
+
+        self.basis_site_index = basis_site_index
+        """Optional[int]: If `function_type` is "site", the site-centric functions are
+        displayed for the `basis_site_index`-th basis site in the origin unit cell."""
+
         self.print_invariant_group = print_invariant_group
         """bool: Print the invariant group of the cluster"""
 
@@ -64,16 +132,6 @@ class PrettyPrintBasisOptions:
             - 'frac': Use fractional coordinates, with respect to the Prim lattice
               vectors
         """
-
-        self.linear_orbit_indices = linear_orbit_indices
-        """Optional[set[int]]: Linear cluster orbit indices to print. 
-        
-        If None, all orbits are printed.
-        """
-
-        self.print_prototypes = print_prototypes
-        """bool: Print the function prototypes if True, orbit basis functions 
-        otherwise"""
 
         self.site_coordinate_mode = site_coordinate_mode
         """str: Coordinate mode for printing cluster sites
@@ -282,7 +340,7 @@ def pretty_print_occ_site_functions(
     occ_var_name = info.get("occ_var_name")
     occ_var_indices = info.get("occ_var_indices")
 
-    if options.print_prototypes:
+    if options.function_type in ["prototype_with_cluster_indices"]:
         site_labels = "  - n: cluster site index"
     else:
         site_labels = "  - n: neighborhood site index"
@@ -341,7 +399,7 @@ def pretty_print_occ_site_functions(
                 )
 
 
-def pretty_print_functions(
+def pretty_print_functions_by_orbit(
     basis_dict: dict,
     variables: dict,
     prim: casmconfig.Prim,
@@ -382,36 +440,77 @@ def pretty_print_functions(
     orbit_bfuncs_by_index = {}
     for x in orbit_bfuncs:
         orbit_bfuncs_by_index[x.get("linear_function_index")] = copy.deepcopy(x)
+    site_bfuncs = variables.get("site_bfuncs")
+    site_bfuncs_by_index = {}
+    for x in site_bfuncs:
+        site_bfuncs_by_index[x.get("linear_function_index")] = copy.deepcopy(x)
+
+    is_site_functions = False
+    if options.function_type in ["site", "occ_delta_site"]:
+        is_site_functions = True
+        if options.basis_site_index is None:
+            raise ValueError(
+                "If function type is 'site' or 'occ_delta_site', "
+                "the basis_site_index must be specified"
+            )
 
     for orbit in basis_dict.get("orbits"):
         linear_orbit_index = orbit.get("linear_orbit_index")
-        if (
-            options.linear_orbit_indices is not None
-            and linear_orbit_index not in options.linear_orbit_indices
-        ):
-            continue
+
+        if options.linear_orbit_indices is not None:
+            if linear_orbit_index not in options.linear_orbit_indices:
+                continue
 
         pretty_print_orbit(orbit_dict=orbit, prim=prim, options=options, out=out)
 
         # functions
         functions = orbit.get("cluster_functions")
-        if options.print_prototypes is False:
+        if options.function_type in ["orbit"]:
             print("- cluster functions: (orbit formulas)", file=out)
-        else:
+        elif options.function_type in ["prototype", "prototype_with_cluster_indices"]:
             print("- cluster functions: (prototype cluster formulas)", file=out)
+        elif options.function_type in ["site", "occ_delta_site"]:
+            print("- cluster functions: (site-centric formulas)", file=out)
+        else:
+            raise ValueError(f"Invalid function type: {options.function_type}")
         print("  - \\Phi_{linear_function_index}: {latex_formula}", file=out)
         for func in functions:
             linear_function_index = func.get("linear_function_index")
+
             key = "\\Phi_{" + str(linear_function_index) + "}"
 
-            latex_formula = "(skipped)"
-            if linear_function_index in orbit_bfuncs_by_index:
-                orbit_bfunc = orbit_bfuncs_by_index.get(linear_function_index)
-                if options.print_prototypes:
-                    latex_formula = orbit_bfunc.get("latex_prototype").replace(
-                        "\n", "\n  "
-                    )
-                else:
-                    latex_formula = orbit_bfunc.get("latex_orbit").replace("\n", "\n  ")
+            latex_formula = "(none)"
+            if not is_site_functions:
+                if linear_function_index in orbit_bfuncs_by_index:
+                    orbit_bfunc = orbit_bfuncs_by_index.get(linear_function_index)
+                    if options.function_type == "prototype_with_cluster_indices":
+                        formula = orbit_bfunc.get("latex_prototype")
+                    elif options.function_type == "prototype":
+                        formula = orbit_bfunc.get(
+                            "latex_prototype_with_neighbor_indices"
+                        )
+
+                    elif options.function_type == "orbit":
+                        formula = orbit_bfunc.get("latex_orbit")
+                    else:
+                        raise ValueError(
+                            f"Invalid function type: {options.function_type}"
+                        )
+                    latex_formula = formula.replace("\n", "\n  ")
+            else:
+                if linear_function_index in site_bfuncs_by_index:
+                    site_bfunc = site_bfuncs_by_index.get(linear_function_index)
+                    if len(site_bfunc.get("at")) > 0:
+                        site_data = site_bfunc.get("at")[options.basis_site_index]
+                        if options.function_type == "site":
+                            formula = site_data.get("latex")
+                        elif options.function_type == "occ_delta_site":
+                            formula = site_data.get("occ_delta_latex")
+                        else:
+                            raise ValueError(
+                                f"Invalid function type: {options.function_type}"
+                            )
+                        if formula is not None:
+                            latex_formula = formula.replace("\n", "\n  ")
             print(f"  - {key} = {latex_formula}", file=out)
         print(file=out)
