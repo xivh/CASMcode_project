@@ -10,6 +10,8 @@ from ._CompositionAxes import CompositionAxes
 from ._DirectoryStructure import DirectoryStructure
 from ._methods import (
     PrimToleranceSensitivity,
+    get_dof_types,
+    get_generic_dof_types,
     make_symmetrized_prim,
     project_path,
 )
@@ -47,6 +49,14 @@ class Project:
         self.prim = casmconfig.Prim.from_dict(read_required(self.dir.prim()))
         """libcasm.configuration.Prim: Primitive crytal structure and allowed degrees 
         of freedom (DoF) with symmetry information"""
+
+        (
+            self._global_dof,
+            self._local_continuous_dof,
+            self._local_discrete_dof,
+        ) = get_dof_types(xtal_prim=self.prim.xtal_prim)
+
+        self._generic_dof = get_generic_dof_types(xtal_prim=self.prim.xtal_prim)
 
         self.prim_neighbor_list = casmclex.PrimNeighborList(
             lattice_weight_matrix=self.settings.nlist_weight_matrix,
@@ -156,6 +166,27 @@ class Project:
             using the currently selected parametric composition axes (may be None).
         """
         return self.occupant_composition_axes.make_config_comp_calculator()
+
+    @property
+    def global_dof_types(self):
+        """list[str]: List of global degrees of freedom for the project."""
+        return self._global_dof
+
+    @property
+    def local_continuous_dof_types(self):
+        """list[str]: List of local continuous degrees of freedom for the project."""
+        return self._local_continuous_dof
+
+    @property
+    def local_discrete_dof_types(self):
+        """list[str]: List of local discrete degrees of freedom for the project."""
+        return self._local_discrete_dof
+
+    @property
+    def generic_dof_types(self):
+        """list[str]: List of generic degrees of freedom for the project (i.e. "strain"
+        instead of "Hstrain")."""
+        return self._generic_dof
 
     @property
     def bset(self):

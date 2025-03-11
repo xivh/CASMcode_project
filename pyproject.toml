@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
     "latex2mathml",
     "numpy",
+    "scipy",
     "libcasm-mapping>=2.0a6",
     "libcasm-clexmonte>=2.0a6",
     "casm-bset>=2.0a4",
@@ -38,6 +39,9 @@ source-dir = "doc"
 build-dir  = "doc/build"
 all_files  = 1
 
+[project.scripts]
+casmvis = "casm.casmvis._casmvis:main"
+casmbokeh = "casm.casmvis._casmbokeh:main"
 
 [tool.ruff.lint]
 select = ["NPY201", "E", "F", "I"]

@@ -12,9 +12,11 @@ setup(
         "casm.project.bset",
         "casm.project.enum",
         "casm.project.fit",
+        "casm.project.plot",
         "casm.project.structure_import",
         "casm.project.sym",
         "casm.project.system",
+        "casm.casmvis",
     ],
     install_requires=[],
 )

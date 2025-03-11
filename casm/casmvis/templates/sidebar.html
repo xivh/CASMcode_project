@@ -1,0 +1,15 @@
+<div id="description">
+    <h2>{{ description }}</h2>
+</div>
+<div id="sections">
+    {% for section, pages in sections.items() %}
+        <div class="section">
+            <h3>{{ section }}</h3>
+            <ul>
+                {% for page, url in pages.items() %}
+                    <li><a href="{{ url }}">{{ page }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</div>

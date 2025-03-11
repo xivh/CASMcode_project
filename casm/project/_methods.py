@@ -1,5 +1,5 @@
 import pathlib
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 
@@ -536,3 +536,91 @@ class PrimToleranceSensitivity:
         if is_sensitive:
             self.symmetrize_tol = pow(base, symmetrize_tol)
             self.is_sensitive = is_sensitive
+
+
+def get_dof_types(
+    xtal_prim: xtal.Prim,
+) -> tuple[list[str], list[str], list[str]]:
+    """Given a prim, get lists of DoF types
+
+    Parameters
+    ----------
+    xtal_prim: xtal.Prim
+        The Prim
+
+    Returns
+    -------
+    (global_dof, local_continuous_dof, local_discrete_dof):
+
+        global_dof: list[str]
+            The types of global degree of freedom (DoF). All global DoF are treated
+            as continuous.
+
+        local_continuous_dof: list[str]
+            The types of local discrete degree of freedom (DoF).
+
+        local_discrete_dof: list[str]
+            The types of local discrete degree of freedom (DoF).
+
+    """
+    all_global_dof = set()
+    for _global_dof in xtal_prim.global_dof():
+        all_global_dof.add(_global_dof.dofname())
+
+    all_local_continuous_dof = set()
+    for _sublattice_dof in xtal_prim.local_dof():
+        for _local_dof in _sublattice_dof:
+            all_local_continuous_dof.add(_local_dof.dofname())
+
+    # TODO: support other local discrete dof
+    all_local_discrete_dof = set()
+    for _occ_dof in xtal_prim.occ_dof():
+        if len(_occ_dof) > 1:
+            all_local_discrete_dof.add("occ")
+
+    global_dof = list(all_global_dof)
+    local_continuous_dof = list(all_local_continuous_dof)
+    local_discrete_dof = list(all_local_discrete_dof)
+
+    return (global_dof, local_continuous_dof, local_discrete_dof)
+
+
+def get_generic_dof_types(
+    xtal_prim: xtal.Prim,
+    generic_types: Optional[list[str]] = None,
+) -> list[str]:
+    """Given a prim, get the generic DoF types (without flavors)
+
+    Parameters
+    ----------
+    xtal_prim: xtal.Prim
+        The Prim
+
+    Returns
+    -------
+    generic_dof: list[str]
+        The generic DoF types, i.e. "strain" instead of "Hstrain", and "magspin" instead
+        of "Cmagspin".
+
+    """
+    if generic_types is None:
+        generic_types = [
+            "strain",
+            "magspin",
+        ]
+
+    def _make_generic(dof: str) -> bool:
+        for generic_type in generic_types:
+            if dof.endswith(generic_type):
+                return generic_type
+        return dof
+
+    global_dof, local_continuous_dof, local_discrete_dof = get_dof_types(
+        xtal_prim=xtal_prim
+    )
+
+    generic_dof = set()
+    for dof in global_dof + local_continuous_dof + local_discrete_dof:
+        generic_dof.add(_make_generic(dof))
+
+    return sorted(list(generic_dof))

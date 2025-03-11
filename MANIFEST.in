@@ -1,3 +1,6 @@
+recursive-include casm/casmvis/assets *
+recursive-include casm/casmvis/static *
+recursive-include casm/casmvis/templates *
 graft doc
 prune doc/_build
 prune doc/reference/casm/_autosummary

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}CASM{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div id="sidebar">
+        {% block sidebar %}
+            {% include 'sidebar.html' %}
+        {% endblock %}
+    </div>
+    <div id="main-content">
+        <div id="navbar">
+            {% block navbar %}
+                {% include 'navbar.html' %}
+            {% endblock %}
+        </div>
+        <div id="content">
+            {% block content %}
+            <!-- Main content -->
+            {% endblock %}
+        </div>
+        <div id="footer">
+            {% block footer %}
+            <!-- Footer content -->
+            {% endblock %}
+        </div>
+    </div>
+</body>
+</html>
