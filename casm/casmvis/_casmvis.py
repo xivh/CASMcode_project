@@ -2,6 +2,7 @@ import argparse
 import copy
 import os
 import pathlib
+import typing
 import webbrowser
 
 from bokeh.embed import server_document
@@ -12,6 +13,7 @@ from flask import (
     render_template_string,
     request,
 )
+from flask_cors import CORS
 
 # Get paths:
 this_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
@@ -95,28 +97,40 @@ if False:
 
 
 app = Flask(__name__)
-
 allowed_origins = [
     "http://localhost:3000",  # casmvis client
     "http://localhost:3010",  # casmvis client - dev
 ]
+CORS(
+    app,
+    resources={
+        r"/casm*": {"origins": allowed_origins},
+        r"/files*": {"origins": allowed_origins},
+    },
+)  # The * allows for /api/data and /api/data/
 
 
-@app.after_request
-def after_request(response):
-    origin = request.headers.get("Origin")
-    if origin in allowed_origins:
-        response.headers.add("Access-Control-Allow-Origin", origin)
-        response.headers.add(
-            "Access-Control-Allow-Headers", "Content-Type,Authorization"
-        )
-        response.headers.add(
-            "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
-        )
-        response.headers.add(
-            "Access-Control-Allow-Credentials", "true"
-        )  # If you need credentials.
-    return response
+# @app.after_request
+# def after_request(response):
+#     print("after_request")
+#     origin = request.headers.get("Origin")
+#     print("Origin:", origin)
+#     print("Allowed origins:", allowed_origins)
+#     if origin in allowed_origins:
+#         print("Adding headers...")
+#         response.headers.add("Access-Control-Allow-Origin", origin)
+#         response.headers.add(
+#             "Access-Control-Allow-Headers", "Content-Type,Authorization"
+#         )
+#         response.headers.add(
+#             "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
+#         )
+#         response.headers.add(
+#             "Access-Control-Allow-Credentials", "true"
+#         )  # If you need credentials.
+#     else:
+#         print("Origin not allowed.")
+#     return response
 
 
 # bokeh_process = subprocess.Popen(
@@ -187,9 +201,170 @@ def get_project_ids():
     return [item["id"] for item in data]
 
 
-@app.route("/casm")
+def add_project(
+    path: pathlib.Path,
+    id: typing.Optional[str] = None,
+):
+    import casm.project
+    import libcasm.xtal as xtal
+    from casm.project.json_io import read_optional, safe_dump
+
+    start = path.resolve()
+
+    project_path = casm.project.project_path(start=start)
+    if project_path != start:
+        raise Exception(
+            f"No project found at '{start}'. "
+            "Must be exactly the project directory root."
+        )
+
+    proj = casm.project.Project(path=project_path)
+    if id is None:
+        id = proj.name
+
+    project_list_path = root / "project_list.json"
+    default_list = list()
+    project_list = read_optional(path=project_list_path, default=default_list)
+
+    # If a project with the same path exists, raise an exception:
+    # raise Exception(f"Project at path '{project_path}' is already added with ID={d["project_id"]}.")
+    for item in project_list:
+        if item["project_path"] == str(project_path):
+            raise Exception(
+                f"Project at path '{project_path}' is already added with ID={item['id']}."
+            )
+
+    project_ids = get_project_ids()
+    while id in project_ids:
+        # If id ends in a "-<number>", increment the number until a unique id is found:
+        if "-" in id:
+            base, number = id.rsplit("-", 1)
+            if number.isdigit():
+                id = f"{base}-{int(number) + 1}"
+            else:
+                id = f"{id}-1"
+        else:
+            id = f"{id}-1"
+
+    data = {}
+    data["id"] = id
+    data["project_path"] = str(project_path)
+    data["generic_dof"] = proj.generic_dof_types
+    data["prim_str"] = xtal.pretty_json(proj.prim.to_dict())
+
+    project_list.append(data)
+
+    safe_dump(project_list, path=project_list_path, force=True)
+    return data
+
+
+def is_subdirectory(path: pathlib.Path, top: pathlib.Path) -> bool:
+    # Resolve the absolute paths
+    path = path.resolve()
+    top = top.resolve()
+    # Check if `top` is a parent of `path`
+    return top in path.parents
+
+
+@app.route("/casm/")
 def home():
     return render_template_string(home_html)
+
+
+@app.route("/files/", methods=["POST"])
+def files_post():
+    print("POST /files/")
+    in_data = request.get_json()
+    top = pathlib.Path(os.environ["HOME"]).resolve()
+    path = pathlib.Path(in_data.get("path", top)).resolve()
+
+    # Validate the path:
+    # path must be a sub-directory (direct or indirect)
+    # of os.environ["HOME"]:
+    if path != top and not is_subdirectory(path, top):
+        return jsonify({"error": f"Provided `path` '{path}' is not allowed."}), 400
+
+    possible_parent = []
+    if path != top:
+        possible_parent.append({"path": str(path / ".."), "is_dir": True})
+
+    if not path.is_dir():
+        return jsonify({"error": "Provided `path` is not a directory."}), 400
+    return jsonify(
+        possible_parent
+        + [
+            {"path": str(path / child), "is_dir": child.is_dir()}
+            for child in path.iterdir()
+            if not child.name.startswith(".")
+        ]
+    )
+
+
+# Put starred projects:
+@app.route("/casm/project/add/", methods=["PUT"])
+def project_add():
+    from casm.project import project_path as get_project_path
+
+    in_data = request.get_json()
+    if "project_path" not in in_data:
+        return jsonify({"error": "No `project_path` parameter provided."}), 400
+    start = pathlib.Path(in_data["project_path"])
+    project_path = get_project_path(start=start)
+    if project_path != start:
+        return (
+            jsonify(
+                {
+                    "error": f"No project found at '{start}'. "
+                    "Must be exactly the project directory root."
+                }
+            ),
+            400,
+        )
+
+    if "id" in in_data and not isinstance(in_data["id"], str):
+        return (
+            jsonify({"error": "Optional `id` parameter must be a string if provided."}),
+            400,
+        )
+    id = in_data.get("id", None)
+
+    try:
+        data = add_project(path=project_path, id=id)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# Remove projects (from project_list.json only - do not delete files):
+@app.route("/casm/project/<proj_id>/remove/", methods=["PUT"])
+def project_remove(proj_id):
+    from casm.project.json_io import read_optional, safe_dump
+
+    if not isinstance(proj_id, str):
+        return jsonify({"error": "Project ID must be a string."}), 400
+
+    project_ids = get_project_ids()
+    if proj_id not in project_ids:
+        return jsonify({"error": f"Project ID '{proj_id}' not found."}), 400
+
+    # Remove from project_list.json
+    project_list_path = root / "project_list.json"
+    default_list = list()
+    project_list = read_optional(path=project_list_path, default=default_list)
+    project_list = [item for item in project_list if item["id"] != proj_id]
+    safe_dump(project_list, path=project_list_path, force=True)
+
+    # Remove from starred.json
+    starred_path = root / "starred.json"
+    default_data = dict()
+    data = read_optional(path=starred_path, default=default_data)
+    for key in list(data.keys()):
+        if key == "projects":
+            data[key] = [item for item in data[key] if item != proj_id]
+        elif proj_id in data[key]:
+            del data[key][proj_id]
+    safe_dump(data, path=starred_path, force=True)
+    return jsonify({"message": f"Project '{proj_id}' removed successfully."}), 200
 
 
 @app.route("/casm/project/")
@@ -207,7 +382,12 @@ def project_get():
     project_path = get_project_path(start=start)
     if project_path != start:
         return (
-            jsonify({"error": "No project found at provided `project_path`."}),
+            jsonify(
+                {
+                    "error": f"No project found at '{start}'. "
+                    "Must be exactly the project directory root."
+                }
+            ),
             400,
         )
 
@@ -218,15 +398,15 @@ def project_get():
         return (
             jsonify(
                 {
-                    "error": "Project settings could not be read at provided "
-                    "`project_path`."
+                    "error": "Project settings could not be read from "
+                    f"'{project_path}'."
                 }
             ),
             400,
         )
 
 
-@app.route("/casm/project/list")
+@app.route("/casm/project/list/")
 def project_list_get():
     from casm.project.json_io import read_optional
 
@@ -249,7 +429,7 @@ def project_list_get():
     return jsonify(read_optional(path=project_list_path, default=default_list))
 
 
-@app.route("/casm/project/starred")
+@app.route("/casm/project/starred/")
 def project_starred_get():
     from casm.project.json_io import read_optional
 
@@ -266,7 +446,7 @@ def project_starred_get():
 
 
 # Put starred projects:
-@app.route("/casm/project/starred", methods=["PUT"])
+@app.route("/casm/project/starred/", methods=["PUT"])
 def project_starred_put():
     print()
     print("PUT /casm/project/starred")
@@ -317,7 +497,7 @@ def project_starred_put():
     return jsonify({"message": "Starred projects updated successfully."}), 200
 
 
-@app.route("/casm/project/<proj_id>/enum/<enum_id>/configurations")
+@app.route("/casm/project/<proj_id>/enum/<enum_id>/configurations/")
 def project_enum_configurations_get(proj_id, enum_id):
     bokeh_script = server_document(
         url="http://localhost:5006/casm/enum/configurations/",
@@ -339,7 +519,7 @@ def project_enum_configurations_get(proj_id, enum_id):
 
 
 # config_page_1 endpoint
-@app.route("/casm/project/<proj_id>/config/1")
+@app.route("/casm/project/<proj_id>/config/1/")
 def config_page_1(proj_id):
     return render_template(
         "placeholder.html",
@@ -348,7 +528,7 @@ def config_page_1(proj_id):
 
 
 # config_page_2 endpoint
-@app.route("/casm/project/<proj_id>/config/2")
+@app.route("/casm/project/<proj_id>/config/2/")
 def config_page_2(proj_id):
     return render_template(
         "placeholder.html",
@@ -357,7 +537,7 @@ def config_page_2(proj_id):
 
 
 # config_page_3 endpoint
-@app.route("/casm/project/<proj_id>/config/3")
+@app.route("/casm/project/<proj_id>/config/3/")
 def config_page_3(proj_id):
     return render_template(
         "placeholder.html",
