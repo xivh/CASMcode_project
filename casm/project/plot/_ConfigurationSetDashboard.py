@@ -1,3 +1,4 @@
+import copy
 import math
 import os
 import pathlib
@@ -6,39 +7,20 @@ import typing
 import bokeh.models
 import bokeh.palettes
 import darkdetect
-import mendeleev
 import numpy as np
 
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
+from ._cache import ServerCache
+from ._functions import get_single_argument
 from ._server import (
     add_application,
 )
 from ._ViewAtomicStructure import (
     ViewAtomicStructure,
+    make_prim_component_params,
 )
-
-
-def make_generic_component_params(chemical_names: list[str]):
-    if len(chemical_names) > 9:
-        raise ValueError(
-            "Error in ConfigurationSetDashboard: "
-            "failed to find occupants using `mendeleev` and len(chemical_names) > 9; "
-            "please provide custom `component_params`"
-        )
-
-    # Use bokeh color palette Set1:
-    component_params = {}
-    for i, chemical_name in enumerate(chemical_names):
-        component_params[chemical_name] = dict(
-            color=bokeh.palettes.Set1[9][i % 9],
-            size=10,
-            alpha=0.8,
-            line_color="black",
-            line_width=0.25,
-        )
-    return component_params
 
 
 class ConfigurationSetDashboard:
@@ -64,12 +46,6 @@ class ConfigurationSetDashboard:
             same attributes must be present for all components.
         """
 
-        if len(configuration_set) == 0:
-            raise ValueError(
-                "Error constructing ViewConfigurationSetModel: "
-                "No configurations in `configuration_set`"
-            )
-
         self.configuration_set = configuration_set
         """casm.configuration.ConfigurationSet: The configuration set"""
 
@@ -86,6 +62,12 @@ class ConfigurationSetDashboard:
         supercell_name.sort()
         for key, value in configuration_id_by_supercell_name.items():
             value.sort(key=lambda x: int(x))
+        for _supercell_name in supercell_name:
+            config_ids = configuration_id_by_supercell_name[_supercell_name]
+            if _supercell_name != supercell_name[0]:
+                config_ids.insert(0, "(prev)")
+            if _supercell_name != supercell_name[-1]:
+                config_ids.append("(next)")
 
         self.supercell_name = supercell_name
         """list[str]: List of supercell names"""
@@ -132,10 +114,10 @@ class ConfigurationSetDashboard:
         self.cabinet_angle = math.pi / 6.0
         """float: The angle for the cabinet view"""
 
-        if component_params is None:
+        if component_params is None and len(configuration_set) != 0:
             # Get first record in configuration set:
             record = next(iter(self.configuration_set))
-            component_params = self._make_component_params(
+            component_params = make_prim_component_params(
                 prim=record.configuration.supercell.prim
             )
         self.component_params = component_params
@@ -147,55 +129,115 @@ class ConfigurationSetDashboard:
         same attributes must be present for all components.
         """
 
+        self._update_disabled = False
+        """bool: Flag used internally to prevent triggering updates in some
+        callbacks"""
+
+        # -- Dark theme --
+        self.darkstyle = bokeh.models.GlobalInlineStyleSheet(
+            css="""
+                    * {
+                      font-family: roboto-mono;
+                    }
+
+                    @media (prefers-color-scheme: dark) {
+                      * {
+                        font-family: roboto-mono;
+                      }
+
+                      html {
+                        color-scheme: dark;
+                        color: #ddd;
+                      }
+                    }""",
+        )
+
+        self.dark_bk_input_style = bokeh.models.InlineStyleSheet(
+            css="""
+                    @media (prefers-color-scheme: dark) {
+
+                    .bk-input {
+                      /* color: #bbb; */
+                      background-color:#222;
+                    }
+
+                    select:not([multiple]).bk-input, select:not([size]).bk-input {
+                      background-image: url('data:image/svg+xml;utf8,<svg version="1.1" viewBox="0 0 25 20" xmlns="http://www.w3.org/2000/svg"><path d="M 0,0 25,0 12.5,20 Z" fill="white" /></svg>');
+                    }
+
+                    .bk-input-group > .bk-spin-wrapper > .bk-spin-btn.bk-spin-btn-up:before {
+                      border-bottom: 5px solid white;
+                    }
+
+                    .bk-input-group > .bk-spin-wrapper > .bk-spin-btn.bk-spin-btn-down:before {
+                      border-top: 5px solid white;
+                    }
+
+                    .bk-btn-default {
+                      color: #ddd;
+                      background-color: #222;
+                      border-color: #ccc;
+                    }
+                    }
+                    """,  # noqa: E501
+        )
+
         # -- Set the initial supercell and configuration --
-        self.set_supercell_name(supercell_name[0])
+        if len(configuration_set) != 0:
+            self.set_supercell_name(supercell_name[0])
 
-    def _make_component_params(self, prim: casmconfig.Prim):
-        component_params = {}
-
-        chemical_names = [
-            occupant.name() for occupant in prim.xtal_prim.occupants().values()
-        ]
-        chemical_names.sort()
-
-        try:
-            for i, chemical_name in enumerate(chemical_names):
-                element = mendeleev.element(chemical_name)
-                size = element.vdw_radius_alvarez
-                color = element.jmol_color
-
-                component_params[chemical_name] = {
-                    "color": color,
-                    "size": size,
-                    "alpha": 0.8,
-                    "line_color": "black",
-                    "line_width": 0.25,
-                }
-
-        except Exception:
-            component_params = make_generic_component_params(
-                chemical_names=chemical_names
+    def set_configuration_name(
+        self,
+        configuration_name: str,
+    ):
+        parts = configuration_name.split("/")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Error setting configuration name: "
+                f"'{configuration_name}' not valid"
             )
+        supercell_name = parts[0]
+        configuration_id = parts[1]
+        self.set_supercell_name(
+            supercell_name=supercell_name,
+            configuration_id=configuration_id,
+        )
 
-        # # Normalize "size" so the mean is 30.0:
-        sizes = np.array([params["size"] for params in component_params.values()])
-        size_min = np.min(sizes)
-        for params in component_params.values():
-            params["size"] = 30.0 * params["size"] / size_min
-        return component_params
+    def set_supercell_name(
+        self,
+        supercell_name: str,
+        configuration_id: typing.Optional[str] = None,
+    ):
+        if len(self.configuration_set) == 0:
+            return
 
-    def set_supercell_name(self, supercell_name: str):
         if supercell_name not in self.supercell_name:
             raise ValueError(
                 f"Error setting supercell: " f"'{supercell_name}' not found"
             )
+        config_ids = self.configuration_id_by_supercell_name[supercell_name]
+        if len(config_ids) == 0:
+            raise ValueError(
+                f"Error setting supercell: " f"'{supercell_name}' has no configurations"
+            )
+        if configuration_id is None:
+            i = 0
+            while i < len(config_ids) - 1 and config_ids[i] == "(prev)":
+                i += 1
+            configuration_id = config_ids[i]
+        elif configuration_id not in config_ids:
+            raise ValueError(
+                f"Error setting configuration ID: "
+                f"'{configuration_id}' not found for supercell '{supercell_name}'"
+            )
 
         self.selected_supercell_name = supercell_name
-        self.set_configuration_id(
-            self.configuration_id_by_supercell_name[supercell_name][0]
-        )
+        self.set_configuration_id(configuration_id)
 
     def set_configuration_id(self, configuration_id: str):
+        if len(self.configuration_set) == 0:
+            return
+
         self.selected_configuration_id = configuration_id
         self.selected_configuration_name = (
             self.selected_supercell_name + "/" + self.selected_configuration_id
@@ -207,72 +249,37 @@ class ConfigurationSetDashboard:
         b = self.images_b_range
         c = self.images_c_range
         m = self.images_m_range
+        structure = xtal.make_structure_within(
+            init_structure=record.configuration.to_structure(
+                excluded_species=[],
+            )
+        )
+        print("Structure:\n", xtal.pretty_json(structure.to_dict()))
         superstructure = xtal.make_superstructure(
             transformation_matrix_to_super=np.diag([a, b, c]) * m,
-            structure=record.configuration.to_structure(),
+            structure=structure,
         )
 
         self.selected_structure = superstructure
 
     def make_layout(self):
         # --bokeh-icon-color: #fff;
-
-        darkstyle = bokeh.models.GlobalInlineStyleSheet(
-            css="""
-            * {
-              font-family: roboto-mono;
-            }
-            
-            @media (prefers-color-scheme: dark) {
-              * {
-                font-family: roboto-mono;
-              }
-            
-              html {
-                color-scheme: dark;
-                color: #ddd;
-              }
-            }""",
-        )
-
-        dark_bk_input_style = bokeh.models.InlineStyleSheet(
-            css="""
-            @media (prefers-color-scheme: dark) {
-            
-            .bk-input {
-              /* color: #bbb; */
-              background-color:#222;
-            }
-
-            select:not([multiple]).bk-input, select:not([size]).bk-input {
-              background-image: url('data:image/svg+xml;utf8,<svg version="1.1" viewBox="0 0 25 20" xmlns="http://www.w3.org/2000/svg"><path d="M 0,0 25,0 12.5,20 Z" fill="white" /></svg>');
-            }
-
-            .bk-input-group > .bk-spin-wrapper > .bk-spin-btn.bk-spin-btn-up:before {
-              border-bottom: 5px solid white;
-            }
-
-            .bk-input-group > .bk-spin-wrapper > .bk-spin-btn.bk-spin-btn-down:before {
-              border-top: 5px solid white;
-            }
-
-            .bk-btn-default {
-              color: #ddd;
-              background-color: #222;
-              border-color: #ccc;
-            }
-            }
-            """,  # noqa: E501
-        )
+        darkstyle = copy.deepcopy(self.darkstyle)
+        dark_bk_input_style = copy.deepcopy(self.dark_bk_input_style)
 
         # Supercell selection:
         supercell_name_div = bokeh.models.Div(
             text="""<b>Supercell name</b>""", width=200
         )
+        options = ["(None)"]
+        value = "(None)"
+        if self.selected_supercell_name is not None:
+            options = self.supercell_name
+            value = self.selected_supercell_name
         supercell_name_select = bokeh.models.Select(
             # title="Supercell name",
-            options=self.supercell_name,
-            value=self.selected_supercell_name,
+            options=options,
+            value=value,
             stylesheets=[dark_bk_input_style],
         )
 
@@ -280,12 +287,17 @@ class ConfigurationSetDashboard:
         configuration_id_div = bokeh.models.Div(
             text="""<b>Configuration ID</b>""", width=200
         )
+        options = ["(None)"]
+        value = "(None)"
+        if self.selected_supercell_name is not None:
+            options = self.configuration_id_by_supercell_name[
+                self.selected_supercell_name
+            ]
+            value = self.selected_configuration_id
         configuration_id_select = bokeh.models.Select(
             # title="Configuration ID",
-            options=self.configuration_id_by_supercell_name[
-                self.selected_supercell_name
-            ],
-            value=self.selected_configuration_id,
+            options=options,
+            value=value,
             stylesheets=[dark_bk_input_style],
         )
 
@@ -363,6 +375,9 @@ class ConfigurationSetDashboard:
             structure: xtal.Structure,
             configuration_name: str,
         ):
+            if len(self.configuration_set) == 0:
+                return
+
             view_xz.set_structure(
                 structure=structure,
                 title="X-Z plane view",
@@ -389,38 +404,90 @@ class ConfigurationSetDashboard:
                 new_cabinet=(self.cabinet_scale, self.cabinet_angle),
             )
 
-        set_configuration(
-            structure=self.selected_structure,
-            configuration_name=self.selected_configuration_name,
-        )
-
-        def supercell_name_update(attr, old, new):
-            # global model, view, configuration_id_select
-            self.set_supercell_name(new)
-            configuration_id_select.options = self.configuration_id_by_supercell_name[
-                new
-            ]
-            configuration_id_select.value = self.selected_configuration_id
-            set_configuration(
-                structure=self.selected_structure.copy(),
-                configuration_name=self.selected_configuration_name,
-            )
-
-        supercell_name_select.on_change("value", supercell_name_update)
-
-        def configuration_id_update(attr, old, new):
-            # global model, view
-            self.set_configuration_id(new)
+        if self.selected_structure is not None:
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
             )
+        p_cabinet = view_cabinet.make_plot()
+
+        def do_supercell_name_update(
+            new: str,
+            configuration_id: typing.Optional[str] = None,
+        ):
+            if len(self.configuration_set) == 0:
+                return
+            print("begin do_supercell_name_update")
+            self.set_supercell_name(new, configuration_id=configuration_id)
+
+            # --- Update the widgets without triggers ---
+            self._update_disabled = True
+            supercell_name_select.value = new
+            configuration_id_select.value = self.selected_configuration_id
+            self._update_disabled = False
+            # --------------------------------------------
+
+            configuration_id_select.options = self.configuration_id_by_supercell_name[
+                new
+            ]
+            set_configuration(
+                structure=self.selected_structure.copy(),
+                configuration_name=self.selected_configuration_name,
+            )
+            p_cabinet.title.text = view_cabinet.title
+            print("end_supercell_name_update")
+
+        def supercell_name_update(attr, old, new):
+            if self._update_disabled:
+                return
+            print("Trigger supercell_name_update, new=", new)
+            do_supercell_name_update(new, configuration_id="0")
+
+        supercell_name_select.on_change("value", supercell_name_update)
+
+        def configuration_id_update(attr, old, new):
+            if self._update_disabledf:
+                return
+            print("Trigger configuration_id_update, new=", new)
+
+            if new == "(next)":
+                # do_supercell_name_update(next_supercell)
+                print("More configurations available")
+                i_supercell = self.supercell_name.index(self.selected_supercell_name)
+                new_supercell_name = self.supercell_name[i_supercell + 1]
+                do_supercell_name_update(new_supercell_name, configuration_id="0")
+            elif new == "(prev)":
+                print("Previous configurations available")
+                i_supercell = self.supercell_name.index(self.selected_supercell_name)
+                new_supercell_name = self.supercell_name[i_supercell - 1]
+                config_ids = self.configuration_id_by_supercell_name[new_supercell_name]
+                i = len(config_ids) - 1
+                while i >= 0 and config_ids[i] == "(next)":
+                    i -= 1
+                print("config_ids:\n", config_ids)
+                print("i:", i)
+                print("config_ids[i]:", config_ids[i])
+
+                do_supercell_name_update(
+                    new_supercell_name,
+                    configuration_id=config_ids[i],
+                )
+            else:
+                self.set_configuration_id(new)
+                set_configuration(
+                    structure=self.selected_structure,
+                    configuration_name=self.selected_configuration_name,
+                )
+                p_cabinet.title.text = view_cabinet.title
 
         configuration_id_select.on_change("value", configuration_id_update)
 
         def open_with_vesta(attr):
             # make a temporary directory:
             import subprocess
+
+            if len(self.configuration_set) == 0:
+                return
 
             name = self.selected_configuration_name.replace("/", ".") + ".vasp"
             with open(name, "w") as f:
@@ -585,9 +652,6 @@ class ConfigurationSetDashboard:
         from bokeh.layouts import column, row
 
         # Controls layout
-        c0 = column(
-            width=40,
-        )
         c1 = column(
             supercell_name_div,
             supercell_name_select,
@@ -619,7 +683,7 @@ class ConfigurationSetDashboard:
             width=200,
         )
 
-        controls_row = row(c0, c1, c2, c3, c4)
+        controls_row = row(c1, c2, c3, c4)
 
         # Figures grid
         p_xz = view_xz.make_plot()
@@ -634,7 +698,7 @@ class ConfigurationSetDashboard:
         p_xy.xaxis.axis_label = "x"
         p_xy.yaxis.axis_label = "y"
 
-        p_cabinet = view_cabinet.make_plot()
+        # p_cabinet = view_cabinet.make_plot()
         p_cabinet.xaxis.axis_label = "x (cabinet)"
         p_cabinet.yaxis.axis_label = "z (cabinet)"
 
@@ -650,41 +714,40 @@ class ConfigurationSetDashboard:
 
         return layout
 
-    def add(self):
-        def modify_doc(doc):
-            # global supercell_name_select, configuration_id_select
-            # global view_xz, view_yz, view_xy, view_cabinet
+    @staticmethod
+    def add(cache: ServerCache):
+        bokeh_app_path = "/casm/enum/vis/"
 
-            # def get_single_argument(args, name):
-            #     value = doc.session_context.request.arguments.get(name)
-            #     if value is None:
-            #         raise ValueError(f"Error: missing argument '{name}'")
-            #     elif len(value) != 1:
-            #         raise ValueError(f"Error: multiple values for '{name}'")
-            #     return value[0].decode("utf-8")
-            #
-            # # TODO --> /casm/configuration_set arg: project_id, enum_id
-            # args = doc.session_context.request.arguments
-            # print("proj_id:", get_single_argument(args, "proj_id"))
-            # print("enum_id:", get_single_argument(args, "enum_id"))
+        def modify_doc(doc):
+            print("Begin ConfigurationSetDashboard modify_doc")
+
+            proj_id = get_single_argument(doc, "proj_id")
+            enum_id = get_single_argument(doc, "obj_id")
+            print("proj_id:", proj_id)
+            print("enum_id:", enum_id)
+
+            app_key = (bokeh_app_path, proj_id, enum_id)
+
+            app = cache.app.get(app_key)
+            if app is None:
+                # If not already existing, create a new obj
+                proj = cache.get_project(proj_id)
+                enum = proj.enum.get(id=enum_id)
+
+                app = ConfigurationSetDashboard(
+                    configuration_set=enum.configuration_set,
+                )
+                cache.app[app_key] = app
 
             # Overall layout
-            layout = self.make_layout()
+            layout = app.make_layout()
 
             doc.add_root(layout)
 
             if darkdetect.isDark():
                 doc.theme = "carbon"
 
-        # # Start the Bokeh server
-        # server = Server(
-        #     {"/dash/configuration_set/1": modify_doc}, io_loop=IOLoop.current()
-        # )
-        # server.start()
-        # server.io_loop.add_callback(server.show, "/dash/configuration_set/1")
-        # server.io_loop.start()
-
         add_application(
-            url=pathlib.Path("/casm/enum/configurations"),
+            url=pathlib.Path(bokeh_app_path),
             app=modify_doc,
         )

@@ -1,12 +1,16 @@
+import copy
+import math
 import time
-from typing import Optional
+from typing import Optional, Union
 
 import bokeh.document  # Document
 import bokeh.models  # ColumnDataSource, Slider
 import bokeh.plotting
+import mendeleev
 import numpy as np
 import scipy.spatial.transform
 
+import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
 from ._view import (
@@ -36,6 +40,193 @@ def _format_plot(p):
     p.yaxis.axis_label_text_font_size = font_size_1
     p.yaxis.major_label_text_font = font_name
     p.yaxis.major_label_text_font_size = font_size_2
+
+
+Va_default_color = "#dcdcdc"
+Va_default_line_width = 1.0
+
+
+def make_generic_component_params(chemical_names: list[str]):
+    if len(chemical_names) > 7:
+        raise ValueError(
+            "Error in make_generic_component_params: "
+            "len(chemical_names) > 7; please provide custom `component_params`"
+        )
+
+    # Use bokeh color palette Set1:
+    component_params = {}
+    for i, chemical_name in enumerate(chemical_names):
+        if chemical_name.lower() == "va":
+            color = Va_default_color
+            line_width = Va_default_line_width
+            line_dash = "dotted"
+        else:
+            color = bokeh.palettes.Colorblind7[i % 7]
+            line_width = 0.25
+            line_dash = "solid"
+        component_params[chemical_name] = dict(
+            color=color,
+            size=10,
+            alpha=0.8,
+            line_color="black",
+            line_width=line_width,
+            line_dash=line_dash,
+        )
+    return component_params
+
+
+def make_component_params(
+    chemical_names: list[str],
+    preferred_component_params: Optional[dict] = None,
+):
+    component_params = {}
+
+    _chemical_names = copy.deepcopy(chemical_names)
+    _chemical_names.sort()
+
+    if preferred_component_params is not None:
+        # If a preferred set of component params is provided, use that.
+        try:
+            for i, chemical_name in enumerate(_chemical_names):
+                component_params[chemical_name] = copy.deepcopy(
+                    preferred_component_params[chemical_name]
+                )
+        # As a fallback, use bokeh Colorblind7 palette.
+        except Exception:
+            component_params = make_generic_component_params(
+                chemical_names=_chemical_names
+            )
+
+    else:
+        # Else, if all chemical names are elements or "Va",
+        # use jmol colors from mendeleev and a gray for Va.
+        try:
+            for i, chemical_name in enumerate(_chemical_names):
+                if chemical_name.lower() == "va":
+                    color = Va_default_color
+                    size = mendeleev.element("O").vdw_radius_alvarez
+                    line_dash = "dotted"
+                else:
+                    element = mendeleev.element(chemical_name)
+                    size = element.vdw_radius_alvarez
+                    color = element.jmol_color
+                    line_dash = "solid"
+
+                component_params[chemical_name] = {
+                    "color": color,
+                    "size": size,
+                    "alpha": 0.8,
+                    "line_color": "black",
+                    "line_width": 0.25,
+                    "line_dash": line_dash,
+                }
+
+        # As a fallback, use bokeh Colorblind7 palette.
+        except Exception:
+            component_params = make_generic_component_params(
+                chemical_names=_chemical_names
+            )
+
+    # # Normalize "size" so the mean is 30.0:
+    sizes = np.array([params["size"] for params in component_params.values()])
+    size_min = np.min(sizes)
+    for params in component_params.values():
+        params["size"] = 30.0 * params["size"] / size_min
+    return component_params
+
+
+def make_prim_component_params(
+    prim: Union[casmconfig.Prim, list[casmconfig.Prim]],
+    preferred_component_params: Optional[dict] = None,
+):
+    """Make component parameters for one or more Prim
+
+    Parameters
+    ----------
+    prim: Union[casmconfig.Prim, list[casmconfig.Prim]]
+        The Prim or list of Prims to make component parameters for.
+    preferred_component_params: dict[str, dict]
+        The preferred component parameters to use for the components.
+
+    Returns
+    -------
+    component_params: dict[str, dict]
+        The component parameters for each chemical species.
+
+    """
+    if not isinstance(prim, list):
+        prim = [prim]
+
+    chemical_names = set()
+    for p in prim:
+        for occupant in p.xtal_prim.occupants().values():
+            chemical_names.add(occupant.name())
+    chemical_names = list(chemical_names)
+    chemical_names.sort()
+
+    return make_component_params(
+        chemical_names=chemical_names,
+        preferred_component_params=preferred_component_params,
+    )
+
+
+class ViewAtomicStructureParams:
+    def __init__(
+        self,
+        images_a_range: int = 1,
+        images_b_range: int = 1,
+        images_c_range: int = 1,
+        images_m_range: int = 1,
+        marker_size_scale: float = 1.0,
+        marker_alpha_scale: float = 1.0,
+        cabinet_scale: float = 0.2,
+        cabinet_angle: float = math.pi / 6.0,
+        component_params: Optional[dict] = None,
+    ):
+        self.images_a_range = images_a_range
+        self.images_b_range = images_b_range
+        self.images_c_range = images_c_range
+        self.images_m_range = images_m_range
+        self.marker_size_scale = marker_size_scale
+        self.marker_alpha_scale = marker_alpha_scale
+        self.cabinet_scale = cabinet_scale
+        self.cabinet_angle = cabinet_angle
+        if component_params is None:
+            # Get first record in configuration set:
+            record = next(iter(self.configuration_set))
+            component_params = self._make_component_params(
+                prim=record.configuration.supercell.prim
+            )
+        self.component_params = component_params
+
+    # to_dict:
+    def to_dict(self):
+        return {
+            "images_a_range": self.images_a_range,
+            "images_b_range": self.images_b_range,
+            "images_c_range": self.images_c_range,
+            "images_m_range": self.images_m_range,
+            "marker_size_scale": self.marker_size_scale,
+            "marker_alpha_scale": self.marker_alpha_scale,
+            "cabinet_scale": self.cabinet_scale,
+            "cabinet_angle": self.cabinet_angle,
+            "component_params": self.component_params,
+        }
+
+    # from_dict:
+    @staticmethod
+    def from_dict(data):
+        return ViewAtomicStructureParams(
+            images_a_range=data["images_a_range"],
+            images_b_range=data["images_b_range"],
+            images_c_range=data["images_c_range"],
+            images_m_range=data["images_m_range"],
+            marker_size_scale=data["marker_size_scale"],
+            marker_alpha_scale=data["marker_alpha_scale"],
+            cabinet_scale=data["cabinet_scale"],
+            cabinet_angle=data["cabinet_angle"],
+            component_params=data["component_params"],
+        )
 
 
 class ViewAtomicStructure:
@@ -131,15 +322,16 @@ class ViewAtomicStructure:
 
         # make component_params_keys
         component_params_keys = None
-        for _params in component_params.values():
-            keys = sorted(list(_params.keys()))
-            if component_params_keys is None:
-                component_params_keys = keys
-            elif keys != component_params_keys:
-                raise ValueError(
-                    "Error in ViewConfiguration2d: component_params must have the same "
-                    "keys for all components"
-                )
+        if component_params is not None:
+            for _params in component_params.values():
+                keys = sorted(list(_params.keys()))
+                if component_params_keys is None:
+                    component_params_keys = keys
+                elif keys != component_params_keys:
+                    raise ValueError(
+                        "Error in ViewConfiguration2d: "
+                        "component_params must have the same keys for all components"
+                    )
         self.component_params_keys = component_params_keys
         """list[str]: The keys of the component_params dict, sorted alphabetically."""
 
@@ -195,6 +387,10 @@ class ViewAtomicStructure:
         self.lattice_cell_source = bokeh.models.ColumnDataSource(data=dict())
         """bokeh.models.ColumnDataSource: The Bokeh data source used to create the
         lattice cell lines."""
+
+        self.figure_source = bokeh.models.ColumnDataSource(data=dict())
+        """bokeh.models.ColumnDataSource: The Bokeh data source used to set the figure
+        parameters, like the title."""
 
         self.structure = None
         """libcasm.xtal.Structure: The structure to view."""
@@ -339,11 +535,17 @@ class ViewAtomicStructure:
         if self.doc is None:
             self.source.data = data
             self.lattice_cell_source.data = lattice_cell_data
+            self.figure_source.data = {
+                "title": [self.title],
+            }
         if self.doc is not None:
 
             def callback():
                 self.source.data = data
                 self.lattice_cell_source.data = lattice_cell_data
+                self.figure_source.data = {
+                    "title": [self.title],
+                }
 
             # Set data source
             self.doc.add_next_tick_callback(callback)
@@ -351,32 +553,36 @@ class ViewAtomicStructure:
             time.sleep(0.001)
 
     def make_plot(self):
+        title = "(None)"
+        if len(self.figure_source.data) != 0:
+            title = self.figure_source.data["title"][0]
         figure_params = dict(
-            title=self.title,
+            title=title,
             width=600,
             height=400,
             match_aspect=True,
         )
         p = bokeh.plotting.figure(**figure_params)
 
-        scatter_kwargs = {x: x for x in self.component_params_keys}
+        if len(self.lattice_cell_source.data) != 0:
+            scatter_kwargs = {x: x for x in self.component_params_keys}
+            p.segment(
+                x0="px0",
+                y0="py0",
+                x1="px1",
+                y1="py1",
+                source=self.lattice_cell_source,
+                color="green",
+                line_width=2,
+            )
 
-        p.segment(
-            x0="px0",
-            y0="py0",
-            x1="px1",
-            y1="py1",
-            source=self.lattice_cell_source,
-            color="green",
-            line_width=2,
-        )
-
-        p.scatter(
-            "px",
-            "py",
-            source=self.source,
-            **scatter_kwargs,
-        )
+        if len(self.source.data) != 0:
+            p.scatter(
+                "px",
+                "py",
+                source=self.source,
+                **scatter_kwargs,
+            )
 
         _format_plot(p)
 

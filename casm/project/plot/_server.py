@@ -13,6 +13,7 @@ class ServerManager:
     def __init__(
         self,
         allow_websocket_origin: typing.Optional[list[str]] = None,
+        allow_origin: typing.Optional[list[str]] = None,
     ):
         """
 
@@ -50,6 +51,10 @@ class ServerManager:
             ]
         self.allow_websocket_origin = allow_websocket_origin
 
+        if allow_origin is None:
+            allow_origin = allow_websocket_origin
+        self.allow_origin = allow_origin
+
     def add_application(
         self,
         url: pathlib.Path,
@@ -83,6 +88,7 @@ class ServerManager:
             self._applications,
             io_loop=IOLoop.current(),
             allow_websocket_origin=self.allow_websocket_origin,
+            allow_origin=self.allow_origin,
         )
 
         self._server.start()

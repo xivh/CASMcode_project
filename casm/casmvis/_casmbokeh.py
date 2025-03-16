@@ -7,11 +7,12 @@ import libcasm.configuration as casmconfig
 import libcasm.xtal.prims as xtal_prims
 from casm.project.plot import (
     ConfigurationSetDashboard,
+    ServerCache,
     start_applications,
 )
 
 
-def main():
+def test_project():
     print("~~~ CASM visualizations ~~~")
     print("args: ", sys.argv)
     print()
@@ -20,7 +21,7 @@ def main():
     prim = casmconfig.Prim(
         xtal_prims.FCC(
             a=4.0,
-            occ_dof=["Pb", "Au"],
+            occ_dof=["A", "B"],
         )
     )
     project_path = pathlib.Path("Enum_basics") / "Proj"
@@ -43,9 +44,15 @@ def main():
 
     # --- Create a Bokeh dashboard for the enumerated configurations ---
 
-    dash = ConfigurationSetDashboard(
-        configuration_set=enum.configuration_set,
-    )
-    dash.add()
+    # dash = ConfigurationSetDashboard(
+    #     configuration_set=enum.configuration_set,
+    # )
+    # dash.add()
+
+
+def main():
+    cache = ServerCache()
+
+    ConfigurationSetDashboard.add(cache=cache)
 
     start_applications()

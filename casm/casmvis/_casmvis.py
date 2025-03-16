@@ -15,11 +15,14 @@ from flask import (
 )
 from flask_cors import CORS
 
+from casm.project.plot import ServerCache
+
 # Get paths:
 this_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 assets_dir = this_dir / "assets"
 logo_path = assets_dir / "logo.svg"
 root = pathlib.Path(os.environ["HOME"]) / ".casmvis"
+cache = ServerCache()
 
 home_html = """
 <!DOCTYPE html>
@@ -52,6 +55,14 @@ enum_app_html = """
   </body>
 </html>
 """  # noqa: E501
+
+css_link_html = """
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+"""
+
+bokeh_script_html = """
+{{ bokeh_script|safe }}
+"""
 
 # --- Create a CASM project and enumerate configs ---
 
@@ -227,11 +238,11 @@ def add_project(
     project_list = read_optional(path=project_list_path, default=default_list)
 
     # If a project with the same path exists, raise an exception:
-    # raise Exception(f"Project at path '{project_path}' is already added with ID={d["project_id"]}.")
     for item in project_list:
         if item["project_path"] == str(project_path):
             raise Exception(
-                f"Project at path '{project_path}' is already added with ID={item['id']}."
+                f"Project at path '{project_path}' "
+                f"is already added with ID={item['id']}."
             )
 
     project_ids = get_project_ids()
@@ -497,12 +508,38 @@ def project_starred_put():
     return jsonify({"message": "Starred projects updated successfully."}), 200
 
 
+@app.route("/casm/project/<proj_id>/enum/list/")
+def project_enum_list_get(proj_id):
+    proj = cache.get_project(proj_id)
+    data = [{"id": id} for id in proj.enum.all()]
+    return jsonify(data)
+
+
 @app.route("/casm/project/<proj_id>/enum/<enum_id>/configurations/")
 def project_enum_configurations_get(proj_id, enum_id):
     bokeh_script = server_document(
         url="http://localhost:5006/casm/enum/configurations/",
         arguments=dict(proj_id=proj_id, enum_id=enum_id),
     )
+    print("Bokeh script:")
+    print(bokeh_script)
+    print()
+
+    css_link_str = render_template_string(
+        css_link_html,
+    )
+    print("CSS link str:")
+    print(css_link_str)
+    print()
+
+    bokeh_script_str = render_template_string(
+        bokeh_script_html,
+        bokeh_script=bokeh_script,
+    )
+    print("Bokeh script str:")
+    print(bokeh_script_str)
+    print()
+
     return render_template_string(
         enum_app_html,
         bokeh_script=bokeh_script,
@@ -516,6 +553,19 @@ def project_enum_configurations_get(proj_id, enum_id):
     #     "enum_configurations.html",
     #     **make_standard_params(proj_id),
     # )
+
+
+@app.route("/casm/project/<proj_id>/enum/<enum_id>/vis/configurations/")
+def project_enum_vis_configurations_get(proj_id, enum_id):
+    print(f"Call: /casm/project/{proj_id}/enum/{enum_id}/vis/configurations/")
+    bokeh_script = server_document(
+        url="http://localhost:5006/casm/enum/configurations/",
+        arguments=dict(proj_id=proj_id, enum_id=enum_id),
+    )
+    print("Bokeh script:")
+    print(bokeh_script)
+    print()
+    return jsonify({"bokeh_script": bokeh_script})
 
 
 # config_page_1 endpoint
