@@ -40,8 +40,8 @@ build-dir  = "doc/build"
 all_files  = 1
 
 [project.scripts]
-casmvis = "casm.casmvis._casmvis:main"
-casmbokeh = "casm.casmvis._casmbokeh:main"
+casm-api-server = "casm.vis._api_server:main"
+casm-bokeh-server = "casm.vis._bokeh_server:main"
 
 [tool.ruff.lint]
 select = ["NPY201", "E", "F", "I"]

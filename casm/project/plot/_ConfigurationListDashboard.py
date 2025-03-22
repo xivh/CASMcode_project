@@ -16,20 +16,21 @@ from ._ViewAtomicStructure import (
 )
 
 
-class ConfigurationSetDashboard:
-    """Dashboard for viewing Configurations from a ConfigurationSet"""
+class ConfigurationListDashboard:
+    """Dashboard for viewing Configurations from a list[Configuration]"""
 
     def __init__(
         self,
-        configuration_set: casmconfig.ConfigurationSet,
+        configuration_list: list[casmconfig.Configuration],
         component_params: typing.Optional[dict] = None,
+        page_size: int = 100,
     ):
         """
 
         Parameters
         ----------
-        configuration_set: libcasm.configuration.ConfigurationSet
-            The configuration set to visualize.
+        configuration_list: list[libcasm.configuration]
+            The configuration list to visualize.
         component_params: dict[str, dict]
             The bokeh scatter plot parameters used to draw atoms, with
             atom type name as key.
@@ -37,59 +38,40 @@ class ConfigurationSetDashboard:
             Must include "color", "size", and "alpha". Additional bokeh plotting
             parameters like "line_color" and "line_width" may also be included. The
             same attributes must be present for all components.
+        page_size: int = 100
+            The number of configurations to show per "page".
         """
 
-        self.configuration_set = configuration_set
+        self.configuration_list = configuration_list
         """casm.configuration.ConfigurationSet: The configuration set"""
 
         self._input_component_params = copy.deepcopy(component_params)
 
+        self.page_size = page_size
+
         self.selected_structure = None
         """libcasm.xtal.Structure: The structure of the selected configuration"""
 
-        self.selected_configuration_name = None
-        """str: The name of the selected configuration"""
+        self.selected_configuration_index = None
+        """int: The index of the selected configuration in the list - as a string."""
 
-        self.selected_supercell_name = None
-        """str: The selected supercell name"""
+        self.selected_page_number = None
+        """str: The page"""
 
-        self.selected_configuration_id = None
-        """str: The selected configuration ID"""
+        self.options = ["(None)"]
+        """list[str]: The configuration index options for the current page"""
 
         self.selected_configuration = None
         """libcasm.configuration.Configuration: The selected configuration"""
 
-        supercell_name = []
-        configuration_id_by_supercell_name = {}
-
-        for record in self.configuration_set:
-            if record.supercell_name not in supercell_name:
-                supercell_name.append(record.supercell_name)
-                configuration_id_by_supercell_name[record.supercell_name] = []
-            configuration_id_by_supercell_name[record.supercell_name].append(
-                record.configuration_id
-            )
-        supercell_name.sort()
-        for key, value in configuration_id_by_supercell_name.items():
-            value.sort(key=lambda x: int(x))
-        for _supercell_name in supercell_name:
-            config_ids = configuration_id_by_supercell_name[_supercell_name]
-            if _supercell_name != supercell_name[0]:
-                config_ids.insert(0, "(prev)")
-            if _supercell_name != supercell_name[-1]:
-                config_ids.append("(next)")
-
-        self.supercell_name = supercell_name
-        """list[str]: List of supercell names"""
-
-        self.configuration_id_by_supercell_name = configuration_id_by_supercell_name
-        """dict[str, list[str]]: Dict of supercell name to list of configuration IDs"""
+        self.selected_configuration_name = None
+        """str: The name of the selected configuration"""
 
         self.reset_view()
 
         # -- Set the initial supercell and configuration --
-        if len(self.configuration_set) != 0:
-            self.set_supercell_name(supercell_name[0])
+        if len(self.configuration_list) != 0:
+            self.set_configuration_index(0)
 
     def reset_view(self):
         self.images_a_range = 1
@@ -117,16 +99,16 @@ class ConfigurationSetDashboard:
         """float: The angle for the cabinet view"""
 
         component_params = copy.deepcopy(self._input_component_params)
-        if component_params is None and len(self.configuration_set) != 0:
+        if component_params is None and len(self.configuration_list) != 0:
             # Get first record in configuration set:
-            record = next(iter(self.configuration_set))
+            configuration = next(iter(self.configuration_list))
             component_params = make_prim_component_params(
-                prim=record.configuration.supercell.prim
+                prim=configuration.supercell.prim
             )
         self.component_params = component_params
         """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
         atom type name as key.
-        
+
         Must include "color", "size", and "alpha". Additional bokeh plotting
         parameters like "line_color" and "line_width" may also be included. The
         same attributes must be present for all components.
@@ -185,71 +167,60 @@ class ConfigurationSetDashboard:
                     """,  # noqa: E501
         )
 
-    def set_configuration_name(
+    def set_configuration_index(
         self,
-        configuration_name: str,
+        configuration_index: int,
     ):
-        parts = configuration_name.split("/")
-        if len(parts) != 2:
-            raise ValueError(
-                f"Error setting configuration name: "
-                f"'{configuration_name}' not valid"
-            )
-        supercell_name = parts[0]
-        configuration_id = parts[1]
-        self.set_supercell_name(
-            supercell_name=supercell_name,
-            configuration_id=configuration_id,
-        )
-
-    def set_supercell_name(
-        self,
-        supercell_name: str,
-        configuration_id: typing.Optional[str] = None,
-    ):
-        if len(self.configuration_set) == 0:
+        if len(self.configuration_list) == 0:
             return
-
-        if supercell_name not in self.supercell_name:
+        if configuration_index < 0 or configuration_index >= len(
+            self.configuration_list
+        ):
             raise ValueError(
-                f"Error setting supercell: " f"'{supercell_name}' not found"
-            )
-        config_ids = self.configuration_id_by_supercell_name[supercell_name]
-        if len(config_ids) == 0:
-            raise ValueError(
-                f"Error setting supercell: " f"'{supercell_name}' has no configurations"
-            )
-        if configuration_id is None:
-            i = 0
-            while i < len(config_ids) - 1 and config_ids[i] == "(prev)":
-                i += 1
-            configuration_id = config_ids[i]
-        elif configuration_id not in config_ids:
-            raise ValueError(
-                f"Error setting configuration ID: "
-                f"'{configuration_id}' not found for supercell '{supercell_name}'"
+                f"Error setting configuration index: "
+                f"'{configuration_index}' not valid"
             )
 
-        self.selected_supercell_name = supercell_name
-        self.set_configuration_id(configuration_id)
+        # determine page number from configuration index
+        page_number = int(configuration_index / self.page_size) + 1
 
-    def set_configuration_id(self, configuration_id: str):
-        if len(self.configuration_set) == 0:
-            return
+        # determine configuration index options on the page,
+        # and prefix/postfix with (prev)/(next) if needed
+        begin = (page_number - 1) * self.page_size
+        end = page_number * self.page_size - 1
+        if end >= len(self.configuration_list):
+            end = len(self.configuration_list) - 1
+        options = []
+        if begin != 0:
+            options.append("(prev)")
+        options += [str(i) for i in range(begin, end + 1)]
+        if end < len(self.configuration_list) - 1:
+            options.append("(next)")
 
-        self.selected_configuration_id = configuration_id
-        self.selected_configuration_name = (
-            self.selected_supercell_name + "/" + self.selected_configuration_id
+        # Get configuration name
+        supercell = self.configuration_list[configuration_index].supercell
+        supercell_name = casmconfig.SupercellRecord(supercell).supercell_name
+        configuration_name = f"Index={configuration_index}, Supercell={supercell_name}"
+
+        self.selected_page_number = page_number
+        print("Page number:", self.selected_page_number)
+        self.options = options
+        print("Options:\n", self.options)
+        self.selected_configuration_index = configuration_index
+        print("Configuration index:", self.selected_configuration_index)
+        self.selected_configuration = self.configuration_list[configuration_index]
+        print(
+            "Configuration:\n", xtal.pretty_json(self.selected_configuration.to_dict())
         )
-        record = self.configuration_set.get_by_name(self.selected_configuration_name)
-        self.selected_configuration = record.configuration
+        self.selected_configuration_name = configuration_name
+        print("Configuration name:", self.selected_configuration_name)
 
         a = self.images_a_range
         b = self.images_b_range
         c = self.images_c_range
         m = self.images_m_range
         structure = xtal.make_structure_within(
-            init_structure=record.configuration.to_structure(
+            init_structure=self.selected_configuration.to_structure(
                 excluded_species=[],
             )
         )
@@ -266,36 +237,43 @@ class ConfigurationSetDashboard:
         darkstyle = copy.deepcopy(self.darkstyle)
         dark_bk_input_style = copy.deepcopy(self.dark_bk_input_style)
 
-        # Supercell selection:
-        supercell_name_div = bokeh.models.Div(
-            text="""<b>Supercell name</b>""", width=200
-        )
-        options = ["(None)"]
-        value = "(None)"
-        if self.selected_supercell_name is not None:
-            options = self.supercell_name
-            value = self.selected_supercell_name
-        supercell_name_select = bokeh.models.Select(
-            # title="Supercell name",
-            options=options,
-            value=value,
+        # Page number selection:
+        page_number_div = bokeh.models.Div(text="""<b>Page number</b>""", width=200)
+        page_number_options = ["(None)"]
+        page_number_value = "(None)"
+        if self.selected_page_number is not None:
+
+            def make_label(i):
+                # page 1: (0-99)
+                # page 2: (100-199)
+                # etc.
+                begin = (i - 1) * self.page_size
+                end = i * self.page_size - 1
+                return f"Pg. {i}: ({begin}-{end})"
+
+            n_configs = len(self.configuration_list)
+            max_page_number = int((n_configs - 1) / self.page_size) + 1
+            page_number_options = [
+                (i, make_label(i)) for i in range(1, max_page_number + 1)
+            ]
+            page_number_value = self.selected_page_number
+        page_number_select = bokeh.models.Select(
+            # title="Page number",
+            options=page_number_options,
+            value=page_number_value,
             stylesheets=[dark_bk_input_style],
         )
 
-        # Configuration id selection:
-        configuration_id_div = bokeh.models.Div(
-            text="""<b>Configuration ID</b>""", width=200
+        # Configuration index selection:
+        configuration_index_div = bokeh.models.Div(
+            text="""<b>Configuration index</b>""", width=200
         )
-        options = ["(None)"]
         value = "(None)"
-        if self.selected_supercell_name is not None:
-            options = self.configuration_id_by_supercell_name[
-                self.selected_supercell_name
-            ]
-            value = self.selected_configuration_id
-        configuration_id_select = bokeh.models.Select(
-            # title="Configuration ID",
-            options=options,
+        if self.selected_page_number is not None:
+            value = str(self.selected_configuration_index)
+        configuration_index_select = bokeh.models.Select(
+            # title="Configuration index",
+            options=self.options,
             value=value,
             stylesheets=[dark_bk_input_style],
         )
@@ -411,7 +389,7 @@ class ConfigurationSetDashboard:
             structure: xtal.Structure,
             configuration_name: str,
         ):
-            if len(self.configuration_set) == 0:
+            if len(self.configuration_list) == 0:
                 return
 
             view_xz.set_structure(
@@ -447,82 +425,69 @@ class ConfigurationSetDashboard:
             )
         p_cabinet = view_cabinet.make_plot()
 
-        def do_supercell_name_update(
-            new: str,
-            configuration_id: typing.Optional[str] = None,
+        def do_configuration_index_update(
+            configuration_index: int,
         ):
-            if len(self.configuration_set) == 0:
+            if len(self.configuration_list) == 0:
                 return
-            print("begin do_supercell_name_update")
-            self.set_supercell_name(new, configuration_id=configuration_id)
+            print("begin do_configuration_index_update")
+
+            self.set_configuration_index(configuration_index=configuration_index)
 
             # --- Update the widgets without triggers ---
             self._update_disabled = True
-            supercell_name_select.value = new
-            configuration_id_select.value = self.selected_configuration_id
+            page_number_select.value = self.selected_page_number
+            configuration_index_select.value = str(self.selected_configuration_index)
+            configuration_index_select.options = self.options
             self._update_disabled = False
             # --------------------------------------------
 
-            configuration_id_select.options = self.configuration_id_by_supercell_name[
-                new
-            ]
             set_configuration(
                 structure=self.selected_structure.copy(),
                 configuration_name=self.selected_configuration_name,
             )
             p_cabinet.title.text = view_cabinet.title
-            print("end_supercell_name_update")
+            print("end do_configuration_index_update")
 
-        def supercell_name_update(attr, old, new):
+        def page_number_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger supercell_name_update, new=", new)
-            do_supercell_name_update(new, configuration_id="0")
+            print("Trigger page_number_update, new=", new)
+            configuration_index = (new - 1) * self.page_size
+            do_configuration_index_update(configuration_index=configuration_index)
 
-        supercell_name_select.on_change("value", supercell_name_update)
+        page_number_select.on_change("value", page_number_update)
 
-        def configuration_id_update(attr, old, new):
+        def configuration_index_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger configuration_id_update, new=", new)
+            print("Trigger configuration_index_update, new=", new)
 
             if new == "(next)":
                 # do_supercell_name_update(next_supercell)
                 print("More configurations available")
-                i_supercell = self.supercell_name.index(self.selected_supercell_name)
-                new_supercell_name = self.supercell_name[i_supercell + 1]
-                do_supercell_name_update(new_supercell_name, configuration_id="0")
+                new_page = self.selected_page_number + 1
+                new_configuration_index = (new_page - 1) * self.page_size
+                do_configuration_index_update(
+                    configuration_index=new_configuration_index,
+                )
             elif new == "(prev)":
                 print("Previous configurations available")
-                i_supercell = self.supercell_name.index(self.selected_supercell_name)
-                new_supercell_name = self.supercell_name[i_supercell - 1]
-                config_ids = self.configuration_id_by_supercell_name[new_supercell_name]
-                i = len(config_ids) - 1
-                while i >= 0 and config_ids[i] == "(next)":
-                    i -= 1
-                print("config_ids:\n", config_ids)
-                print("i:", i)
-                print("config_ids[i]:", config_ids[i])
-
-                do_supercell_name_update(
-                    new_supercell_name,
-                    configuration_id=config_ids[i],
+                new_page = self.selected_page_number - 1
+                new_configuration_index = new_page * self.page_size - 1
+                do_configuration_index_update(
+                    configuration_index=new_configuration_index,
                 )
             else:
-                self.set_configuration_id(new)
-                set_configuration(
-                    structure=self.selected_structure,
-                    configuration_name=self.selected_configuration_name,
-                )
-                p_cabinet.title.text = view_cabinet.title
+                do_configuration_index_update(configuration_index=int(new))
 
-        configuration_id_select.on_change("value", configuration_id_update)
+        configuration_index_select.on_change("value", configuration_index_update)
 
         def open_with_vesta(attr):
             # make a temporary directory:
             import subprocess
 
-            if len(self.configuration_set) == 0:
+            if len(self.configuration_list) == 0:
                 return
 
             name = self.selected_configuration_name.replace("/", ".") + ".vasp"
@@ -554,7 +519,7 @@ class ConfigurationSetDashboard:
             self._update_disabled = False
             # --------------------------------------------
 
-            self.set_configuration_id(self.selected_configuration_id)
+            self.set_configuration_index(self.selected_configuration_index)
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
@@ -568,7 +533,7 @@ class ConfigurationSetDashboard:
                 return
 
             self.images_a_range = new
-            self.set_configuration_id(self.selected_configuration_id)
+            self.set_configuration_index(self.selected_configuration_index)
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
@@ -579,7 +544,7 @@ class ConfigurationSetDashboard:
                 return
 
             self.images_b_range = new
-            self.set_configuration_id(self.selected_configuration_id)
+            self.set_configuration_index(self.selected_configuration_index)
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
@@ -590,7 +555,7 @@ class ConfigurationSetDashboard:
                 return
 
             self.images_c_range = new
-            self.set_configuration_id(self.selected_configuration_id)
+            self.set_configuration_index(self.selected_configuration_index)
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
@@ -601,7 +566,7 @@ class ConfigurationSetDashboard:
                 return
 
             self.images_m_range = new
-            self.set_configuration_id(self.selected_configuration_id)
+            self.set_configuration_index(self.selected_configuration_index)
             set_configuration(
                 structure=self.selected_structure,
                 configuration_name=self.selected_configuration_name,
@@ -692,10 +657,10 @@ class ConfigurationSetDashboard:
 
         # Controls layout
         c1 = column(
-            supercell_name_div,
-            supercell_name_select,
-            configuration_id_div,
-            configuration_id_select,
+            page_number_div,
+            page_number_select,
+            configuration_index_div,
+            configuration_index_select,
             width=180,
             margin=(0, 20),
         )

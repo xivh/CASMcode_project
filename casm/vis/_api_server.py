@@ -3,13 +3,10 @@ import copy
 import os
 import pathlib
 import typing
-import webbrowser
 
-from bokeh.embed import server_document
 from flask import (
     Flask,
     jsonify,
-    render_template,
     render_template_string,
     request,
 )
@@ -86,10 +83,7 @@ if False:
     project_path = pathlib.Path("Enum_basics") / "Proj"
 
     if project_path.exists():
-        print("Remove existing project...")
-        print(project_path)
         shutil.rmtree(project_path)
-        print()
     project_path.mkdir(parents=True)
 
     proj = casmproj.Project.init(
@@ -119,44 +113,6 @@ CORS(
         r"/files*": {"origins": allowed_origins},
     },
 )  # The * allows for /api/data and /api/data/
-
-
-# @app.after_request
-# def after_request(response):
-#     print("after_request")
-#     origin = request.headers.get("Origin")
-#     print("Origin:", origin)
-#     print("Allowed origins:", allowed_origins)
-#     if origin in allowed_origins:
-#         print("Adding headers...")
-#         response.headers.add("Access-Control-Allow-Origin", origin)
-#         response.headers.add(
-#             "Access-Control-Allow-Headers", "Content-Type,Authorization"
-#         )
-#         response.headers.add(
-#             "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
-#         )
-#         response.headers.add(
-#             "Access-Control-Allow-Credentials", "true"
-#         )  # If you need credentials.
-#     else:
-#         print("Origin not allowed.")
-#     return response
-
-
-# bokeh_process = subprocess.Popen(
-#     [
-#         "casmbokeh",
-#     ],
-#     stdout=subprocess.PIPE,
-# )
-#
-# time.sleep(5.0)
-#
-#
-# @atexit.register
-# def kill_server():
-#     bokeh_process.kill()
 
 
 def make_sidebar_sections(proj_id):
@@ -194,16 +150,15 @@ documentation_links = [
 jupyter_notebook_url = "http://localhost:8888"
 
 
-def make_standard_params(proj_id):
-    return dict(
-        proj_id=proj_id,
-        sections=make_sidebar_sections(proj_id),
-        documentation_links=documentation_links,
-        jupyter_notebook_url=jupyter_notebook_url,
-    )
-
-
 def get_project_ids():
+    """Get the project IDs from the project_list.json file.
+
+    Returns
+    -------
+    project_ids: list[str]
+        A list of project IDs.
+
+    """
     from casm.project.json_io import read_optional
 
     project_list_path = root / "project_list.json"
@@ -216,6 +171,31 @@ def add_project(
     path: pathlib.Path,
     id: typing.Optional[str] = None,
 ):
+    """Add a project to the project list.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The path to the project directory.
+    id : Optional[str]
+        An ID string used to refer to the project in menus, lists, etc. If None, the
+        project name will be used. Must be unique on this machine for the current user.
+
+    Returns
+    -------
+    data : dict
+        A dictionary with the following keys:
+
+        - id: str
+            The ID of the project.
+        - project_path: str
+            The path to the project directory.
+        - generic_dof: list[str]
+            The generic degrees of freedom on the prim, generic meaning any of
+            "occ", "disp", "strain", or "magspin" (without strain or magspin flavor).
+        - prim_str: str
+            The JSON string representation of the project's prim.
+    """
     import casm.project
     import libcasm.xtal as xtal
     from casm.project.json_io import read_optional, safe_dump
@@ -270,6 +250,20 @@ def add_project(
 
 
 def is_subdirectory(path: pathlib.Path, top: pathlib.Path) -> bool:
+    """Check if `top` is a parent of `path`.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The path to check.
+    top : pathlib.Path
+        The top directory.
+
+    Returns
+    -------
+    is_subdir: bool
+        True if `top` is a parent of `path`, False otherwise.
+    """
     # Resolve the absolute paths
     path = path.resolve()
     top = top.resolve()
@@ -284,7 +278,24 @@ def home():
 
 @app.route("/files/", methods=["POST"])
 def files_post():
-    print("POST /files/")
+    """Get the files in a directory.
+
+    Expects to receive a JSON object with the following format:
+
+    - path: Optional[str]
+        The path to a directory. If not provided, defaults to the user's home directory.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries with the following keys:
+
+        - path: str
+            The path to the file or directory.
+        - is_dir: bool
+            True if the path is a directory, False otherwise.
+
+    """
     in_data = request.get_json()
     top = pathlib.Path(os.environ["HOME"]).resolve()
     path = pathlib.Path(in_data.get("path", top)).resolve()
@@ -314,6 +325,33 @@ def files_post():
 # Put starred projects:
 @app.route("/casm/project/add/", methods=["PUT"])
 def project_add():
+    """Add a project to the project list.
+
+    Expects to receive a JSON object with the following format:
+
+    - project_path: str
+        The path to the project directory.
+    - id: Optional[str]
+        An ID string used to refer to the project in menus, lists, etc. If None, the
+        project name will be used. Must be unique on this machine for the current user.
+
+    Returns
+    -------
+    data : dict
+        A dictionary with the following keys:
+
+        - id: str
+            The ID of the project.
+        - project_path: str
+            The path to the project directory.
+        - generic_dof: list[str]
+            The generic degrees of freedom on the prim, generic meaning any of
+            "occ", "disp", "strain", or "magspin" (without strain or magspin flavor).
+        - prim_str: str
+            The JSON string representation of the project's prim.
+
+    """
+
     from casm.project import project_path as get_project_path
 
     in_data = request.get_json()
@@ -349,6 +387,20 @@ def project_add():
 # Remove projects (from project_list.json only - do not delete files):
 @app.route("/casm/project/<proj_id>/remove/", methods=["PUT"])
 def project_remove(proj_id):
+    """Remove a project from the project list.
+
+    Parameters
+    ----------
+    proj_id : str
+        The ID of the project to remove.
+
+    Returns
+    -------
+    data: dict
+        A dictionary containing either ``"error": str`` (if unsuccessful) or
+        ``"message": str`` (if successful).
+
+    """
     from casm.project.json_io import read_optional, safe_dump
 
     if not isinstance(proj_id, str):
@@ -419,22 +471,26 @@ def project_get():
 
 @app.route("/casm/project/list/")
 def project_list_get():
+    """Get the list of projects.
+
+    Returns
+    -------
+    data: list[dict]
+        A list of dictionaries with the following keys:
+
+        - id: str
+            The ID of the project.
+        - project_path: str
+            The path to the project directory.
+        - generic_dof: list[str]
+            The generic degrees of freedom on the prim, generic meaning any of
+            "occ", "disp", "strain", or "magspin" (without strain or magspin flavor).
+        - prim_str: str
+            The JSON string representation of the project's prim.
+    """
     from casm.project.json_io import read_optional
 
     # read ~/.casmvis/project_list.json:
-
-    # The project_list.json file should have the following format:
-    # An array of objects, each with the following:
-    #
-    # generic_dof: list[string]
-    #     Contains any of: "occ", "string", "disp", "magspin". These are
-    #     the degrees of freedom on the prim without strain or magspin "flavor".
-    # id: string
-    #     An unique ID string for the project. Uses the project name by default.
-    # prim_str: string
-    #     The JSON string representation of the project's prim.
-    # project_path: string
-    #     The path to the project directory.
     project_list_path = root / "project_list.json"
     default_list = list()
     return jsonify(read_optional(path=project_list_path, default=default_list))
@@ -448,32 +504,34 @@ def project_starred_get():
     path = root / "starred.json"
     default_data = dict()
     data = read_optional(path=path, default=default_data)
-    print("Data:")
-    print(data)
     starred = data.get("projects", list())
-    print("Starred projects:")
-    print(starred)
     return jsonify(starred)
 
 
 # Put starred projects:
 @app.route("/casm/project/starred/", methods=["PUT"])
 def project_starred_put():
-    print()
-    print("PUT /casm/project/starred")
+    """Update the starred projects.
 
+    Expects to receive a JSON list of project ID str indicating all the starred
+    projects.
+
+    Returns
+    -------
+    data: dict
+        A dictionary with the following keys
+
+        - message: Optional[str]
+            A message indicating the success of the operation.
+        - error: Optional[str]
+            An error message if the operation failed.
+    """
     from casm.project.json_io import read_optional, safe_dump
 
-    # Accepts a dict with the following format:
-    #
-    # {
-    #   <project_id>: <is_starred: boolean>
-    # }
+    # Accepts a list of str (IDs of starred projects)
 
     # Get the data from the request:
     in_data = request.get_json()
-    print("Input data:")
-    print(in_data)
     if not isinstance(in_data, list):
         return (
             jsonify({"error": "Data must be a list of project_id."}),
@@ -495,109 +553,66 @@ def project_starred_put():
     path = root / "starred.json"
     default_data = dict()
     data = read_optional(path=path, default=default_data)
-
-    print("Original data:")
-    print(data)
-
     data["projects"] = copy.deepcopy(in_data)
-
-    print("Updated data:")
-    print(data)
     safe_dump(data, path=path, force=True)
 
     return jsonify({"message": "Starred projects updated successfully."}), 200
 
 
-@app.route("/casm/project/<proj_id>/enum/list/")
-def project_enum_list_get(proj_id):
+@app.route("/casm/project/<proj_id>/<obj_type>/list/")
+def project_enum_list_get(proj_id, obj_type):
+    """Get the list of IDs of some type of project objects (enum, bset, etc.)
+
+    Parameters
+    ----------
+    proj_id : str
+        The ID of the project.
+    obj_type : str
+        The type of object to list. Can be "enum", "bset", or "twinfinder".
+
+    Returns
+    -------
+    data : list[dict]
+        A list of dictionaries with the following keys:
+        - id: str
+            The ID of the object.
+    """
     proj = cache.get_project(proj_id)
-    data = [{"id": id} for id in proj.enum.all()]
+    if obj_type == "enum":
+        data = [{"id": id} for id in proj.enum.all()]
+    elif obj_type == "bset":
+        data = [{"id": id} for id in proj.bset.all()]
+    elif obj_type == "twinfinder":
+        # path = proj.path / "twinfinder_results.json"
+        data = []
+
+        # if any file in proj.path begins with "twinfinder_", add it to the list:
+        for child in proj.path.iterdir():
+            if child.name.startswith("twinfinder_"):
+                data.append({"id": child.name})
+
     return jsonify(data)
 
 
-@app.route("/casm/project/<proj_id>/enum/<enum_id>/configurations/")
-def project_enum_configurations_get(proj_id, enum_id):
-    bokeh_script = server_document(
-        url="http://localhost:5006/casm/enum/configurations/",
-        arguments=dict(proj_id=proj_id, enum_id=enum_id),
-    )
-    print("Bokeh script:")
-    print(bokeh_script)
-    print()
-
-    css_link_str = render_template_string(
-        css_link_html,
-    )
-    print("CSS link str:")
-    print(css_link_str)
-    print()
-
-    bokeh_script_str = render_template_string(
-        bokeh_script_html,
-        bokeh_script=bokeh_script,
-    )
-    print("Bokeh script str:")
-    print(bokeh_script_str)
-    print()
-
-    return render_template_string(
-        enum_app_html,
-        bokeh_script=bokeh_script,
-        logo_path=logo_path,
-    )
-    # bset_id = "Y"
-    # structure_import_id = "Y"
-    # fit_id = "Y"
-    #
-    # return render_template(
-    #     "enum_configurations.html",
-    #     **make_standard_params(proj_id),
-    # )
-
-
-@app.route("/casm/project/<proj_id>/enum/<enum_id>/vis/configurations/")
-def project_enum_vis_configurations_get(proj_id, enum_id):
-    print(f"Call: /casm/project/{proj_id}/enum/{enum_id}/vis/configurations/")
-    bokeh_script = server_document(
-        url="http://localhost:5006/casm/enum/configurations/",
-        arguments=dict(proj_id=proj_id, enum_id=enum_id),
-    )
-    print("Bokeh script:")
-    print(bokeh_script)
-    print()
-    return jsonify({"bokeh_script": bokeh_script})
-
-
-# config_page_1 endpoint
-@app.route("/casm/project/<proj_id>/config/1/")
-def config_page_1(proj_id):
-    return render_template(
-        "placeholder.html",
-        **make_standard_params(proj_id),
-    )
-
-
-# config_page_2 endpoint
-@app.route("/casm/project/<proj_id>/config/2/")
-def config_page_2(proj_id):
-    return render_template(
-        "placeholder.html",
-        **make_standard_params(proj_id),
-    )
-
-
-# config_page_3 endpoint
-@app.route("/casm/project/<proj_id>/config/3/")
-def config_page_3(proj_id):
-    return render_template(
-        "placeholder.html",
-        **make_standard_params(proj_id),
-    )
+#
+# @app.route("/casm/project/<proj_id>/enum/<enum_id>/vis/configurations/")
+# def project_enum_vis_configurations_get(proj_id, enum_id):
+#     print(f"Call: /casm/project/{proj_id}/enum/{enum_id}/vis/configurations/")
+#     bokeh_script = server_document(
+#         url="http://localhost:5006/casm/enum/configurations/",
+#         arguments=dict(proj_id=proj_id, enum_id=enum_id),
+#     )
+#     print("Bokeh script:")
+#     print(bokeh_script)
+#     print()
+#     return jsonify({"bokeh_script": bokeh_script})
 
 
 def main():
+    """Run the CASM API server."""
+
     # Use argparse to get `debug` and `port` from command line arguments, if they exist:
-    parser = argparse.ArgumentParser(description="Run the CASM visualization server.")
+    parser = argparse.ArgumentParser(description="Run the CASM API server.")
     parser.add_argument(
         "--debug", action="store_true", default=False, help="Enable debug mode"
     )
@@ -608,7 +623,7 @@ def main():
 
     import threading
 
-    print("Starting CASM visualization server...")
+    print("Starting CASM API server...")
 
     def run_app():
         app.run(
@@ -622,5 +637,5 @@ def main():
 
     # time.sleep(1.0)
 
-    # Open the home page in the default web browser
-    webbrowser.open(f"http://localhost:{args.port}/casm")
+    # # Open the home page in the default web browser
+    # webbrowser.open(f"http://localhost:{args.port}/casm")
