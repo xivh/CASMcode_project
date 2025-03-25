@@ -144,6 +144,7 @@ def add_casm_twinfinder_vis(cache: ServerCache):
                     print(f"{obj_id} not found: {path}")
 
                 app = TwinfinderResultsDashboard(
+                    prim=proj.prim,
                     results=results,
                     page_size=100,
                 )

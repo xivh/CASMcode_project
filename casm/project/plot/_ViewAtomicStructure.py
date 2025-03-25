@@ -398,6 +398,9 @@ class ViewAtomicStructure:
         self.structure_name = None
         """str: The name of the structure to view."""
 
+        self.plot = None
+        """bokeh.plotting.figure: The Bokeh figure."""
+
     def update_view_basis(
         self,
         v1: Optional[np.ndarray] = None,
@@ -585,5 +588,7 @@ class ViewAtomicStructure:
             )
 
         _format_plot(p)
+
+        self.plot = p
 
         return p
