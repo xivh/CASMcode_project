@@ -1,12 +1,13 @@
 import copy
+import json
 import math
+import pathlib
 import time
 from typing import Optional, Union
 
 import bokeh.document  # Document
 import bokeh.models  # ColumnDataSource, Slider
 import bokeh.plotting
-import mendeleev
 import numpy as np
 import scipy.spatial.transform
 
@@ -18,6 +19,12 @@ from ._view import (
     make_cartesian_view_basis,
     make_lattice_cell_data,
 )
+
+default_component_params_path = (
+    pathlib.Path(__file__).parent / "default_component_params.json"
+)
+with open(default_component_params_path, "r") as f:
+    default_component_params = json.load(f)
 
 
 def _format_plot(p):
@@ -98,28 +105,14 @@ def make_component_params(
             )
 
     else:
-        # Else, if all chemical names are elements or "Va",
-        # use jmol colors from mendeleev and a gray for Va.
         try:
             for i, chemical_name in enumerate(_chemical_names):
                 if chemical_name.lower() == "va":
-                    color = Va_default_color
-                    size = mendeleev.element("O").vdw_radius_alvarez
-                    line_dash = "dotted"
+                    component_params[chemical_name] = default_component_params["Va"]
                 else:
-                    element = mendeleev.element(chemical_name)
-                    size = element.vdw_radius_alvarez
-                    color = element.jmol_color
-                    line_dash = "solid"
-
-                component_params[chemical_name] = {
-                    "color": color,
-                    "size": size,
-                    "alpha": 0.8,
-                    "line_color": "black",
-                    "line_width": 0.25,
-                    "line_dash": line_dash,
-                }
+                    component_params[chemical_name] = default_component_params[
+                        chemical_name
+                    ]
 
         # As a fallback, use bokeh Colorblind7 palette.
         except Exception:

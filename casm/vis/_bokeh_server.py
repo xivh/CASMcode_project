@@ -172,4 +172,9 @@ def main():
     add_casm_enum_vis(cache=cache)
     add_casm_twinfinder_vis(cache=cache)
 
-    start_applications()
+    try:
+        start_applications()
+    except KeyboardInterrupt:
+        print()
+        print("Shutting down CASM Bokeh server...")
+        print()

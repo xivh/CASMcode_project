@@ -22,6 +22,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "gunicorn",
     "latex2mathml",
     "numpy",
     "scipy",
@@ -42,6 +43,8 @@ all_files  = 1
 [project.scripts]
 casm-api-server = "casm.vis._api_server:main"
 casm-bokeh-server = "casm.vis._bokeh_server:main"
+casm-vis-server = "casm.vis._vis_server:main"
+casm-vis = "casm.vis._casm_vis:main"
 
 [tool.ruff.lint]
 select = ["NPY201", "E", "F", "I"]

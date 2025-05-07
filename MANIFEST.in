@@ -1,6 +1,6 @@
-recursive-include casm/casmvis/assets *
-recursive-include casm/casmvis/static *
-recursive-include casm/casmvis/templates *
+recursive-include casm/vis/dist *
+# recursive-include casm/vis/static *
+# recursive-include casm/vis/templates *
 graft doc
 prune doc/_build
 prune doc/reference/casm/_autosummary
@@ -8,6 +8,7 @@ graft examples
 recursive-include casm *.in
 recursive-include tests *.py
 graft tests/data
+include casm/project/plot/default_component_params.json
 include pyproject.toml
 include setup.py
 include CHANGELOG.md README.md LICENSE
