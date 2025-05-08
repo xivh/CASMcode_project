@@ -4,6 +4,8 @@ import typing
 from bokeh.server.server import Server
 from tornado.ioloop import IOLoop
 
+import casm.vis
+
 _server_manager = None
 
 
@@ -39,15 +41,15 @@ class ServerManager:
         self._server = None
 
         if allow_websocket_origin is None:
+            config = casm.vis.get_config()
+            casmvis_server = config["CASMVIS_SERVER"].split("://")[-1]
+            api_server = config["CASMVIS_API_SERVER"].split("://")[-1]
+            bokeh_server = config["CASMVIS_BOKEH_SERVER"].split("://")[-1]
+
             allow_websocket_origin = [
-                # "localhost:5000",  # casmvis server
-                # "http://127.0.0.1:5000",  # casmvis server
-                # "localhost:5006",  # casmbokeh server
-                # "http://127.0.0.1:5006",  # casmbokeh server
-                "localhost:3000",  # casmvis client
-                "localhost:3010",  # casmvis client - dev
-                "localhost:5000",  # casmvis server
-                "localhost:5006",  # casmbokeh server
+                casmvis_server,  # casmvis client
+                api_server,  # casmvis client - dev
+                bokeh_server,  # casmvis server
             ]
         self.allow_websocket_origin = allow_websocket_origin
 
@@ -84,8 +86,13 @@ class ServerManager:
             If True, open a browser window to the server.
 
         """
+        config = casm.vis.get_config()
+        url = config["CASMVIS_BOKEH_SERVER"]
+        port = int(url.split(":")[-1])
+
         self._server = Server(
             self._applications,
+            port=port,
             io_loop=IOLoop.current(),
             allow_websocket_origin=self.allow_websocket_origin,
             allow_origin=self.allow_origin,

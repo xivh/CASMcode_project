@@ -4,6 +4,10 @@ import subprocess
 import time
 import webbrowser
 
+from casm.vis import get_config
+
+config = get_config()
+
 
 def run_server(script, port):
     """Run a server using gunicorn."""
@@ -19,24 +23,27 @@ def run_bokeh_server():
 
 def main():
     # Run the _bokeh_server.py
-    print("Starting the CASM Bokeh server (localhost:5006) ...")
+    bokeh_url = config["CASMVIS_BOKEH_SERVER"]
+    print(f"Starting the CASM Bokeh server ({bokeh_url})...")
     bokeh_server = run_bokeh_server()
     time.sleep(0.2)
 
     # Run the _api_server.py
-    print("Starting the CASM API server (localhost:5000) ...")
-    api_port = 5000
+    api_url = config["CASMVIS_API_SERVER"]
+    api_port = int(api_url.split(":")[-1])
+    print(f"Starting the CASM API server ({api_url})...")
     api_server = run_server("casm.vis._api_server:app", api_port)
     time.sleep(0.2)
 
     # Run the _vis_server.py
-    print("Starting the casm-vis server (localhost:3010) ...")
-    ui_port = 3010
-    vis_server = run_server("casm.vis._vis_server:app", ui_port)
+    vis_url = config["CASMVIS_SERVER"]
+    vis_port = int(vis_url.split(":")[-1])
+    print(f"Starting the casm-vis server ({vis_url}) ...")
+    vis_server = run_server("casm.vis._vis_server:app", vis_port)
     time.sleep(0.2)
 
-    print("Opening casm-vis (http://localhost:3010/casm) in your browser...")
-    webbrowser.open(f"http://localhost:{ui_port}/casm")
+    print(f"Opening casm-vis ({vis_url}) in your browser...")
+    webbrowser.open(vis_url)
     print("Press Ctrl+C to terminate all servers.")
     print()
 

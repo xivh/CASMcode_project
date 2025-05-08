@@ -5,9 +5,12 @@ import webbrowser
 
 from flask import (
     Flask,
+    jsonify,
     redirect,
     send_from_directory,
 )
+
+from casm.vis import get_config
 
 this_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 dist_dir = this_dir / "dist"
@@ -35,6 +38,11 @@ def redirect_to_casm():
     return redirect("/casm/")
 
 
+@app.route("/api/config/")
+def config():
+    return jsonify(get_config())
+
+
 @app.route("/casm/")
 def serve():
     return send_from_directory(app.static_folder, "index.html")
@@ -48,11 +56,13 @@ def serve_static(path):
 def main():
     """Run the casm-vis server."""
 
-    port = "3010"
+    config = get_config()
+    url = config["CASMVIS_SERVER"]
+    port = int(url.split(":")[-1])
 
     import threading
 
-    print("Starting casm-vis...")
+    print(f"Starting casm-vis ({url})...")
 
     def run_app():
         app.run(host="localhost", port=port)
@@ -64,4 +74,4 @@ def main():
     time.sleep(1.0)
 
     # Open the home page in the default web browser
-    webbrowser.open(f"http://localhost:{port}/casm")
+    webbrowser.open(url)

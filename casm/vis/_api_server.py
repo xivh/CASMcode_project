@@ -13,6 +13,7 @@ from flask import (
 from flask_cors import CORS
 
 from casm.project.plot import ServerCache
+from casm.vis import get_config
 
 # Get paths:
 this_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
@@ -26,85 +27,22 @@ home_html = """
 <html lang="en">
   <head>
     <title>CASM</title>
-    <a href="/casm"><img src="https://prisms-center.github.io/CASMcode_docs/assets/images/logo.svg" alt="CASM logo" width="200"/></a>
     <link rel="stylesheet" href="https://use.typekit.net/tlb5xuy.css"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   </head>
   <body>
-      <div><img src="{{ url_for('static', filename='images/logo.svg') }}" alt="My Image", width="200">
-      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="My Image", width="200">
-      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="My Image", width="200"></div>
-      <h1><a href="/casm/project/X/enum/Y/configurations"> CASM Enum Configurations </a></h1>
+      <div><img src="{{ url_for('static', filename='images/logo.svg') }}" alt="CASM logo", width="200"></div>
   </body>
 </html>
 """  # noqa: E501
-
-enum_app_html = """
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>CASM Enum</title>
-    <a href="/casm"><img src="https://prisms-center.github.io/CASMcode_docs/assets/images/logo.svg" alt="CASM logo" width="200"/></a>
-    <link rel="stylesheet" href="https://use.typekit.net/tlb5xuy.css"/>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <body>
-    {{ bokeh_script|safe }}
-  </body>
-</html>
-"""  # noqa: E501
-
-css_link_html = """
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-"""
-
-bokeh_script_html = """
-{{ bokeh_script|safe }}
-"""
-
-# --- Create a CASM project and enumerate configs ---
-
-if False:
-    import pathlib
-    import shutil
-
-    import casm.project as casmproj
-    import libcasm.configuration as casmconfig
-    import libcasm.xtal.prims as xtal_prims
-    from casm.project.plot import (
-        ConfigurationSetDashboard,
-    )
-
-    prim = casmconfig.Prim(
-        xtal_prims.FCC(
-            a=4.0,
-            occ_dof=["Pb", "Au"],
-        )
-    )
-    project_path = pathlib.Path("Enum_basics") / "Proj"
-
-    if project_path.exists():
-        shutil.rmtree(project_path)
-    project_path.mkdir(parents=True)
-
-    proj = casmproj.Project.init(
-        path=project_path,
-        prim=prim,
-        name="Enum_basics",
-    )
-
-    enum = proj.enum.get("enum.1")
-    enum.occ_by_supercell(max=8)
-
-    # --- Create a Bokeh dashboard for the enumerated configurations ---
-    dash = ConfigurationSetDashboard(
-        configuration_set=enum.configuration_set,
-    )
 
 
 app = Flask(__name__)
+config = get_config()
+casmvis_server = config["CASMVIS_SERVER"]
+
 allowed_origins = [
-    "http://localhost:3000",  # casmvis client
-    "http://localhost:3010",  # casmvis client - dev
+    casmvis_server,  # casmvis
 ]
 CORS(
     app,
@@ -112,42 +50,7 @@ CORS(
         r"/casm*": {"origins": allowed_origins},
         r"/files*": {"origins": allowed_origins},
     },
-)  # The * allows for /api/data and /api/data/
-
-
-def make_sidebar_sections(proj_id):
-    return {
-        "Enum": {
-            "Index": "/casm/project/{}/enum/index".format(proj_id),
-            "Configurations": "/casm/project/{}/enum/configurations".format(proj_id),
-        },
-        "Bset": {
-            "Index": "/casm/project/{}/bset/index".format(proj_id),
-            "Clusters": "/casm/project/{}/bset/clusters".format(proj_id),
-            "Functions": "/casm/project/{}/bset/functions".format(proj_id),
-        },
-        "Structure Import": {
-            "Index": "/casm/project/{}/structure_import/index".format(proj_id),
-            "Hull": "/casm/project/{}/structure_import/hull".format(proj_id),
-        },
-        "Fit": {
-            "Index": "/casm/project/{}/fit/index".format(proj_id),
-            "Hull": "/casm/project/{}/fit/hull".format(proj_id),
-        },
-    }
-
-
-documentation_links = [
-    {
-        "name": "CASM Home",
-        "url": "https://prisms-center.github.io/CASMcode_docs/",
-    },
-    {
-        "name": "CASM Packages",
-        "url": "https://prisms-center.github.io/CASMcode_pydocs/overview/latest/",
-    },
-]
-jupyter_notebook_url = "http://localhost:8888"
+)
 
 
 def get_project_ids():
@@ -594,20 +497,6 @@ def project_enum_list_get(proj_id, obj_type):
     return jsonify(data)
 
 
-#
-# @app.route("/casm/project/<proj_id>/enum/<enum_id>/vis/configurations/")
-# def project_enum_vis_configurations_get(proj_id, enum_id):
-#     print(f"Call: /casm/project/{proj_id}/enum/{enum_id}/vis/configurations/")
-#     bokeh_script = server_document(
-#         url="http://localhost:5006/casm/enum/configurations/",
-#         arguments=dict(proj_id=proj_id, enum_id=enum_id),
-#     )
-#     print("Bokeh script:")
-#     print(bokeh_script)
-#     print()
-#     return jsonify({"bokeh_script": bokeh_script})
-
-
 def main():
     """Run the CASM API server."""
 
@@ -616,19 +505,19 @@ def main():
     parser.add_argument(
         "--debug", action="store_true", default=False, help="Enable debug mode"
     )
-    parser.add_argument(
-        "--port", type=int, default=5000, help="Port to run the server on"
-    )
     args = parser.parse_args()
 
     import threading
 
-    print("Starting CASM API server...")
+    url = config["CASMVIS_API_SERVER"]
+    port = int(url.split(":")[-1])
+
+    print(f"Starting CASM API server ({url})...")
 
     def run_app():
         app.run(
             debug=args.debug,
-            port=args.port,
+            port=port,
         )
 
     # Start the Flask app in a separate thread

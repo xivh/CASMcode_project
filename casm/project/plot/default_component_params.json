@@ -1,0 +1,947 @@
+{
+  "Ac": {
+    "alpha": 0.8,
+    "color": "#70abfa",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 280.0
+  },
+  "Ag": {
+    "alpha": 0.8,
+    "color": "#c0c0c0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 253.0
+  },
+  "Al": {
+    "alpha": 0.8,
+    "color": "#bfa6a6",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 225.0
+  },
+  "Am": {
+    "alpha": 0.8,
+    "color": "#545cf2",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 283.0
+  },
+  "Ar": {
+    "alpha": 0.8,
+    "color": "#80d1e3",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 194.0
+  },
+  "As": {
+    "alpha": 0.8,
+    "color": "#bd80e3",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 188.0
+  },
+  "At": {
+    "alpha": 0.8,
+    "color": "#754f45",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Au": {
+    "alpha": 0.8,
+    "color": "#ffd123",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 232.0
+  },
+  "B": {
+    "alpha": 0.8,
+    "color": "#ffb5b5",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 191.0
+  },
+  "Ba": {
+    "alpha": 0.8,
+    "color": "#00c900",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 303.0
+  },
+  "Be": {
+    "alpha": 0.8,
+    "color": "#c2ff00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 198.0
+  },
+  "Bh": {
+    "alpha": 0.8,
+    "color": "#e00038",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Bi": {
+    "alpha": 0.8,
+    "color": "#9e4fb5",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 254.0
+  },
+  "Bk": {
+    "alpha": 0.8,
+    "color": "#8a4fe3",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 340.0
+  },
+  "Br": {
+    "alpha": 0.8,
+    "color": "#a62929",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 186.0
+  },
+  "C": {
+    "alpha": 0.8,
+    "color": "#909090",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 177.0
+  },
+  "Ca": {
+    "alpha": 0.8,
+    "color": "#3dff00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 262.0
+  },
+  "Cd": {
+    "alpha": 0.8,
+    "color": "#ffd98f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 249.0
+  },
+  "Ce": {
+    "alpha": 0.8,
+    "color": "#ffffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 288.0
+  },
+  "Cf": {
+    "alpha": 0.8,
+    "color": "#a136d4",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 305.0
+  },
+  "Cl": {
+    "alpha": 0.8,
+    "color": "#1ff01f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 182.0
+  },
+  "Cm": {
+    "alpha": 0.8,
+    "color": "#785ce3",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 305.0
+  },
+  "Cn": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Co": {
+    "alpha": 0.8,
+    "color": "#f090a0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 240.0
+  },
+  "Cr": {
+    "alpha": 0.8,
+    "color": "#8a99c7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 245.0
+  },
+  "Cs": {
+    "alpha": 0.8,
+    "color": "#57178f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 348.0
+  },
+  "Cu": {
+    "alpha": 0.8,
+    "color": "#c88033",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 238.0
+  },
+  "Db": {
+    "alpha": 0.8,
+    "color": "#d1004f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Ds": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Dy": {
+    "alpha": 0.8,
+    "color": "#1fffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 287.0
+  },
+  "Er": {
+    "alpha": 0.8,
+    "color": "#00e675",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 283.0
+  },
+  "Es": {
+    "alpha": 0.8,
+    "color": "#b31fd4",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 270.0
+  },
+  "Eu": {
+    "alpha": 0.8,
+    "color": "#61ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 287.0
+  },
+  "F": {
+    "alpha": 0.8,
+    "color": "#90e050",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 146.0
+  },
+  "Fe": {
+    "alpha": 0.8,
+    "color": "#e06633",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 244.0
+  },
+  "Fl": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Fm": {
+    "alpha": 0.8,
+    "color": "#b31fba",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Fr": {
+    "alpha": 0.8,
+    "color": "#420066",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Ga": {
+    "alpha": 0.8,
+    "color": "#c28f8f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 232.0
+  },
+  "Gd": {
+    "alpha": 0.8,
+    "color": "#45ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 283.0
+  },
+  "Ge": {
+    "alpha": 0.8,
+    "color": "#668f8f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 229.0
+  },
+  "H": {
+    "alpha": 0.8,
+    "color": "#ffffff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 120.0
+  },
+  "He": {
+    "alpha": 0.8,
+    "color": "#d9ffff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 143.0
+  },
+  "Hf": {
+    "alpha": 0.8,
+    "color": "#4dc2ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 263.0
+  },
+  "Hg": {
+    "alpha": 0.8,
+    "color": "#b8b8d0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 245.0
+  },
+  "Ho": {
+    "alpha": 0.8,
+    "color": "#00ff9c",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 281.0
+  },
+  "Hs": {
+    "alpha": 0.8,
+    "color": "#e6002e",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "I": {
+    "alpha": 0.8,
+    "color": "#940094",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 204.0
+  },
+  "In": {
+    "alpha": 0.8,
+    "color": "#a67573",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 243.0
+  },
+  "Ir": {
+    "alpha": 0.8,
+    "color": "#175487",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 241.0
+  },
+  "K": {
+    "alpha": 0.8,
+    "color": "#8f40d4",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 273.0
+  },
+  "Kr": {
+    "alpha": 0.8,
+    "color": "#5cb8d1",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 207.0
+  },
+  "La": {
+    "alpha": 0.8,
+    "color": "#70d4ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 298.0
+  },
+  "Li": {
+    "alpha": 0.8,
+    "color": "#cc80ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 212.0
+  },
+  "Lr": {
+    "alpha": 0.8,
+    "color": "#c70066",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Lu": {
+    "alpha": 0.8,
+    "color": "#00ab24",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 274.0
+  },
+  "Lv": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Mc": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Md": {
+    "alpha": 0.8,
+    "color": "#b30da6",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Mg": {
+    "alpha": 0.8,
+    "color": "#8aff00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 251.0
+  },
+  "Mn": {
+    "alpha": 0.8,
+    "color": "#9c7ac7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 245.0
+  },
+  "Mo": {
+    "alpha": 0.8,
+    "color": "#54b5b5",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 245.0
+  },
+  "Mt": {
+    "alpha": 0.8,
+    "color": "#eb0026",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "N": {
+    "alpha": 0.8,
+    "color": "#3050f8",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 166.0
+  },
+  "Na": {
+    "alpha": 0.8,
+    "color": "#ab5cf2",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 250.0
+  },
+  "Nb": {
+    "alpha": 0.8,
+    "color": "#73c2c9",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 256.0
+  },
+  "Nd": {
+    "alpha": 0.8,
+    "color": "#c7ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 295.0
+  },
+  "Ne": {
+    "alpha": 0.8,
+    "color": "#b3e3f5",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 158.0
+  },
+  "Nh": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Ni": {
+    "alpha": 0.8,
+    "color": "#50d050",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 240.0
+  },
+  "No": {
+    "alpha": 0.8,
+    "color": "#bd0d87",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Np": {
+    "alpha": 0.8,
+    "color": "#0080ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 282.0
+  },
+  "O": {
+    "alpha": 0.8,
+    "color": "#ff0d0d",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 150.0
+  },
+  "Os": {
+    "alpha": 0.8,
+    "color": "#266696",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 248.0
+  },
+  "P": {
+    "alpha": 0.8,
+    "color": "#ff8000",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 190.0
+  },
+  "Pa": {
+    "alpha": 0.8,
+    "color": "#00a1ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 288.0
+  },
+  "Pb": {
+    "alpha": 0.8,
+    "color": "#575961",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 260.0
+  },
+  "Pd": {
+    "alpha": 0.8,
+    "color": "#006985",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 215.0
+  },
+  "Pm": {
+    "alpha": 0.8,
+    "color": "#a3ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Po": {
+    "alpha": 0.8,
+    "color": "#ab5c00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Pr": {
+    "alpha": 0.8,
+    "color": "#d9ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 292.0
+  },
+  "Pt": {
+    "alpha": 0.8,
+    "color": "#d0d0e0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 229.0
+  },
+  "Pu": {
+    "alpha": 0.8,
+    "color": "#006bff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 281.0
+  },
+  "Ra": {
+    "alpha": 0.8,
+    "color": "#007d00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Rb": {
+    "alpha": 0.8,
+    "color": "#702eb0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 321.0
+  },
+  "Re": {
+    "alpha": 0.8,
+    "color": "#267dab",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 249.0
+  },
+  "Rf": {
+    "alpha": 0.8,
+    "color": "#cc0059",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Rg": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Rh": {
+    "alpha": 0.8,
+    "color": "#0a7d8c",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 244.0
+  },
+  "Rn": {
+    "alpha": 0.8,
+    "color": "#428296",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 240.0
+  },
+  "Ru": {
+    "alpha": 0.8,
+    "color": "#248f8f",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 246.0
+  },
+  "S": {
+    "alpha": 0.8,
+    "color": "#ffff30",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 189.0
+  },
+  "Sb": {
+    "alpha": 0.8,
+    "color": "#9e63b5",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 247.0
+  },
+  "Sc": {
+    "alpha": 0.8,
+    "color": "#e6e6e6",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 258.0
+  },
+  "Se": {
+    "alpha": 0.8,
+    "color": "#ffa100",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 182.0
+  },
+  "Sg": {
+    "alpha": 0.8,
+    "color": "#d90045",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "Si": {
+    "alpha": 0.8,
+    "color": "#f0c8a0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 219.0
+  },
+  "Sm": {
+    "alpha": 0.8,
+    "color": "#8fffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 290.0
+  },
+  "Sn": {
+    "alpha": 0.8,
+    "color": "#668080",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 242.0
+  },
+  "Sr": {
+    "alpha": 0.8,
+    "color": "#00ff00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 284.0
+  },
+  "Ta": {
+    "alpha": 0.8,
+    "color": "#4da6ff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 253.0
+  },
+  "Tb": {
+    "alpha": 0.8,
+    "color": "#30ffc7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 279.0
+  },
+  "Tc": {
+    "alpha": 0.8,
+    "color": "#3b9e9e",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 244.0
+  },
+  "Te": {
+    "alpha": 0.8,
+    "color": "#d47a00",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 199.0
+  },
+  "Th": {
+    "alpha": 0.8,
+    "color": "#00baff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 293.0
+  },
+  "Ti": {
+    "alpha": 0.8,
+    "color": "#bfc2c7",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 246.0
+  },
+  "Tl": {
+    "alpha": 0.8,
+    "color": "#a6544d",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 247.0
+  },
+  "Tm": {
+    "alpha": 0.8,
+    "color": "#00d452",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 279.0
+  },
+  "Ts": {
+    "alpha": 0.8,
+    "color": null,
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": null
+  },
+  "U": {
+    "alpha": 0.8,
+    "color": "#008fff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 271.0
+  },
+  "V": {
+    "alpha": 0.8,
+    "color": "#a6a6ab",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 242.0
+  },
+  "Va": {
+    "alpha": 0.8,
+    "color": "#dcdcdc",
+    "line_color": "black",
+    "line_dash": "dotted",
+    "line_width": 0.25,
+    "size": 150.0
+  },
+  "W": {
+    "alpha": 0.8,
+    "color": "#2194d6",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 257.0
+  },
+  "Xe": {
+    "alpha": 0.8,
+    "color": "#429eb0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 228.0
+  },
+  "Y": {
+    "alpha": 0.8,
+    "color": "#94ffff",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 275.0
+  },
+  "Yb": {
+    "alpha": 0.8,
+    "color": "#00bf38",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 280.0
+  },
+  "Zn": {
+    "alpha": 0.8,
+    "color": "#7d80b0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 239.0
+  },
+  "Zr": {
+    "alpha": 0.8,
+    "color": "#94e0e0",
+    "line_color": "black",
+    "line_dash": "solid",
+    "line_width": 0.25,
+    "size": 252.0
+  }
+}
+
