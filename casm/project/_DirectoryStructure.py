@@ -414,8 +414,31 @@ class DirectoryStructure:
 
     # -- Enumerations --------
 
-    # Re-organized in v2 use hierarchy: calctype / supercell / config
+    # Re-organized in v2 to use the hierarchy: calctype / config
     # to make it easier to work with all calculations of a given type
+    #
+    # Example:
+    #
+    # .. code-block:: none
+    #
+    #     training_data/
+    #     └── calctype.<calctype_id>/
+    #         └── <configname>/
+    #             ├── (calculation specific input & output files)
+    #             ├── POS
+    #             ├── config.json
+    #             ├── structure.json
+    #             └── structure_with_properties.json
+    #
+    # Configuration names for training data directories have the following standard
+    # conventions:
+    #
+    # - Configuration from a ConfigurationSet: ConfigurationRecord.configuration_name
+    # - Configuration from a list: "config_list/<id>", where <id> is the index of the
+    #   configuration in the list
+    # - LocalConfiguration for a list: "event.<event_id>/<id>/<which>", where
+    #   <event_id> is the event id, <id> is the index of the configuration in the local
+    #   configuration list, and <which> can be "initial", "final", "mid", or "neb-<n>"
 
     def enum_dir(self, enum: str):
         """Return path to directory contain enumeration info (new v2.0)"""

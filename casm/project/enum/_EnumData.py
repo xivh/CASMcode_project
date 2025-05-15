@@ -34,6 +34,11 @@ class EnumData:
         <project>/
         └── enumerations/
             └── enum.<id>/
+                ├── kmc_events/
+                │   └── event.<id>/
+                │       ├── equivalents_info.json
+                │       ├── event.json
+                │       └── local_configuration_list.json
                 ├── training_data/
                 ├── meta.json
                 ├── scel_set.json
@@ -63,23 +68,22 @@ class EnumData:
     .. code-block:: none
 
         training_data/
-        └── calctype.<calctype_id>/
-            └── <supercell_name>/
-                └── <configuration_id>/
+            └── calctype.<calctype_id>/
+                └── <configname>/
                     ├── (calculation specific input & output files)
                     ├── POS
                     ├── config.json
                     ├── structure.json
                     └── structure_with_properties.json
 
-    The `calculationg_settings` directory is a standard location for storing calculation
+    The `calculation_settings` directory is a standard location for storing calculation
     settings for a particular calculation type inside a CASM project directory:
 
     .. code-block:: none
 
         <project>/
         └── calculation_settings/
-            ├── calctype.<calctype_id>/
+            └── calctype.<calctype_id>/
 
 
 

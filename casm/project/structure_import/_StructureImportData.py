@@ -10,12 +10,16 @@ from casm.project.json_io import read_optional, safe_dump
 if TYPE_CHECKING:
     from casm.project import Project
 
+# Fix:
+# - lattice_mapping_from='initial_configuration', 'search', 'user',
+# - atom_mapping_translation_from='search', 'zero', 'user'
+# - atom_mapping_permutation_from='search', 'identity', 'user'
+
 
 class StructureRecord:
     def __init__(
         self,
         structure: xtal.Structure,
-        id: str,
         relpath: Optional[pathlib.Path] = None,
         ideal_lattice: Optional[xtal.Lattice] = None,
         ideal_structure: Optional[xtal.Structure] = None,
@@ -34,8 +38,6 @@ class StructureRecord:
         ----------
         structure: libcasm.xtal.Structure
             A structure, with or without calculated properties
-        id: str
-            Identifier for the structure
         relpath: Optional[pathlib.Path] = None
             Relative path to the calculation directory, from the project directory.
         ideal_lattice: Optional[libcasm.xtal.Lattice] = None
@@ -60,9 +62,6 @@ class StructureRecord:
         """
         self.structure = structure
         """libcasm.xtal.Structure: Structure, with or without calculated properties"""
-
-        self.id = id
-        """str: Identifier for the structure"""
 
         self.relpath = relpath
         """Optional[pathlib.Path]: Relative path to the calculation directory, from
