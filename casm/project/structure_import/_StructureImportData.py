@@ -218,8 +218,9 @@ class StructureRecord:
             )
 
         return StructureRecord(
-            relpath=pathlib.Path(data["relpath"]),
             structure=xtal.Structure.from_dict(data["structure"]),
+            id=id,
+            relpath=pathlib.Path(data["relpath"]),
             ideal_lattice=ideal_lattice,
             ideal_structure=ideal_structure,
             ideal_configuration=ideal_configuration,
