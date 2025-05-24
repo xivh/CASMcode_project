@@ -45,7 +45,7 @@ def autoconfigure():
 
 def simple_style():
     """Reduce header sizes for a simple style."""
-    from IPython.core.display import HTML, display
+    from IPython.display import HTML, display
 
     # /*
     # :root {
