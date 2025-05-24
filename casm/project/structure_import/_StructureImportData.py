@@ -253,7 +253,7 @@ class StructureImportData:
       a canonical form in a canonical supercell. The imported configurations will be
       inserted into the enumeration's ConfigurationSet.
     - `map_without_reorientation`: bool, If true, imported structures are mapped to
-      a configuration without reorientation. TThe imported configurations will be
+      a configuration without reorientation. The imported configurations will be
       inserted into the enumeration's Configuration list. Note, both
       `map_to_canonical_form` and `map_without_reorientation` can be true.
 
