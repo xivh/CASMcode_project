@@ -150,7 +150,7 @@ class ConfigCorrCalculator:
             return np.vstack(
                 [self.per_supercell(xi) for xi in x],
             )
-        return self.get(config).per_supercell().copy()
+        return self._get(config).per_supercell().copy()
 
     def per_unitcell(
         self,
