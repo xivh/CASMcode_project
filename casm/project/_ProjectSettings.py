@@ -25,7 +25,10 @@ class ProjectSettings(object):
             Project settings as a dictionary.
         """
 
-        self.cluster_expansions = data.get("cluster_expansions", {})
+        self.cluster_expansions = {
+            i: ClexDescription(**v)
+            for i, v in data.get("cluster_expansions", {}).items()
+        }
         """dict[str, ClexDescription]: Named cluster expansions
         
         The named cluster expansions make it easier to select the choice of 
