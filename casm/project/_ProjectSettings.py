@@ -212,7 +212,7 @@ class ProjectSettings(object):
 
     def to_dict(self):
         return {
-            "cluster_expansions": self.cluster_expansions,
+            "cluster_expansions": {i: v.to_dict() for i, v in self.cluster_expansions.items()},
             "crystallography_tol": self.crystallography_tol,
             "default_clex": self.default_clex_name,
             "lin_alg_tol": self.lin_alg_tol,
