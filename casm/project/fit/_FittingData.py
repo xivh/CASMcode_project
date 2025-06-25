@@ -89,6 +89,17 @@ class FittingData:
         path = self.fit_dir / "meta.json"
         self.meta = read_optional(path, default=dict())
 
+        # read fitting_data.json if it exists
+        # should use to_dict method, but this class needs to be reworked
+        path = self.fit_dir / "fitting_data.json"
+        data = read_optional(path, default=None)
+        if data is not None:
+            self.names = np.array(data['names'])
+            self.parametric_compositions = np.array(data['parametric_compositions'])
+            self.mol_compositions = np.array(data['mol_compositions'])
+            self.correlations_per_unitcell = np.array(data['correlations_per_unitcell'])
+            self.formation_energies = np.array(data['formation_energies'])
+
     def commit(self, verbose: bool = True):
         """Write meta.json
 
@@ -113,6 +124,19 @@ class FittingData:
             )
         elif path.exists():
             path.unlink()
+        
+        # write fitting_data.json
+        path = self.fit_dir / "fitting_data.json"
+        data = self.to_dict()
+        if map(len, data.values()) > 0:
+            safe_dump(
+                data=data,
+                path=path,
+                quiet=quiet,
+                force=True
+            )
+        elif path.exists():
+            path.unlink
 
     def clear(self):
         """Clear fitting data"""
@@ -133,7 +157,7 @@ class FittingData:
         return s.strip()
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data, proj: "Project", id: str):
         """Construct FittingData from a dictionary
 
         Parameters
@@ -153,7 +177,7 @@ class FittingData:
 
 
         """
-        fitting_data = FittingData()
+        fitting_data = FittingData(proj, id)
 
         fitting_data.names = data["names"]
         fitting_data.parametric_compositions = np.array(data["parametric_compositions"])
@@ -271,6 +295,8 @@ def make_calculated_fitting_data(
     composition_converter: comp.CompositionConverter,
     clexulator: clex.Clexulator,
     prim_neighbor_list: clex.PrimNeighborList,
+    proj: "Project",
+    id: str
 ) -> FittingData:
     """For a given `config_props` list, constructs FittingData which
     which holds compositions, correlations per unitcell, formation energies
@@ -336,7 +362,7 @@ def make_calculated_fitting_data(
         # in config props. Should it be like this??
         formation_energies.append(config_prop["formation_energy"])
 
-    fitting_data = FittingData()
+    fitting_data = FittingData(proj, id)
     fitting_data.names = names
     fitting_data.correlations_per_unitcell = np.array(correlations_per_unitcell)
     fitting_data.mol_compositions = np.array(mol_compositions)
@@ -352,6 +378,8 @@ def make_uncalculated_fitting_data(
     composition_converter: comp.CompositionConverter,
     clexulator: clex.Clexulator,
     prim_neighbor_list: clex.PrimNeighborList,
+    proj: "Project",
+    id: str
 ) -> FittingData:
     """For a given `config_list` list, constructs FittingData which
     which holds compositions, correlations per unitcell of all the configurations
@@ -412,7 +440,7 @@ def make_uncalculated_fitting_data(
         mol_compositions.append(mol_comp)
         parametric_compositions.append(param_comp)
 
-    fitting_data = FittingData()
+    fitting_data = FittingData(proj, id)
     fitting_data.names = names
     fitting_data.correlations_per_unitcell = correlations_per_unitcell
     fitting_data.mol_compositions = mol_compositions
