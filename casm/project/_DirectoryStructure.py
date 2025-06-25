@@ -64,7 +64,7 @@ class DirectoryStructure:
     def all_ref(self, calctype: str):
         """Check filesystem directory structure and return list of all ref names for
         a given calctype"""
-        return self.__all_settings("ref", self.calc_settings_dir(calctype))
+        return self.__all_settings("ref", self.calctype_settings_dir(calctype))
 
     def all_clex_name(self):
         """Check filesystem directory structure and return list of all cluster
@@ -84,13 +84,13 @@ class DirectoryStructure:
         )
 
     def all_import(self):
-        return self.__all_settings("import", self.__import_dir)
+        return self.__all_settings("import", self.path / self.__import_dir)
 
     def all_fit(self):
-        return self.__all_settings("fit", self.__fit_dir)
+        return self.__all_settings("fit", self.path / self.__fit_dir)
 
     def all_system(self):
-        return self.__all_settings("system", self.__system_dir)
+        return self.__all_settings("system", self.path / self.__system_dir)
 
     # ** File and Directory paths **
 
