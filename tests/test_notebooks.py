@@ -2,6 +2,8 @@ import os
 import pathlib
 import shutil
 
+import pytest
+
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 
@@ -18,6 +20,7 @@ def execute_notebook(exec_dir: pathlib.Path, notebook_path: pathlib.Path):
             assert False, f"Failed executing {notebook_path}"
 
 
+@pytest.mark.requires_ase
 def test_SiGe_occ_part1():
     exec_dir = repo_dir / "notebooks"
     notebook_path = exec_dir / "SiGe_occ_part1.ipynb"

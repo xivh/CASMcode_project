@@ -1,10 +1,13 @@
 import os
 import shutil
 
-import casm.project.ase_utils as ase_utils
+import pytest
 
 
+@pytest.mark.requires_ase
 def test_ZrO_composition_axes_1(ZrO_tmp_project):
+    import casm.project.ase_utils as ase_utils
+
     project = ZrO_tmp_project
     enum_id = "occ_by_supercell.1"
     calctype_id = "vasp.default"

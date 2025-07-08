@@ -101,6 +101,11 @@ Auto           ! fully automatic
 """
         )
 
+    # !! CHANGE THIS AS NECESSARY !!
+    # Set VASP_PP_PATH
+    vasp_pp_path = input_dir / "dummy_vasp_potentials/"
+    os.environ["VASP_PP_PATH"] = str(vasp_pp_path.resolve())
+
     return project
 
 

@@ -35,4 +35,13 @@ jobs:
       - name: make test
         shell: bash
         run: |
-          python -m pytest -rsap -x tests
+          python -m pytest -rsap -x -m "not requires_ase" tests
+
+      - name: Install ase
+        run: |
+          pip install ase
+
+      - name: make test (requires_ase)
+        shell: bash
+        run: |
+          python -m pytest -rsap -x -m requires_ase tests
