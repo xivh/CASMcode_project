@@ -11,13 +11,11 @@ from casm.project.plot import (
     ConfigurationListDashboard,
     ConfigurationSetDashboard,
     ServerCache,
-    TwinfinderResultsDashboard,
     add_application,
     start_applications,
 )
 
 from ._functions import (
-    get_optional_argument,
     get_required_argument,
 )
 
@@ -108,69 +106,11 @@ def add_casm_enum_vis(cache: ServerCache):
     )
 
 
-def add_casm_twinfinder_vis(cache: ServerCache):
-    from casm.twinfinder import (
-        load_twinfinder_results,
-    )
-
-    bokeh_app_path = "/casm/twinfinder/vis/"
-
-    def modify_doc(doc):
-        print("Begin /casm/twinfinder/vis/")
-
-        proj_id = get_required_argument(doc, "proj_id")
-        obj_id = get_required_argument(doc, "obj_id")
-        view_id = get_required_argument(doc, "view_id")
-        state = get_optional_argument(doc, "state", default=None)
-        print("proj_id:", proj_id)
-        print("obj_id:", obj_id)
-        print("view_id:", view_id)
-
-        app_key = (bokeh_app_path, proj_id, obj_id, view_id)
-
-        app = cache.app.get(app_key)
-        if app is None:
-            # If not already existing, create a new obj
-            proj = cache.get_project(proj_id)
-
-            if view_id == "twinfinder_results":
-                path = proj.path / obj_id
-                results = []
-                if path.exists():
-                    results = load_twinfinder_results(
-                        path=path,
-                    )
-                else:
-                    print(f"{obj_id} not found: {path}")
-
-                app = TwinfinderResultsDashboard(
-                    prim=proj.prim,
-                    results=results,
-                    page_size=100,
-                )
-            else:
-                raise ValueError(f"Unknown view_id: {view_id}")
-            cache.app[app_key] = app
-
-        # Overall layout
-        layout = app.make_layout(doc=doc, state=state)
-
-        doc.add_root(layout)
-
-        if darkdetect.isDark():
-            doc.theme = "carbon"
-
-    add_application(
-        url=pathlib.Path(bokeh_app_path),
-        app=modify_doc,
-    )
-
-
 def main():
     cache = ServerCache()
 
+    # casm project visualizations
     add_casm_enum_vis(cache=cache)
-    add_casm_twinfinder_vis(cache=cache)
 
     try:
         start_applications()

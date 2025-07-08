@@ -471,7 +471,7 @@ def project_enum_list_get(proj_id, obj_type):
     proj_id : str
         The ID of the project.
     obj_type : str
-        The type of object to list. Can be "enum", "bset", or "twinfinder".
+        The type of object to list. Can be "enum" or "bset".
 
     Returns
     -------
@@ -485,14 +485,8 @@ def project_enum_list_get(proj_id, obj_type):
         data = [{"id": id} for id in proj.enum.all()]
     elif obj_type == "bset":
         data = [{"id": id} for id in proj.bset.all()]
-    elif obj_type == "twinfinder":
-        # path = proj.path / "twinfinder_results.json"
+    else:
         data = []
-
-        # if any file in proj.path begins with "twinfinder_", add it to the list:
-        for child in proj.path.iterdir():
-            if child.name.startswith("twinfinder_"):
-                data.append({"id": child.name})
 
     return jsonify(data)
 
