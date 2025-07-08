@@ -22,13 +22,17 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "bokeh",
+    "darkdetect",
+    "flask",
+    "flask_cors",
     "gunicorn",
     "latex2mathml",
     "numpy",
     "scipy",
-    "libcasm-mapping>=2.0a6",
-    "libcasm-clexmonte>=2.0a6",
-    "casm-bset>=2.0a4",
+    "libcasm-mapping>=2.1.0",
+    "libcasm-clexmonte>=2.1.0",
+    "casm-bset>=2.0.0",
 ]
 
 [project.urls]
