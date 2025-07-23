@@ -19,6 +19,81 @@ if TYPE_CHECKING:
     from ._EnumData import EnumData
 
 
+def _run_in(
+    args: Union[list[str], list[list[str]]],
+    working_dir: pathlib.Path,
+    write_log: bool = True,
+    log_base: str = "log",
+):
+    """Run a subprocess command in the given working directory.
+
+    Parameters
+    ----------
+    args: Union[list[str], list[list[str]]]
+        The arguments to run for one (if ``list[str]``) or more (if
+        ``list[list[str]]``) subprocesses. The subprocesses will be run in the
+        calculation directory for each selected configuration.
+    working_dir: pathlib.Path
+        The working directory in which to run the command. This is typically the
+        calculation directory for a configuration.
+    write_log: bool = True
+        If True, write the standard output and error of the command to files named
+        `<log_base>.out.txt` and `<log_base>.err.txt` in the working
+        directory. If False, the output is printed to the console.
+    log_base: str = "log"
+        Base name for the log files. If `write_log` is True, the output files will
+        be named `<log_base>.out.txt` and `<log_base>.err.txt`.
+    """
+    import subprocess
+
+    working_dir.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(args[0], str):
+        multi_args = [args]
+    else:
+        multi_args = args
+
+    def _make_filename(parent: pathlib.Path, base: str, ext: str) -> pathlib.Path:
+        """Create a unique filename."""
+        filename = parent / f"{base}.{ext}"
+        if filename.exists():
+            index = 1
+            filename = parent / f"{base}.{index}.{ext}"
+            while filename.exists():
+                index += 1
+                filename = parent / f"{base}.{index}.{ext}"
+        return filename
+
+    if write_log:
+        stdout_filename = _make_filename(
+            parent=working_dir, base=log_base + ".out", ext="txt"
+        )
+        stderr_filename = _make_filename(
+            parent=working_dir, base=log_base + ".err", ext="txt"
+        )
+
+        # Run the command in the working directory,
+        # save stdout and stderr to files
+        with open(stdout_filename, "w") as stdout_file:
+            with open(stderr_filename, "w") as stderr_file:
+                for single_args in multi_args:
+                    subprocess.run(
+                        single_args,
+                        stdout=stdout_file,
+                        stderr=stderr_file,
+                        cwd=working_dir,
+                    )
+    else:
+        # Run the command in the working directory,
+        # print stdout and stderr to console
+        for single_args in multi_args:
+            subprocess.run(
+                single_args,
+                cwd=working_dir,
+                check=True,
+            )
+
+
 class ConfigSelectionRecord:
     """A ConfigSelection record.
 
@@ -115,7 +190,7 @@ class ConfigSelectionRecord:
     def configuration(self) -> Configuration:
         """libcasm.configuration.Configuration: The configuration."""
         if self.source == "config_set.json":
-            return self._enum.configuration_set.get_by_name(self.name)
+            return self._enum.configuration_set.get_by_name(self.name).configuration
         elif self.source == "config_list.json":
             try:
                 index = int(self.name.split("/")[-1])
@@ -397,6 +472,116 @@ class ConfigSelectionRecord:
             The value associated with the key.
         """
         return self.data.get(key, default_value)
+
+    def run_subprocess(
+        self,
+        args: Union[list[str], list[list[str]]],
+        write_log: bool = False,
+    ):
+        """Run a subprocess command in the calculation directory (whether or not the
+        configuration is selected)
+
+        Parameters
+        ----------
+        args: Union[list[str], list[list[str]]]
+            The arguments to run for one (if ``list[str]``) or more (if
+            ``list[list[str]]``) subprocesses. The subprocesses will be run in the
+            calculation directory for each selected configuration.
+        write_log: bool = False
+            If True, write the standard output and error of the command to files named
+            `<command_name>.out.txt` and `<command_name>.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        _run_in(
+            args=args,
+            working_dir=self.calc_dir,
+            write_log=write_log,
+            log_base="subprocess",
+        )
+
+    def run_shell_script(
+        self,
+        script: pathlib.Path,
+        write_log: bool = True,
+    ):
+        """Run a shell script in the calculation directory (whether or not the
+        configuration is selected)
+
+        Parameters
+        ----------
+        config_selection: ConfigSelection
+            A selection of Configurations to run the script for. All selected
+            configurations will have the script run.
+        script: pathlib.Path
+            The path to the shell script to run. The script will be copied into the
+            the calculation directory for each selected configuration. The script will
+            then be run with the working directory set to the calculation directory.
+            The shell to use is determined by the `SHELL` environment variable,
+            defaulting to `/bin/bash`.
+        write_log: bool = True
+            If True, write the standard output and error of the script to files named
+            `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        import os
+        import shutil
+
+        # Detect the default shell
+        default_shell = os.environ.get("SHELL", "/bin/bash")
+
+        args = [default_shell, script.name]
+
+        calc_dir = self.calc_dir
+        calc_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy the script to the calculation directory
+        script_dest = calc_dir / script.name
+        shutil.copy(script, script_dest)
+
+        _run_in(
+            args=args,
+            working_dir=calc_dir,
+            write_log=write_log,
+        )
+
+    def run_python_script(
+        self,
+        script: pathlib.Path,
+        write_log: bool = True,
+    ):
+        """Run a Python script in the calculation directory (whether or not the
+        configuration is selected)
+
+        Parameters
+        ----------
+        config_selection: ConfigSelection
+            A selection of Configurations to run the script for. All selected
+            configurations will have the script run.
+        script: pathlib.Path
+            The path to the Python script to run. The script will be copied into the
+            calculation directory for each selected configuration. The script will then
+            be run with the working directory set to the calculation directory.
+        write_log: bool = True
+            If True, write the standard output and error of the script to files named
+            `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        import shutil
+
+        args = ["python", script.name]
+
+        calc_dir = self.calc_dir
+        calc_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy the script to the calculation directory
+        script_dest = calc_dir / script.name
+        shutil.copy(script, script_dest)
+
+        _run_in(
+            args=args,
+            working_dir=calc_dir,
+            write_log=write_log,
+        )
 
 
 class ConfigSelection:
@@ -851,6 +1036,36 @@ class ConfigSelection:
                     selected=selected,
                 )
 
+    def clean(self):
+        """Clean the selection by removing any configurations that are no longer in
+        the enumeration.
+
+        Notes
+        -----
+        This does not commit the change to disk. You must call `commit()` to save the
+        change.
+        """
+        new_records = []
+        new_index_by_name = {}
+
+        for record in self._records:
+            if record["source"] == "config_set.json":
+                result = self._enum.configuration_set.get_by_name(record["name"])
+                if result is not None:
+                    new_records.append(record)
+                    new_index_by_name[record["name"]] = len(new_records) - 1
+            elif record["source"] == "config_list.json":
+                index = int(record["name"].split("/")[-1])
+                if index < len(self._enum.configuration_list):
+                    new_records.append(record)
+                    new_index_by_name[record["name"]] = len(new_records) - 1
+            else:
+                source = record["source"]
+                raise ValueError(f"Unsupported source: {source}")
+
+        self._records = new_records
+        self._index_by_name = new_index_by_name
+
     def __len__(self) -> int:
         """Return the number of configuration records in the selection."""
         return len(self._records)
@@ -859,3 +1074,105 @@ class ConfigSelection:
         """Iterate over the selected configuration records."""
         for record in self._records:
             yield ConfigSelectionRecord(parent=self, data=record)
+
+    @property
+    def n_selected(self) -> int:
+        """int: The number of selected configurations in the selection."""
+        return sum(1 for record in self._records if record["selected"])
+
+    @property
+    def n_unselected(self) -> int:
+        """int: The number of unselected configurations in the selection."""
+        return len(self._records) - self.n_selected
+
+    @property
+    def n_total(self) -> int:
+        """int: The total number of configurations in the selection (equivalent to
+        using `len`)."""
+        return len(self._records)
+
+    def run_subprocess(
+        self,
+        args: Union[list[str], list[list[str]]],
+        write_log: bool = False,
+    ):
+        """Run a subprocess command in the calculation directory for each selected
+        configuration.
+
+        Parameters
+        ----------
+        args: Union[list[str], list[list[str]]]
+            The arguments to run for one (if ``list[str]``) or more (if
+            ``list[list[str]]``) subprocesses. The subprocesses will be run in the
+            calculation directory for each selected configuration.
+        write_log: bool = False
+            If True, write the standard output and error of the command to files named
+            `subprocess.out.txt` and `subprocess.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        for record in self:
+            if record.is_selected:
+                record.run_subprocess(
+                    args=args,
+                    write_log=write_log,
+                )
+
+    def run_shell_script(
+        self,
+        script: pathlib.Path,
+        write_log: bool = True,
+    ):
+        """Run a shell script in the calculation directory for each selected
+        configuration.
+
+        Parameters
+        ----------
+        config_selection: ConfigSelection
+            A selection of Configurations to run the script for. All selected
+            configurations will have the script run.
+        script: pathlib.Path
+            The path to the shell script to run. The script will be copied into the
+            the calculation directory for each selected configuration. The script will
+            then be run with the working directory set to the calculation directory.
+            The shell to use is determined by the `SHELL` environment variable,
+            defaulting to `/bin/bash`.
+        write_log: bool = True
+            If True, write the standard output and error of the script to files named
+            `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        for record in self:
+            if record.is_selected:
+                record.run_shell_script(
+                    script=script,
+                    write_log=write_log,
+                )
+
+    def run_python_script(
+        self,
+        script: pathlib.Path,
+        write_log: bool = True,
+    ):
+        """Run a Python script in the calculation directory for each selected
+        configuration.
+
+        Parameters
+        ----------
+        config_selection: ConfigSelection
+            A selection of Configurations to run the script for. All selected
+            configurations will have the script run.
+        script: pathlib.Path
+            The path to the Python script to run. The script will be copied into the
+            calculation directory for each selected configuration. The script will then
+            be run with the working directory set to the calculation directory.
+        write_log: bool = True
+            If True, write the standard output and error of the script to files named
+            `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
+            directory. If False, the output is printed to the console.
+        """
+        for record in self:
+            if record.is_selected:
+                record.run_python_script(
+                    script=script,
+                    write_log=write_log,
+                )

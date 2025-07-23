@@ -1,4 +1,7 @@
-from typing import TYPE_CHECKING
+import pathlib
+from typing import TYPE_CHECKING, Any, Union
+
+from casm.project.enum import ConfigSelection
 
 if TYPE_CHECKING:
     from casm.project import Project
@@ -50,8 +53,8 @@ class CalcData:
         self.id = id
         """str: Calculation type identifier"""
 
-        calctype_settings_dir = self.proj.dir.calctype_settings_dir_v2(calctype=self.id)
-        self.calctype_settings_dir = calctype_settings_dir
+        settings_dir = self.proj.dir.calctype_settings_dir_v2(calctype=self.id)
+        self.settings_dir = settings_dir
         """pathlib.Path: Calculation settings directory"""
 
         ### Data (load & commit) ###
@@ -72,7 +75,7 @@ class CalcData:
         from casm.tools.shared.json_io import read_optional
 
         # read meta.json if it exists
-        path = self.calctype_settings_dir / "meta.json"
+        path = self.settings_dir / "meta.json"
         self.meta = read_optional(path, default=dict())
 
     def commit(self, verbose: bool = True):
@@ -84,10 +87,10 @@ class CalcData:
         from casm.tools.shared.json_io import safe_dump
 
         quiet = not verbose
-        self.calctype_settings_dir.mkdir(parents=True, exist_ok=True)
+        self.settings_dir.mkdir(parents=True, exist_ok=True)
 
         # write meta.json
-        path = self.calctype_settings_dir / "meta.json"
+        path = self.settings_dir / "meta.json"
         if len(self.meta) > 0:
             if not isinstance(self.meta, dict):
                 raise TypeError(
@@ -121,7 +124,31 @@ class CalcData:
         names: list[str]
             A list of file and directory names in the calctype settings directory.
         """
-        return [f.name for f in self.calctype_settings_dir.iterdir()]
+        return [f.name for f in self.settings_dir.iterdir()]
+
+    def add_file(
+        self,
+        file: Union[str, pathlib.Path],
+    ):
+        """Add a file to the calctype settings directory (as a copy).
+
+        Parameters
+        ----------
+        file: typing.Union[str, pathlib.Path]
+            The path to the file to add. This file will be copied to the calctype
+            settings directory.
+        """
+        import shutil
+
+        path = pathlib.Path(file)
+
+        if not path.exists():
+            raise FileNotFoundError(f"File {path} does not exist.")
+        if not path.is_file():
+            raise ValueError(f"Path {path} is not a file.")
+
+        dest_path = self.settings_dir / path.name
+        shutil.copy2(src=path, dst=dest_path)
 
     def write_text_file(
         self,
@@ -139,7 +166,7 @@ class CalcData:
         """
         from casm.tools.shared.text_io import safe_write
 
-        safe_write(text=text, path=self.calctype_settings_dir / name, force=True)
+        safe_write(text=text, path=self.settings_dir / name, force=True)
 
     def read_text_file(
         self,
@@ -157,7 +184,7 @@ class CalcData:
         text: str
             The text loaded from the file.
         """
-        with open(self.calctype_settings_dir / name, "r") as file:
+        with open(self.settings_dir / name, "r") as file:
             return file.read()
 
     def write_json_file(
@@ -176,7 +203,7 @@ class CalcData:
         """
         from casm.tools.shared.json_io import safe_dump
 
-        safe_dump(data=data, path=self.calctype_settings_dir / name, force=True)
+        safe_dump(data=data, path=self.settings_dir / name, force=True)
 
     def read_json_file(
         self,
@@ -196,4 +223,57 @@ class CalcData:
         """
         from casm.tools.shared.json_io import read_required
 
-        return read_required(path=self.calctype_settings_dir / name)
+        return read_required(path=self.settings_dir / name)
+
+    def setup(
+        self,
+        config_selection: ConfigSelection,
+        tool: Union[str, Any],
+    ):
+        """Setup calculations for a selection of Configurations in an enumeration.
+
+        Parameters
+        ----------
+        config_selection: ConfigSelection
+            A selection of Configurations to set up calculations for. All selected
+            configurations will have input files created.
+        tool: Union[str, Any]
+            A tool used to set up calculations. This may be a string identifier for a
+            builtin calculation tool using the default construction parameters or a
+            custom tool. Currently, the only builtin tool is:
+
+            - "vasp": VASP calculation setup using
+              :class:`~casm.tools.shared.ase_utils.AseVaspTool`
+
+            If not a string, expected to be an
+            object with a `setup` method with signature:
+
+            .. code-block:: python
+
+                ToolType.setup(
+                    self,
+                    casm_structure: libcasm.xtal.Structure,
+                    calc_dir: pathlib.Path,
+                    config: typing.Optional[libcasm.configuration.Configuration] = None,
+                ):
+                    ... write calculation input files ...
+
+
+        """
+        if isinstance(tool, str):
+            from casm.tools.shared.ase_utils import AseVaspTool
+
+            if tool == "vasp":
+                tool = AseVaspTool(
+                    calctype_settings_dir=self.settings_dir,
+                )
+            else:
+                raise ValueError(f"Unknown tool: {tool}")
+
+        for record in config_selection:
+            if record.is_selected:
+                tool.setup(
+                    casm_structure=record.configuration.to_structure(),
+                    calc_dir=record.calc_dir,
+                    config=record.configuration,
+                )
