@@ -1,91 +1,77 @@
-from typing import Iterable, Optional, Union
+from typing import TYPE_CHECKING
 
-import libcasm.configuration as casmconfig
-from casm.project._Project import Project
+from ._CalcData import CalcData
+
+if TYPE_CHECKING:
+    from casm.project import Project
 
 
 class CalcCommand:
-    """Methods to interact with DFT or atomistic calculators"""
+    """Calculation settings management"""
 
-    def __init__(self, proj: Project):
+    def __init__(self, proj: "Project"):
         self.proj = proj
 
-    def setup_vasp(
-        self,
-        configurations: Union[
-            Iterable[casmconfig.Configuration], casmconfig.ConfigurationSet
-        ],
-        calctype: str,
-    ):
-        """Setup VASP calculations
-
-        Parameters
-        ----------
-        configurations: Union[Iterable[libcasm.configuration.Configuration], \
-        libcasm.configuration.ConfigurationSet]
-            The candidate configurations. Must be a
-            :class:`~libcasm.configuration.ConfigurationSet` or an iterable of
-            :class:`~libcasm.configuration.Configuration`.
-
-        calctype: str
-            The calctype is used by CASM to find a calc.json file with VASP settings.
-
-        id: Optional[str] = None
-            An optional calculation identifier string specifying where a record
-            of this set of calculations is stored. Calculation data is stored in a
-            CASM project at
-            `<project>/calculations/calc.<id>/`. If None, a sequential id is
-            generated automatically.
-
+    def all(self):
+        """Return the identifiers of all calculation types
 
         Returns
         -------
-        id: str
-            Calculation ID allows for finding information about the calculation that
-            were setup. This can be used later with `calc_vasp` or `report_vasp` or
-            with imports.
+        all_calctype: list[str]
+            A list of calculation identifiers
         """
-        print("setup_vasp: Create VASP calculation input files")
-        return None
+        return self.proj.dir.all_calctype_v2()
 
-    def calc_vasp(
-        self,
-        id: Optional[str] = None,
-    ):
-        print("calc_vasp: Run VASP calculations")
-        return None
+    def list(self):
+        """Print all calculation types"""
+        for id in self.all():
+            obj = self.get(id)
+            print(obj)
 
-    def report_vasp(
-        self,
-        batchfile: Optional[str] = None,
-        id: Optional[str] = None,
-    ):
-        """Report VASP calculations, converting to libcasm.xtal.Structure
+    def get(self, id: str):
+        """Load calculation settings data
 
         Parameters
         ----------
-        batchile: Optional[str] = None
-            TODO: This needs some work... Something to indicate VASP calculations
-            performed outside that should be read and converted to
-            libcasm.xtal.Structure
-
-        id: Optional[str] = None
-            An optional calculation identifier string specifying where a record
-            of this set of calculations is stored. Calculation data is stored in a
-            CASM project at
-            `<project>/calculations/calc.<id>/`. If None, a sequential id is
-            generated automatically.
-
+        id : str
+            The calculation type identifier
 
         Returns
         -------
-        id: str
-            Calculation ID allows for finding information about the calculation that
-            were setup. This can be used later with `calc_vasp` or `report_vasp` or
-            with imports.
+        calctype: casm.project.calc.CalcData
+            The calculation settings data
         """
-        print(
-            "report_vasp: "
-            "Parse VASP calculation output files and convert to libcasm.xtal.Structure"
-        )
-        return None
+        return CalcData(proj=self.proj, id=id)
+
+    def remove(self, id: str):
+        """Remove calculation settings data
+
+        Parameters
+        ----------
+        id : str
+            The calculation type identifier
+        """
+        import shutil
+
+        calctype_settings_dir = self.proj.dir.calctype_settings_dir_v2(calctype=id)
+        if not calctype_settings_dir.exists():
+            raise FileNotFoundError(f"Calculation type {id} does not exist.")
+        shutil.rmtree(calctype_settings_dir)
+
+    def copy(self, src_id: str, dest_id: str):
+        """Copy calculation type settings data
+
+        Parameters
+        ----------
+        src_id : str
+            The source calculation type identifier
+        dest_id : str
+            The destination calculation type identifier
+        """
+        import shutil
+
+        src_dir = self.proj.dir.calctype_settings_dir_v2(calctype=src_id)
+        if not src_dir.exists():
+            raise FileNotFoundError(f"Calculation type {src_id} does not exist.")
+        dest_dir = self.proj.dir.calctype_settings_dir_v2(calctype=dest_id)
+        shutil.copytree(src=src_dir, dst=dest_dir, dirs_exist_ok=True)

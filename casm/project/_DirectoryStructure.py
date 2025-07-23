@@ -61,6 +61,13 @@ class DirectoryStructure:
             "calctype", self.path / self.__calc_dir / self.__set_dir
         )
 
+    def all_calctype_v2(self):
+        """Check filesystem directory structure and return list of all calctype names
+        (v2.0)"""
+        return self.__all_settings(
+            "calctype", self.path / self.__calculation_settings_dir
+        )
+
     def all_ref(self, calctype: str):
         """Check filesystem directory structure and return list of all ref names for
         a given calctype"""
