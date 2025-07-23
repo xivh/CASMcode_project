@@ -2,9 +2,8 @@ import os
 import pathlib
 import shutil
 
-import pytest
-
 import nbformat
+import pytest
 from nbconvert.preprocessors import ExecutePreprocessor
 
 repo_dir = pathlib.Path(os.path.abspath(__file__)).parent.parent
