@@ -13,6 +13,9 @@ from ._server import (
     add_application,
     start_applications,
 )
+from ._StructureDashboard import (
+    StructureDashboard,
+)
 from ._view import (
     make_cartesian_view_basis,
 )

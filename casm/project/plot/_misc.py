@@ -91,6 +91,13 @@ def scale_to_int(v: np.ndarray, cutoff: int = 10) -> typing.Union[np.ndarray, st
     return v
 
 
+def scale_to_int_if_possible(v: np.ndarray, cutoff: int = 10) -> np.ndarray:
+    x = scale_to_int(v, cutoff=cutoff)
+    if isinstance(x, str):
+        return v
+    return x
+
+
 def scale_columns_to_int_if_possible(M: np.ndarray, cutoff: int = 10) -> np.ndarray:
     """Scale the columns of a matrix to integers, if possible
 

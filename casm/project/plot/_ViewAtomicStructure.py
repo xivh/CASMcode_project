@@ -33,7 +33,7 @@ def _format_plot(p):
 
     font_size_1 = "14pt"
     font_size_2 = "10pt"
-    font_name = "monospace"
+    font_name = "roboto-mono, sans-serif, monospace"
 
     p.title.text_font = font_name
     p.title.text_font_size = font_size_1

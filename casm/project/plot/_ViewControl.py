@@ -4,16 +4,20 @@ import typing
 
 import bokeh.models
 import numpy as np
+import scipy.spatial.transform
 from bokeh.layouts import column, row
 
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
+from ._DashboardStyles import DashboardStyles
 from ._misc import (
     from_miller_bravais_direction,
+    scale_to_int_if_possible,
     to_miller_bravais_direction,
 )
 from ._ViewAtomicStructure import (
+    ViewAtomicStructure,
     make_prim_component_params,
 )
 
@@ -22,14 +26,40 @@ class CabinetInput:
     def __init__(
         self,
         view_control,
-        styles=None,
-        parent=None,
+        styles: DashboardStyles = None,
+        parent: typing.Any = None,
+        view_cabinet: ViewAtomicStructure = None,
     ):
+        """
+
+        Parameters
+        ----------
+        view_control : ViewControl
+            The view control object that manages the view parameters.
+        styles : DashboardStyles
+            Used to style the Bokeh widgets.
+        parent: typing.Any
+            A Dashboard object, used to call ``parent.trigger_update()``.
+        view_cabinet: ViewAtomicStructure
+            The cabinet view.
+
+        """
         self.view_control = view_control
         self.styles = styles
         self.parent = parent
+        self.view_cabinet = view_cabinet
 
         # -- Make widgets ---
+
+        # -- Output current view axes --
+        self.view_basis_cart = None
+        self.view_basis_frac = None
+        self.view_basis_mb = None
+        self.cabinet_scale_row = None
+        self.cabinet_angle_row = None
+        self.cabinet_rotation_angle_row = None
+
+        self._update_view_basis()
 
         # Axes priority/order
         # self.cabinet_input_order_div = bokeh.models.Div(
@@ -45,6 +75,7 @@ class CabinetInput:
             "in the order specified. The first axis is set exactly, "
             "the second made orthogonal to the first, "
             "and the third set orthogonal to those.",
+            align="end",
         )
 
         # Input mode
@@ -57,7 +88,7 @@ class CabinetInput:
             ("miller_bravais", "Miller-Bravais"),
         ]
         self.cabinet_input_mode_select = bokeh.models.Select(
-            title="Input mode",
+            title="Mode",
             options=options,
             value=self.view_control.cabinet_input_mode,
             stylesheets=[self.styles.dark_bk_input_style],
@@ -67,6 +98,7 @@ class CabinetInput:
         self.update_button = bokeh.models.Button(
             label="Update view",
             button_type="success",
+            align="end",
         )
 
         # -- Spinners --
@@ -136,48 +168,212 @@ class CabinetInput:
         # -- Layout --
         self.make_layout()
 
+    def _make_view_basis_div(self, B):
+
+        B1 = scale_to_int_if_possible(B[0], cutoff=10)
+        B2 = scale_to_int_if_possible(B[1], cutoff=10)
+        B3 = scale_to_int_if_possible(B[2], cutoff=10)
+
+        return column(
+            row(
+                bokeh.models.Div(text="""<b>b1:""", width=40),
+                *[
+                    bokeh.models.Div(text=f"""<b>{B1[i]:.3f}""", width=80)
+                    for i in range(len(B1))
+                ],
+            ),
+            row(
+                bokeh.models.Div(text="""<b>b2:""", width=40),
+                *[
+                    bokeh.models.Div(text=f"""<b>{B2[i]:.3f}""", width=80)
+                    for i in range(len(B2))
+                ],
+            ),
+            row(
+                bokeh.models.Div(text="""<b>b3:""", width=40),
+                *[
+                    bokeh.models.Div(text=f"""<b>{B3[i]:.3f}""", width=80)
+                    for i in range(len(B3))
+                ],
+            ),
+        )
+
+    def _update_view_basis(self):
+        view_basis = self.view_cabinet.view_basis
+
+        # Cart vectors
+        B = [
+            view_basis[:, 0],
+            view_basis[:, 1],
+            view_basis[:, 2],
+        ]
+        col = self._make_view_basis_div(B)
+        if self.view_basis_cart is None:
+            self.view_basis_cart = col
+        else:
+            self.view_basis_cart.children = col.children
+
+        # Frac vectors
+        L = self.view_control.prim.xtal_prim.lattice().column_vector_matrix()
+        L_inv = np.linalg.inv(L)
+        B = [
+            L_inv @ view_basis[:, 0],
+            L_inv @ view_basis[:, 1],
+            L_inv @ view_basis[:, 2],
+        ]
+        col = self._make_view_basis_div(B)
+        if self.view_basis_frac is None:
+            self.view_basis_frac = col
+        else:
+            self.view_basis_frac.children = col.children
+
+        # Miller-Bravais vectors
+        B = [
+            to_miller_bravais_direction(L_inv @ view_basis[:, 0]),
+            to_miller_bravais_direction(L_inv @ view_basis[:, 1]),
+            to_miller_bravais_direction(L_inv @ view_basis[:, 2]),
+        ]
+        col = self._make_view_basis_div(B)
+        if self.view_basis_mb is None:
+            self.view_basis_mb = col
+        else:
+            self.view_basis_mb.children = col.children
+
+        # Cabinet scale display
+        r = row(
+            bokeh.models.Div(text="""<b>Cabinet scale: </b>""", width=140),
+            bokeh.models.Div(
+                text=f"""<b>{self.view_control.cabinet_scale:.3f}</b>""",
+                width=80,
+            ),
+        )
+        if self.cabinet_scale_row is None:
+            self.cabinet_scale_row = r
+        else:
+            self.cabinet_scale_row.children = r.children
+
+        # Cabinet angle display
+        angle = self.view_control.cabinet_angle * 180 / math.pi
+        r = row(
+            bokeh.models.Div(text="""<b>Cabinet angle: </b>""", width=140),
+            bokeh.models.Div(
+                text=f"""<b>{(angle):.3f}</b>""",
+                width=80,
+            ),
+        )
+        if self.cabinet_angle_row is None:
+            self.cabinet_angle_row = r
+        else:
+            self.cabinet_angle_row.children = r.children
+
+        # Cabinet rotation angle display
+        r = row(
+            bokeh.models.Div(text="""<b>Rotation angle: </b>""", width=140),
+            bokeh.models.Div(
+                text=f"""<b>{self.view_control.cabinet_rotation_angle:.3f}</b>""",
+                width=80,
+            ),
+        )
+        if self.cabinet_rotation_angle_row is None:
+            self.cabinet_rotation_angle_row = r
+        else:
+            self.cabinet_rotation_angle_row.children = r.children
+
     def make_layout(self):
         mode = self.cabinet_input_mode_select.value
         order = self.cabinet_input_order_select.value
         order_options = self.view_control.cabinet_input_order_options
         priority = order_options[order]
 
-        size = 3
-        if mode == "miller_bravais":
-            size = 4
+        mode_frac = "frac"
+        mode_cart = "cart"
+        mode_mb = "miller_bravais"
 
-        print("mode:", mode)
-        print("priority:", priority)
-        print(
-            "spinners (first):", [type(x) for x in self.spinner[mode][priority[0] - 1]]
-        )
-        print(
-            "spinners (second):", [type(x) for x in self.spinner[mode][priority[1] - 1]]
-        )
+        # Display of current cabinet view basis
+        self.view_basis_cart.visible = mode == mode_cart
+        self.view_basis_frac.visible = mode == mode_frac
+        self.view_basis_mb.visible = mode == mode_mb
 
-        self.layout = column(
-            self.cabinet_input_mode_select,
-            self.cabinet_input_order_select,
-            self.update_button,
-            row(*[x for x in self.spinner[mode][priority[0] - 1]]),
-            row(*[x for x in self.spinner[mode][priority[1] - 1]]),
-            width=size * 100,
-            margin=(0, 10),
+        # Input of new cabinet view basis
+        self.spinner_frac_input = column(
+            row(*[x for x in self.spinner[mode_frac][priority[0] - 1]]),
+            row(*[x for x in self.spinner[mode_frac][priority[1] - 1]]),
+        )
+        self.spinner_frac_input.visible = mode == mode_frac
+        self.spinner_cart_input = column(
+            row(*[x for x in self.spinner[mode_cart][priority[0] - 1]]),
+            row(*[x for x in self.spinner[mode_cart][priority[1] - 1]]),
+        )
+        self.spinner_cart_input.visible = mode == mode_cart
+        self.spinner_mb_input = column(
+            row(*[x for x in self.spinner[mode_mb][priority[0] - 1]]),
+            row(*[x for x in self.spinner[mode_mb][priority[1] - 1]]),
+        )
+        self.spinner_mb_input.visible = mode == mode_mb
+
+        self.layout = row(
+            column(
+                self.cabinet_input_mode_select,
+                bokeh.models.Div(text="""<b>Current axes: </b>""", width=200),
+                self.view_basis_frac,
+                self.view_basis_cart,
+                self.view_basis_mb,
+                self.cabinet_scale_row,
+                self.cabinet_angle_row,
+                self.cabinet_rotation_angle_row,
+                height=250,
+                width=400,
+            ),
+            column(
+                row(
+                    self.cabinet_input_order_select,
+                    self.update_button,
+                ),
+                bokeh.models.Div(text="""<b>New axes: </b>""", width=200),
+                self.spinner_frac_input,
+                self.spinner_cart_input,
+                self.spinner_mb_input,
+                height=250,
+                width=400,
+                margin=(0, 10),
+            ),
         )
 
     def update_layout(self):
         mode = self.cabinet_input_mode_select.value
-        order = self.cabinet_input_order_select.value
-        order_options = self.view_control.cabinet_input_order_options
-        priority = order_options[order]
+        # order = self.cabinet_input_order_select.value
+        # order_options = self.view_control.cabinet_input_order_options
+        # priority = order_options[order]
+        # self.layout.children = [
+        #     self.cabinet_input_mode_select,
+        #     self.cabinet_input_order_select,
+        #     self.update_button,
+        #     row(*[x for x in self.spinner[mode][priority[0] - 1]]),
+        #     row(*[x for x in self.spinner[mode][priority[1] - 1]]),
+        # ]
 
-        self.layout.children = [
-            self.cabinet_input_mode_select,
-            self.cabinet_input_order_select,
-            self.update_button,
-            row(*[x for x in self.spinner[mode][priority[0] - 1]]),
-            row(*[x for x in self.spinner[mode][priority[1] - 1]]),
-        ]
+        self._update_view_basis()
+
+        # First hide currently visible spinner
+        if self.spinner_frac_input.visible and mode != "frac":
+            self.view_basis_frac.visible = False
+            self.spinner_frac_input.visible = False
+        if self.spinner_cart_input.visible and mode != "cart":
+            self.view_basis_cart.visible = False
+            self.spinner_cart_input.visible = False
+        if self.spinner_mb_input.visible and mode != "miller_bravais":
+            self.view_basis_mb.visible = False
+            self.spinner_mb_input.visible = False
+
+        if mode == "frac":
+            self.view_basis_frac.visible = True
+            self.spinner_frac_input.visible = True
+        if mode == "cart":
+            self.view_basis_cart.visible = True
+            self.spinner_cart_input.visible = True
+        if mode == "miller_bravais":
+            self.view_basis_mb.visible = True
+            self.spinner_mb_input.visible = True
 
     def update_view(self):
         # -- Get the view input --
@@ -192,19 +388,13 @@ class CabinetInput:
         order_options = self.view_control.cabinet_input_order_options
         priority = order_options[order]
 
-        print("mode:", mode)
-        print("order:", order)
-        print("priority:", priority)
-
         # Highest priority input (match this direction exactly)
         x = [s.value for s in self.spinner[mode][priority[0] - 1]]
         self.view_control.cabinet_first_input = np.array(x)
-        print("cabinet_first_input:", self.view_control.cabinet_first_input)
 
         # Second highest priority input (make orthogonal to the first)
         x = [s.value for s in self.spinner[mode][priority[1] - 1]]
         self.view_control.cabinet_second_input = np.array(x)
-        print("cabinet_second_input:", self.view_control.cabinet_second_input)
 
         # -- Update the cabinet view axes --
         self.view_control.set_cabinet_view_axes()
@@ -263,6 +453,9 @@ class ViewControl:
 
         self.cabinet_angle = math.pi / 6.0
         """float: The angle for the cabinet view"""
+
+        self.cabinet_rotation_angle = 10.0
+        """float: The angle to rotate, in degrees"""
 
         self.cabinet_v1 = np.array([1.0, 0.0, 0.0])
         """np.array[float]: The Cartesian vector for the horizontal axis of the 
@@ -342,7 +535,6 @@ class ViewControl:
     ):
         """Set the cabinet view axes"""
 
-        print("set_cabinet_view_axes")
         priority = self.cabinet_input_order_options[self.cabinet_input_order]
         if len(priority) != 3 or list(set(priority)) != [1, 2, 3]:
             raise Exception("Cabinet view priority must be a permutation of [1, 2, 3]")
@@ -351,9 +543,6 @@ class ViewControl:
         input_axes[:, priority[0] - 1] = self._vector_to_cart(self.cabinet_first_input)
         input_axes[:, priority[1] - 1] = self._vector_to_cart(self.cabinet_second_input)
         input_axes[:, priority[2] - 1] = self._vector_to_cart(None)
-
-        print("input_axes:")
-        print(input_axes)
 
         # Build the new axes
         new_axes = np.zeros((3, 3))
@@ -372,7 +561,6 @@ class ViewControl:
                     )
                 first = x / norm
                 new_axes[:, i_axis - 1] = first
-                print("first:", first)
             elif i_order == 1:
                 x = input_axes[:, i_axis - 1]
                 second = x - (x @ first) * first
@@ -384,7 +572,6 @@ class ViewControl:
                     )
                 second = second / np.linalg.norm(second)
                 new_axes[:, i_axis - 1] = second
-                print("second:", second)
             elif i_order == 2:
                 if priority == [1, 2, 3]:
                     third = np.cross(first, second)
@@ -401,21 +588,51 @@ class ViewControl:
                 else:
                     raise Exception("Cabinet view basis construction priority error")
                 new_axes[:, i_axis - 1] = third
-                print("third:", third)
             else:
                 raise Exception("Cabinet view basis construction error")
 
-        print("new_axes:\n", new_axes)
         self.cabinet_v1 = new_axes[:, 0]
         self.cabinet_v2 = new_axes[:, 1]
-        print("v1:", self.cabinet_v1)
-        print("v2:", self.cabinet_v2)
 
         self.cabinet_first_input = self._vector_from_cart(new_axes[:, priority[0] - 1])
         self.cabinet_second_input = self._vector_from_cart(new_axes[:, priority[1] - 1])
-        print("cabinet_first_input:", self.cabinet_first_input)
-        print("cabinet_second_input:", self.cabinet_second_input)
-        print()
+
+    def rotate_cabinet_view_basis(
+        self,
+        v_axis: np.ndarray,
+        view_basis: np.ndarray,
+        angle: float,
+    ):
+        """Rotate the view basis vectors by an angle about an axis.
+
+        Parameters
+        ----------
+        v_axis: np.ndarray
+            The axis to rotate about. Will be normalized.
+        view_basis: np.ndarray
+            The current view basis vectors, as columns of a 3x3 matrix.
+        angle: float
+            The angle to rotate by in degrees.
+
+        """
+        v_axis = np.array(v_axis)
+        v_axis_normalized = v_axis / np.linalg.norm(v_axis)
+
+        # Convert angle from degrees to radians
+        angle_rad = np.deg2rad(angle)
+
+        # Get the rotation matrix
+        rotation = scipy.spatial.transform.Rotation.from_rotvec(
+            v_axis_normalized * angle_rad
+        )
+        rotation_matrix = rotation.as_matrix()
+
+        # Rotate the view basis
+        new_view_basis = view_basis @ rotation_matrix
+
+        # Set the new cabinet_v1 and cabinet_v2
+        self.cabinet_v1 = new_view_basis[:, 0]
+        self.cabinet_v2 = new_view_basis[:, 1]
 
     def get_state(self):
         return {
@@ -490,7 +707,7 @@ class ViewControl:
         parent=None,
     ):
         # Periodic range controls
-        images_div = bokeh.models.Div(text="""<b># Images</b>""", width=200)
+        images_div = bokeh.models.Div(text="""<b># Periodic Images</b>""", width=200)
         params = dict(width=80, low=1, high=None, step=1)
         images_a_range = bokeh.models.Spinner(
             title="Along `a`",
@@ -584,7 +801,14 @@ class ViewControl:
             width=200,
             margin=(0, 10),
         )
-        return row(c1, c2)
+        return row(
+            c1,
+            c2,
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
 
     def make_markers_control_layout(
         self,
@@ -655,18 +879,26 @@ class ViewControl:
             ),
             width=200,
             margin=(0, 10),
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
         )
         c2 = column(
             reset_button,
             width=200,
             margin=(0, 10),
         )
-        return row(c1, c2)
+        return row(
+            c1,
+            c2,
+        )
 
     def make_cabinet_view_control_layout(
         self,
         styles=None,
         parent=None,
+        view_cabinet=None,
     ):
         # Cabinet scale controls
         cabinet_scale_div = bokeh.models.Div(text="""<b>Cabinet Scale:</b>""")
@@ -686,11 +918,46 @@ class ViewControl:
             label="-", stylesheets=[styles.dark_bk_input_style]
         )
 
+        # Cabinet rotation angle controls
+        cabinet_rotation_angle_div = bokeh.models.Div(text="""<b>Rotation Angle:</b>""")
+        cabinet_rotation_angle_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_rotation_angle_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
+        # Cabinet rotate controls
+        cabinet_rotate_b1_div = bokeh.models.Div(text="""<b>Rotate b1:</b>""")
+        cabinet_rotate_b1_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_rotate_b1_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
+        cabinet_rotate_b2_div = bokeh.models.Div(text="""<b>Rotate b2:</b>""")
+        cabinet_rotate_b2_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_rotate_b2_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
+        cabinet_rotate_b3_div = bokeh.models.Div(text="""<b>Rotate b3:</b>""")
+        cabinet_rotate_b3_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_rotate_b3_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
         # Cabinet view axes input
         cabinet_input = CabinetInput(
             view_control=self,
             styles=styles,
             parent=parent,
+            view_cabinet=view_cabinet,
         )
 
         # Reset button:
@@ -701,6 +968,7 @@ class ViewControl:
         def reset_button_action(attr):
             self.reset_cabinet_view()
             parent.trigger_update()
+            cabinet_input._update_view_basis()
 
         reset_button.on_click(reset_button_action)
 
@@ -708,12 +976,14 @@ class ViewControl:
         def increase_cabinet_scale(attr):
             self.cabinet_scale *= 1.5
             parent.trigger_update()
+            cabinet_input._update_view_basis()
 
         cabinet_scale_inc.on_click(increase_cabinet_scale)
 
         def decrease_cabinet_scale(attr):
             self.cabinet_scale /= 1.5
             parent.trigger_update()
+            cabinet_input._update_view_basis()
 
         cabinet_scale_dec.on_click(decrease_cabinet_scale)
 
@@ -721,14 +991,100 @@ class ViewControl:
         def increase_cabinet_angle(attr):
             self.cabinet_angle += math.pi / 36.0
             parent.trigger_update()
+            cabinet_input._update_view_basis()
 
         cabinet_angle_inc.on_click(increase_cabinet_angle)
 
         def decrease_cabinet_angle(attr):
             self.cabinet_angle -= math.pi / 36.0
             parent.trigger_update()
+            cabinet_input._update_view_basis()
 
         cabinet_angle_dec.on_click(decrease_cabinet_angle)
+
+        # Cabinet rotation angle controls
+        def increase_cabinet_rotation_angle(attr):
+            self.cabinet_rotation_angle += 1.0
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotation_angle_inc.on_click(increase_cabinet_rotation_angle)
+
+        def decrease_cabinet_rotation_angle(attr):
+            if self.cabinet_rotation_angle <= 1.0:
+                return
+            self.cabinet_rotation_angle -= 1.0
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotation_angle_dec.on_click(decrease_cabinet_rotation_angle)
+
+        # Cabinet rotate controls
+        def rotate_b1_inc(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([1.0, 0.0, 0.0]),
+                view_cabinet.view_basis,
+                self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b1_inc.on_click(rotate_b1_inc)
+
+        def rotate_b1_dec(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([1.0, 0.0, 0.0]),
+                view_cabinet.view_basis,
+                -self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b1_dec.on_click(rotate_b1_dec)
+
+        def rotate_b2_inc(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([0.0, 1.0, 0.0]),
+                view_cabinet.view_basis,
+                self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b2_inc.on_click(rotate_b2_inc)
+
+        def rotate_b2_dec(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([0.0, 1.0, 0.0]),
+                view_cabinet.view_basis,
+                -self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b2_dec.on_click(rotate_b2_dec)
+
+        def rotate_b3_inc(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([0.0, 0.0, 1.0]),
+                view_cabinet.view_basis,
+                self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b3_inc.on_click(rotate_b3_inc)
+
+        def rotate_b3_dec(attr):
+            self.rotate_cabinet_view_basis(
+                np.array([0.0, 0.0, 1.0]),
+                view_cabinet.view_basis,
+                -self.cabinet_rotation_angle,
+            )
+            parent.trigger_update()
+            cabinet_input._update_view_basis()
+
+        cabinet_rotate_b3_dec.on_click(rotate_b3_dec)
 
         # --- Layout ---
 
@@ -736,6 +1092,14 @@ class ViewControl:
         c2 = column(
             row(cabinet_scale_div, cabinet_scale_dec, cabinet_scale_inc),
             row(cabinet_angle_div, cabinet_angle_dec, cabinet_angle_inc),
+            row(
+                cabinet_rotation_angle_div,
+                cabinet_rotation_angle_dec,
+                cabinet_rotation_angle_inc,
+            ),
+            row(cabinet_rotate_b1_div, cabinet_rotate_b1_dec, cabinet_rotate_b1_inc),
+            row(cabinet_rotate_b2_div, cabinet_rotate_b2_dec, cabinet_rotate_b2_inc),
+            row(cabinet_rotate_b3_div, cabinet_rotate_b3_dec, cabinet_rotate_b3_inc),
             width=200,
             margin=(0, 10),
         )
@@ -744,6 +1108,110 @@ class ViewControl:
             width=200,
             margin=(0, 10),
         )
-        layout = row(c1b, c2, c3)
+        layout = row(
+            c1b,
+            c2,
+            c3,
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
 
         return layout
+
+    def make_controls_tabs_layout(
+        self,
+        select_control_layout: typing.Optional[typing.Any],
+        styles: DashboardStyles,
+        parent: typing.Any,
+        view_cabinet: ViewAtomicStructure,
+    ):
+        """
+
+        Parameters
+        ----------
+        select_control_layout: typing.Optional[typing.Any]
+            If not None, a Bokeh layout, like a Column, to add as a "Select" tab.
+        styles: DashboardStyles
+            Provides styling
+        parent: typing.Any
+            The parent Dashboard
+        view_cabinet: ViewAtomicStructure
+            The cabinet view.
+
+        Returns
+        -------
+        layout: bokeh.models.Tabs
+            A Bokeh Tabs layout with view controls
+        """
+        images_control_layout = self.make_images_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
+        markers_control_layout = self.make_markers_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
+        cabinet_view_control_layout = self.make_cabinet_view_control_layout(
+            styles=styles,
+            parent=parent,
+            view_cabinet=view_cabinet,
+        )
+
+        tabs = []
+        if select_control_layout:
+            tabs.append(
+                bokeh.models.TabPanel(child=select_control_layout, title="Select")
+            )
+        tabs += [
+            bokeh.models.TabPanel(child=images_control_layout, title="Supercell"),
+            bokeh.models.TabPanel(child=markers_control_layout, title="Markers"),
+            bokeh.models.TabPanel(
+                child=cabinet_view_control_layout, title="Cabinet View"
+            ),
+        ]
+
+        tabs_layout = bokeh.models.Tabs(
+            tabs=tabs,
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
+        tabs_layout.visible = False
+
+        toggle_button = bokeh.models.Switch(label="Settings", active=False)
+
+        # CustomJS to toggle visibility
+        toggle_button.js_on_change(
+            "active",
+            bokeh.models.CustomJS(
+                args=dict(tabs_layout=tabs_layout),
+                code="""
+            tabs_layout.visible = cb_obj.active;
+        """,
+            ),
+        )
+
+        control_layout = column(
+            row(
+                toggle_button,
+                height=30,
+            ),
+            tabs_layout,
+        )
+
+        # control_layout = column(
+        #     images_control_layout,
+        #     markers_control_layout,
+        #     cabinet_view_control_layout,
+        #     stylesheets=[
+        #         styles.darkstyle,
+        #         styles.typekit_stylesheet,
+        #     ],
+        # )
+
+        return control_layout

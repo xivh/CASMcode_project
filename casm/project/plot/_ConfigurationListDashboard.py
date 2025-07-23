@@ -203,17 +203,10 @@ class ConfigurationListDashboard:
         configuration_name = f"Index={configuration_index}, Supercell={supercell_name}"
 
         self.selected_page_number = page_number
-        print("Page number:", self.selected_page_number)
         self.options = options
-        print("Options:\n", self.options)
         self.selected_configuration_index = configuration_index
-        print("Configuration index:", self.selected_configuration_index)
         self.selected_configuration = self.configuration_list[configuration_index]
-        print(
-            "Configuration:\n", xtal.pretty_json(self.selected_configuration.to_dict())
-        )
         self.selected_configuration_name = configuration_name
-        print("Configuration name:", self.selected_configuration_name)
 
         a = self.images_a_range
         b = self.images_b_range
@@ -224,7 +217,6 @@ class ConfigurationListDashboard:
                 excluded_species=[],
             )
         )
-        print("Structure:\n", xtal.pretty_json(structure.to_dict()))
         superstructure = xtal.make_superstructure(
             transformation_matrix_to_super=np.diag([a, b, c]) * m,
             structure=structure,
@@ -325,7 +317,7 @@ class ConfigurationListDashboard:
         )
 
         # Periodic range controls
-        images_div = bokeh.models.Div(text="""<b># Images</b>""", width=200)
+        images_div = bokeh.models.Div(text="""<b># Periodic images</b>""", width=200)
         params = dict(width=80, low=1, high=None, step=1)
         images_a_range = bokeh.models.Spinner(
             title="Along `a`",
@@ -430,7 +422,6 @@ class ConfigurationListDashboard:
         ):
             if len(self.configuration_list) == 0:
                 return
-            print("begin do_configuration_index_update")
 
             self.set_configuration_index(configuration_index=configuration_index)
 
@@ -447,12 +438,10 @@ class ConfigurationListDashboard:
                 configuration_name=self.selected_configuration_name,
             )
             p_cabinet.title.text = view_cabinet.title
-            print("end do_configuration_index_update")
 
         def page_number_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger page_number_update, new=", new)
             configuration_index = (new - 1) * self.page_size
             do_configuration_index_update(configuration_index=configuration_index)
 
@@ -461,18 +450,15 @@ class ConfigurationListDashboard:
         def configuration_index_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger configuration_index_update, new=", new)
 
             if new == "(next)":
                 # do_supercell_name_update(next_supercell)
-                print("More configurations available")
                 new_page = self.selected_page_number + 1
                 new_configuration_index = (new_page - 1) * self.page_size
                 do_configuration_index_update(
                     configuration_index=new_configuration_index,
                 )
             elif new == "(prev)":
-                print("Previous configurations available")
                 new_page = self.selected_page_number - 1
                 new_configuration_index = new_page * self.page_size - 1
                 do_configuration_index_update(

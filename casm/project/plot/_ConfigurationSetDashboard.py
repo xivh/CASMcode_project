@@ -253,7 +253,6 @@ class ConfigurationSetDashboard:
                 excluded_species=[],
             )
         )
-        print("Structure:\n", xtal.pretty_json(structure.to_dict()))
         superstructure = xtal.make_superstructure(
             transformation_matrix_to_super=np.diag([a, b, c]) * m,
             structure=structure,
@@ -453,7 +452,6 @@ class ConfigurationSetDashboard:
         ):
             if len(self.configuration_set) == 0:
                 return
-            print("begin do_supercell_name_update")
             self.set_supercell_name(new, configuration_id=configuration_id)
 
             # --- Update the widgets without triggers ---
@@ -471,12 +469,10 @@ class ConfigurationSetDashboard:
                 configuration_name=self.selected_configuration_name,
             )
             p_cabinet.title.text = view_cabinet.title
-            print("end_supercell_name_update")
 
         def supercell_name_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger supercell_name_update, new=", new)
             do_supercell_name_update(new, configuration_id="0")
 
         supercell_name_select.on_change("value", supercell_name_update)
@@ -484,25 +480,19 @@ class ConfigurationSetDashboard:
         def configuration_id_update(attr, old, new):
             if self._update_disabled:
                 return
-            print("Trigger configuration_id_update, new=", new)
 
             if new == "(next)":
                 # do_supercell_name_update(next_supercell)
-                print("More configurations available")
                 i_supercell = self.supercell_name.index(self.selected_supercell_name)
                 new_supercell_name = self.supercell_name[i_supercell + 1]
                 do_supercell_name_update(new_supercell_name, configuration_id="0")
             elif new == "(prev)":
-                print("Previous configurations available")
                 i_supercell = self.supercell_name.index(self.selected_supercell_name)
                 new_supercell_name = self.supercell_name[i_supercell - 1]
                 config_ids = self.configuration_id_by_supercell_name[new_supercell_name]
                 i = len(config_ids) - 1
                 while i >= 0 and config_ids[i] == "(next)":
                     i -= 1
-                print("config_ids:\n", config_ids)
-                print("i:", i)
-                print("config_ids[i]:", config_ids[i])
 
                 do_supercell_name_update(
                     new_supercell_name,

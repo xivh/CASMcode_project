@@ -1,9 +1,11 @@
 import math
 
+import bokeh.models
 from bokeh.layouts import column, row
 
 import libcasm.xtal as xtal
 
+from ._DashboardStyles import DashboardStyles
 from ._ViewAtomicStructure import (
     ViewAtomicStructure,
 )
@@ -18,6 +20,7 @@ class ProjectionView:
         view_control: ViewControl,
     ):
         self.view_control = view_control
+        self.name = "(None)"
         component_params = self.view_control.component_params
 
         self.view_xz = ViewAtomicStructure(
@@ -52,6 +55,7 @@ class ProjectionView:
         structure: xtal.Structure,
         name: str,
     ):
+        self.name = name
         self.view_xz.set_structure(
             structure=structure,
             title="X-Z plane view",
@@ -72,7 +76,7 @@ class ProjectionView:
         )
         self.view_cabinet.set_structure(
             structure=structure,
-            title=name,
+            title="Cabinet perspective view",
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
             new_cabinet=(
@@ -87,6 +91,7 @@ class ProjectionView:
 
     def make_layout(
         self,
+        styles: DashboardStyles,
     ):
         p_xz = self.view_xz.make_plot()
         p_xz.xaxis.axis_label = "x"
@@ -104,7 +109,23 @@ class ProjectionView:
         p_cabinet.xaxis.axis_label = "b1 (cabinet)"
         p_cabinet.yaxis.axis_label = "b2 (cabinet)"
 
+        if self.name:
+            title_div = bokeh.models.Div(
+                text=f"""<b>{self.name}</b>""",
+                width=1200,
+                height=50,  # Sufficient height for the text
+                styles={
+                    "display": "flex",  # Make the Div a flex container
+                    # "justify-content": "center",  # Center content horizontally
+                    "align-items": "center",  # Center content vertically
+                    "font-size": "32px",  # Adjust font size
+                    "padding-bottom": "10px",  # Add some space below
+                    # 'border': '1px solid red' # Uncomment for debugging to see bounds
+                },
+            )
+
         return column(
+            title_div,
             row(p_xy, p_cabinet),
             row(p_xz, p_yz),
         )
