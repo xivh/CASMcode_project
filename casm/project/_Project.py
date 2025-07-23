@@ -1,6 +1,8 @@
 import pathlib
 from typing import Optional, Union
 
+import numpy as np
+
 import libcasm.casmglobal as casmglobal
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
@@ -166,6 +168,50 @@ class Project:
             using the currently selected parametric composition axes (may be None).
         """
         return self.occupant_composition_axes.make_config_comp_calculator()
+
+    def commit_settings(self):
+        """Commit the project settings to the project directory."""
+        safe_dump(
+            data=self.settings.to_dict(),
+            path=self.dir.project_settings(),
+            force=True,
+        )
+
+    def load_settings(self):
+        """Load the project settings from the project directory."""
+        prev_settings = self.settings
+
+        self.settings = ProjectSettings.from_dict(
+            data=read_required(self.dir.project_settings())
+        )
+
+        if self.settings.name != prev_settings.name:
+            print(
+                f"""!!! Warning: Project name has changed !!!
+            
+Project name changed from '{prev_settings.name}' to '{self.settings.name}'. 
+
+You will need to:
+1) Construct a new Project object for this project
+2) Update all bset built with the previous project name 
+   using project.bset.update(...)."""
+            )
+
+        if not np.allclose(
+            self.settings.nlist_weight_matrix, prev_settings.nlist_weight_matrix
+        ) or not (
+            self.settings.nlist_sublat_indices == prev_settings.nlist_sublat_indices
+        ):
+            print(
+                """!!! Warning: Project neighbor list has changed !!!
+
+The neighbor list weight matrix has changed.
+
+You will need to:
+1) Construct a new Project object for this project
+2) Update all bset built with the previous project name 
+   using project.bset.update(...)."""
+            )
 
     @property
     def global_dof_types(self):

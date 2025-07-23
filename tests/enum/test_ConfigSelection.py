@@ -4,12 +4,7 @@ import casm.project
 from casm.project.enum import ConfigSelection, ConfigSelectionRecord
 
 
-def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
-    project = SiGe_occ_tmp_project
-    assert isinstance(project, casm.project.Project)
-
-    project.sym.print_factor_group()
-
+def setup_SiGe_occ(project, enum_id="main"):
     ## Select project composition axes ##
 
     project.chemical_composition_axes.set_current_axes(1)
@@ -48,21 +43,15 @@ def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
 
     ## Enumerate configurations ##
 
-    enum_id = "main"
-
     enum = project.enum.get(enum_id)
     enum.occ_by_supercell(max=4, min=1)
 
-    ## Test ConfigSelection ##
 
-    sel_id = "main"
+def check_attr_types(config_selection):
+    """Check the types of attributes in ConfigSelection records.
 
-    config_selection = ConfigSelection(
-        enum=enum,
-        name=sel_id,
-    )
-    assert isinstance(config_selection, ConfigSelection)
-    assert len(config_selection) == 214
+    These checks require composition axes and a basis set for the default clex.
+    """
 
     for record in config_selection:
         assert isinstance(record, ConfigSelectionRecord)
@@ -104,6 +93,29 @@ def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
 
         # print()
 
+
+def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
+    project = SiGe_occ_tmp_project
+    assert isinstance(project, casm.project.Project)
+    project.sym.print_factor_group()
+
+    enum_id = "main"
+    setup_SiGe_occ(project, enum_id=enum_id)
+
+    ## Test ConfigSelection ##
+
+    sel_id = "main"
+
+    enum = project.enum.get(enum_id)
+    config_selection = ConfigSelection(
+        enum=enum,
+        name=sel_id,
+    )
+    assert isinstance(config_selection, ConfigSelection)
+    assert len(config_selection) == 214
+
+    check_attr_types(config_selection)
+
     expected_path = enum.enum_dir / f"config_selection.{sel_id}.json"
     assert config_selection.path == expected_path
     assert config_selection.path.exists() is False
@@ -116,3 +128,23 @@ def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
     )
     assert isinstance(config_selection_in, ConfigSelection)
     assert len(config_selection_in) == 214
+
+
+def test_ConfigSelection_SiGe_2(SiGe_occ_tmp_project):
+    project = SiGe_occ_tmp_project
+    assert isinstance(project, casm.project.Project)
+    project.sym.print_factor_group()
+
+    enum_id = "main"
+    setup_SiGe_occ(project, enum_id=enum_id)
+
+    ## Test ConfigSelection ##
+
+    sel_id = "main"
+    enum = project.enum.get(enum_id)
+    config_selection = enum.config_selection(
+        name=sel_id,
+    )
+    assert isinstance(config_selection, ConfigSelection)
+    assert len(config_selection) == 214
+    check_attr_types(config_selection)

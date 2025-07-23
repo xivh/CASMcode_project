@@ -25,7 +25,10 @@ class ProjectSettings(object):
             Project settings as a dictionary.
         """
 
-        self.cluster_expansions = data.get("cluster_expansions", {})
+        self.cluster_expansions = {
+            name: ClexDescription.from_dict(data=data)
+            for name, data in data.get("cluster_expansions", {}).items()
+        }
         """dict[str, ClexDescription]: Named cluster expansions
         
         The named cluster expansions make it easier to select the choice of 
@@ -91,7 +94,7 @@ class ProjectSettings(object):
         """
 
         self.query_alias = data.get("query_alias")
-        """dict: Stores casm query aliases.
+        """dict: Stores casm query aliases (used in CASM v1 only).
         
         Example:
         
@@ -110,7 +113,7 @@ class ProjectSettings(object):
 
         self.required_properties = data.get("required_properties")
         """dict: List of properties required for a particular `<calctype>` to be \
-        complete
+        complete (used in CASM v1 only).
         
         .. code-block:: Python
         
@@ -145,6 +148,67 @@ class ProjectSettings(object):
         if clexname is None:
             return None
         return ClexDescription(**data["cluster_expansions"][clexname])
+
+    def get_clex(self, name: str):
+        """Get a ClexDescription by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the cluster expansion.
+
+        Returns
+        -------
+        clex: ClexDescription
+            The cluster expansion description.
+        """
+        if name not in self.cluster_expansions:
+            raise ValueError(f"Cluster expansion '{name}' does not exist.")
+        return self.cluster_expansions[name]
+
+    def add_clex(
+        self,
+        name: str,
+        property: str = "formation_energy",
+        calctype: str = "default",
+        ref: str = "default",
+        bset: str = "default",
+        eci: str = "default",
+    ):
+        """Add a new ClexDescription to the project settings.
+
+        Parameters
+        ----------
+        name: str
+            Cluster expansion name
+        property: str
+            Name of the property being cluster expanded
+        calctype: str
+            Calctype name
+        ref: str
+            Reference state name
+        bset: str
+            Basis set
+        eci: str
+            ECI set name
+
+        """
+
+        self.cluster_expansions[name] = ClexDescription(
+            name=name,
+            property=property,
+            calctype=calctype,
+            ref=ref,
+            bset=bset,
+            eci=eci,
+        )
+
+    def set_default_clex(self, name: str):
+        """Set the default cluster expansion name."""
+        if name not in self.cluster_expansions:
+            raise ValueError(f"Cluster expansion '{name}' does not exist.")
+        self.default_clex_name = name
+        self.default_clex = self.cluster_expansions[name]
 
     @staticmethod
     def make_default(
@@ -209,7 +273,9 @@ class ProjectSettings(object):
 
     def to_dict(self):
         return {
-            "cluster_expansions": self.cluster_expansions,
+            "cluster_expansions": {
+                name: clex.to_dict() for name, clex in self.cluster_expansions.items()
+            },
             "crystallography_tol": self.crystallography_tol,
             "default_clex": self.default_clex_name,
             "lin_alg_tol": self.lin_alg_tol,

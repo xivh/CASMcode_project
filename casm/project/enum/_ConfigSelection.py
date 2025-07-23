@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import numpy as np
 
@@ -15,7 +15,8 @@ from casm.project.json_io import (
 )
 from libcasm.configuration import Configuration
 
-from ._EnumData import EnumData
+if TYPE_CHECKING:
+    from ._EnumData import EnumData
 
 
 class ConfigSelectionRecord:
@@ -67,7 +68,7 @@ class ConfigSelectionRecord:
             )
 
     @property
-    def _enum(self) -> EnumData:
+    def _enum(self) -> "EnumData":
         """EnumData: The EnumData for the enumeration the parent selection belongs
         to."""
         return self.parent._enum
@@ -426,7 +427,7 @@ class ConfigSelection:
 
     def __init__(
         self,
-        enum: EnumData,
+        enum: "EnumData",
         name: str,
         clex: Union[str, ClexDescription, None] = None,
         gz: bool = False,
@@ -490,7 +491,7 @@ class ConfigSelection:
             keys may be included.
 
         """
-        self._enum: EnumData = enum
+        self._enum: "EnumData" = enum
         """EnumData: The enumeration data containing configuration sets and lists."""
 
         self.name: str = name

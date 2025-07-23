@@ -242,7 +242,15 @@ class StructureImportData:
             └── import.<id>/
                 ├── meta.json
                 ├── settings.json
-                └── structures.json
+                ├── structures.json
+                ├── structures/
+                │   └── <index>/
+                │       ├── mapped_structure.json
+                │       └── mapped_configuration.json
+                ├── configurations.json
+                └──  choices.json
+
+
 
     The `settings.json` file contains a JSON dict with settings for structure import
     and mapping including:

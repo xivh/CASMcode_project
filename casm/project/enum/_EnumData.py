@@ -1,8 +1,11 @@
 import sys
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import numpy as np
 
+from casm.project import (
+    ClexDescription,
+)
 from casm.project.json_io import (
     read_optional,
     safe_dump,
@@ -19,6 +22,7 @@ from libcasm.enumerate import (
 )
 
 from ._ConfigEnumRunner import ConfigEnumRunner
+from ._ConfigSelection import ConfigSelection
 
 if TYPE_CHECKING:
     from casm.project import Project
@@ -574,6 +578,87 @@ class EnumData:
     ):
         print("occ_by_cluster")
         return None
+
+    def config_selection(
+        self,
+        name: str,
+        clex: Union[str, ClexDescription, None] = None,
+        gz: bool = False,
+        records: Union[list[dict], None] = None,
+    ):
+        """Make a ConfigSelection
+
+        A :class:`~casm.project.enum.ConfigSelection` is a selection of configurations
+        from the enumeration. It allows for easily iterating over all configurations
+        in the enumeration, including configurations saved in both the
+        :py:attr:`~EnumData.configuration_set` and
+        :py:attr:`~EnumData.configuration_list`. Iterating over a
+        :class:`~casm.project.enum.ConfigSelection` yields
+        :class:`~casm.project.enum.ConfigSelectionRecord` which can use project data
+        to give easy access to configuration properties such as the parametric
+        composition, correlations, and calculated properties.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the configuration selection. This is used to save the selection
+            to a JSON file. For example, if `name` is "main", the selection is
+            saved as in the enumeration directory as `config_selection.main.json`.
+            A newly created ConfigSelection is not saved to disk until
+            :func:`ConfigSelection.commit` is called.
+
+        clex : Union[str, ClexDescription, None] = None
+            Specifies the default cluster expansion settings to use when getting
+            properties, working with calculations, calculating basis functions, etc.
+
+            By default, the project's default cluster expansion is used. If a
+            string is provided, it should be the name of a cluster expansion included in
+            the :py:data:`ProjectSettings.cluster_expansions` dictionary of the
+            project's settings. Otherwise, a custom :class:`ClexDescription` can be
+            provided.
+
+        gz : bool = False
+            When constructing a new selection, if True, the selection is saved as a
+            gzipped JSON file. If False (default), it is saved as a regular JSON file.
+            If the selection already exists in files, this is ignored and detected from
+            the file extension.
+
+        records : Optional[list[dict]] = None
+            When constructing a new selection, this may be used to initialize the
+            selection. If the selection is already saved to a file, this is ignored and
+            the records are read from the file. By default, a new selection is
+            constructed with all configurations included and selected. If provided,
+            it should be a list of dict:
+
+            .. code-block:: Python
+
+                [
+                    {
+                        "source": "config_set.json",
+                        "name": "SCEL1_1_1_1_0_0_0/0",
+                        "selected": True,
+                        ...
+                    },
+                    {
+                        "source": "config_list.json",
+                        "name": "config_list/0",
+                        "selected": True,
+                        ...
+                    }
+                ]
+
+            The records require "source", "name", and "selected" keys. Additional
+            keys may be included.
+
+
+        Returns
+        -------
+        selection: ConfigSelection
+            The ConfigSelection object.
+
+        """
+        return ConfigSelection(enum=self, name=name, clex=clex, gz=gz, records=records)
 
     # TODO:
     # def strain_by_grid_coordinates(
