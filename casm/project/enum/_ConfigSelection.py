@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import numpy as np
 
@@ -13,26 +13,33 @@ from casm.project.json_io import (
     read_required,
     safe_dump,
 )
-from libcasm.configuration import Configuration
+from libcasm.configuration import Configuration, SupercellRecord
 
 if TYPE_CHECKING:
     from ._EnumData import EnumData
 
 
 def _run_in(
-    args: Union[list[str], list[list[str]]],
+    args: Union[str, list[str], list[list[str]]],
     working_dir: pathlib.Path,
     write_log: bool = True,
+    shell: bool = False,
     log_base: str = "log",
 ):
     """Run a subprocess command in the given working directory.
 
     Parameters
     ----------
-    args: Union[list[str], list[list[str]]]
-        The arguments to run for one (if ``list[str]``) or more (if
-        ``list[list[str]]``) subprocesses. The subprocesses will be run in the
-        calculation directory for each selected configuration.
+    args: Union[str, list[str], list[list[str]]]
+        The arguments to run for one or more subprocesses. The subprocesses will be run
+        in the calculation directory for each selected configuration.
+
+        By default (if `shell` is False), a `list[str]` provides the arguments for one
+        subprocess call and a `list[list[str]]` provides the arguments for a sequence
+        of subprocess calls. If `shell` is True, a single `str` provides the
+        command to run in a single subprocess, and a `list[str]` provides the
+        commands to run in a sequence of subprocesses.
+
     working_dir: pathlib.Path
         The working directory in which to run the command. This is typically the
         calculation directory for a configuration.
@@ -40,6 +47,8 @@ def _run_in(
         If True, write the standard output and error of the command to files named
         `<log_base>.out.txt` and `<log_base>.err.txt` in the working
         directory. If False, the output is printed to the console.
+    shell: bool = False
+        If True, the specified command will be executed through the shell.
     log_base: str = "log"
         Base name for the log files. If `write_log` is True, the output files will
         be named `<log_base>.out.txt` and `<log_base>.err.txt`.
@@ -48,10 +57,16 @@ def _run_in(
 
     working_dir.mkdir(parents=True, exist_ok=True)
 
-    if isinstance(args[0], str):
-        multi_args = [args]
+    if shell:
+        if isinstance(args, str):
+            multi_args = [args]
+        else:
+            multi_args = args
     else:
-        multi_args = args
+        if isinstance(args[0], str):
+            multi_args = [args]
+        else:
+            multi_args = args
 
     def _make_filename(parent: pathlib.Path, base: str, ext: str) -> pathlib.Path:
         """Create a unique filename."""
@@ -82,6 +97,7 @@ def _run_in(
                         stdout=stdout_file,
                         stderr=stderr_file,
                         cwd=working_dir,
+                        shell=shell,
                     )
     else:
         # Run the command in the working directory,
@@ -91,6 +107,7 @@ def _run_in(
                 single_args,
                 cwd=working_dir,
                 check=True,
+                shell=shell,
             )
 
 
@@ -164,6 +181,21 @@ class ConfigSelectionRecord:
         """bool: Whether the configuration is selected."""
         return self.data["selected"]
 
+    def set_selected(self, selected: bool):
+        """Set the selection status of the configuration.
+
+        Notes
+        -----
+        This does not commit the change to disk. You must call `commit()` on the
+        :class:`ConfigSelection` to save the change.
+
+        Parameters
+        ----------
+        selected : bool
+            The selection status to set.
+        """
+        self.data["selected"] = bool(selected)
+
     def select(self):
         """Select the configuration.
 
@@ -201,6 +233,21 @@ class ConfigSelectionRecord:
                 ) from e
         else:
             raise ValueError(f"Unsupported source: {self.source}")
+
+    @property
+    def supercell(self) -> Configuration:
+        """libcasm.configuration.Supercell: The configuration's supercell."""
+        return self.configuration.supercell
+
+    @property
+    def supercell_name(self) -> Configuration:
+        """str: The configuration's supercell's name."""
+        return SupercellRecord(self.supercell).supercell_name
+
+    @property
+    def n_unitcells(self) -> int:
+        """int: The number of unit cells in the configuration's supercell."""
+        return self.supercell.n_unitcells
 
     @property
     def chemical_param_comp(self) -> np.ndarray:
@@ -392,6 +439,31 @@ class ConfigSelectionRecord:
         )
 
     @property
+    def calc_status(self) -> str:
+        """str: The status of the configuration's calculation, as determined by
+        checking a `status.json` file in the configuration's calculation directory.
+
+        Returns the value of the `"status"` attribute in the `status.json` file. If
+        no `clex` is given for the parent selection or the `status.json` file does
+        not exist in the calculation directory, returns "none". If the file does
+        exist, but the `"status"` attribute is not present, is not a str, or otherwise
+        can't be read, an exception is raised.
+        """
+        if self.calc_dir is None:
+            return "none"
+        status_file = self.calc_dir / "status.json"
+        if not status_file.exists():
+            return "none"
+
+        data = read_required(status_file)
+        status = data.get("status")
+        if status is None:
+            raise ValueError("Invalid status: 'status' attribute not found")
+        elif not isinstance(status, str):
+            raise ValueError(f"Invalid status: expected str, got {type(status)}")
+        return status
+
+    @property
     def is_calculated(self) -> bool:
         """bool: Whether the configuration has been calculated, as determined by
         checking for the presence of a `structure_with_properties.json` file in the
@@ -475,27 +547,38 @@ class ConfigSelectionRecord:
 
     def run_subprocess(
         self,
-        args: Union[list[str], list[list[str]]],
+        args: Union[str, list[str], list[list[str]]],
         write_log: bool = False,
+        shell: bool = False,
     ):
         """Run a subprocess command in the calculation directory (whether or not the
         configuration is selected)
 
         Parameters
         ----------
-        args: Union[list[str], list[list[str]]]
-            The arguments to run for one (if ``list[str]``) or more (if
-            ``list[list[str]]``) subprocesses. The subprocesses will be run in the
-            calculation directory for each selected configuration.
-        write_log: bool = False
+        args: Union[str, list[str], list[list[str]]]
+            The arguments to run for one or more subprocesses. The subprocesses will be
+            run in the calculation directory for each selected configuration.
+
+            By default (if `shell` is False), a `list[str]` provides the arguments for
+            one subprocess call and a `list[list[str]]` provides the arguments for a
+            sequence of subprocess calls. If `shell` is True, a single `str` provides
+            the command to run in a single subprocess, and a `list[str]` provides the
+            commands to run in a sequence of subprocesses.
+
+        write_log: bool = True
             If True, write the standard output and error of the command to files named
-            `<command_name>.out.txt` and `<command_name>.err.txt` in the calculation
+            `<log_base>.out.txt` and `<log_base>.err.txt` in the working
             directory. If False, the output is printed to the console.
+
+        shell: bool = False
+            If True, the specified command will be executed through the shell.
         """
         _run_in(
             args=args,
             working_dir=self.calc_dir,
             write_log=write_log,
+            shell=shell,
             log_base="subprocess",
         )
 
@@ -881,6 +964,33 @@ class ConfigSelection:
         for record in self._records:
             record["selected"] = True
 
+    def select_if(self, f: Callable[[ConfigSelectionRecord], bool]):
+        """Set some configurations to selected.
+
+        Parameters
+        ----------
+        f : Callable[[ConfigSelectionRecord], bool]
+            A function that takes a ConfigSelectionRecord and returns True if the
+            configuration should be changed to be selected. Note that if the function
+            returns False, the configuration's selection status is not changed.
+        """
+        for record in self._records:
+            if not record["selected"] and f(ConfigSelectionRecord(self, record)):
+                record["selected"] = True
+
+    def set_selected(self, f: Callable[[ConfigSelectionRecord], bool]):
+        """Set the selection status of all configurations.
+
+        Parameters
+        ----------
+        f : Callable[[ConfigSelectionRecord], bool]
+            A function that takes a ConfigSelectionRecord and returns True if the
+            configuration should be selected, False if the configuration should be
+            not selected.
+        """
+        for record in self._records:
+            record["selected"] = f(ConfigSelectionRecord(self, record))
+
     def deselect(self, name: str):
         """Deselect a configuration by name.
 
@@ -910,6 +1020,20 @@ class ConfigSelection:
         """
         for record in self._records:
             record["selected"] = False
+
+    def deselect_if(self, f: Callable[[ConfigSelectionRecord], bool]):
+        """Set some configurations to not selected.
+
+        Parameters
+        ----------
+        f : Callable[[ConfigSelectionRecord], bool]
+            A function that takes a ConfigSelectionRecord and returns True if the
+            configuration should be deselected. Note that if the function returns
+            False, the configuration's selection status is not changed.
+        """
+        for record in self._records:
+            if record["selected"] and f(ConfigSelectionRecord(self, record)):
+                record["selected"] = False
 
     def erase(self, name_or_names: Union[str, list[str]]):
         """Erase a configuration record by name.
@@ -1093,28 +1217,39 @@ class ConfigSelection:
 
     def run_subprocess(
         self,
-        args: Union[list[str], list[list[str]]],
+        args: Union[str, list[str], list[list[str]]],
         write_log: bool = False,
+        shell: bool = False,
     ):
         """Run a subprocess command in the calculation directory for each selected
         configuration.
 
         Parameters
         ----------
-        args: Union[list[str], list[list[str]]]
-            The arguments to run for one (if ``list[str]``) or more (if
-            ``list[list[str]]``) subprocesses. The subprocesses will be run in the
-            calculation directory for each selected configuration.
-        write_log: bool = False
+        args: Union[str, list[str], list[list[str]]]
+            The arguments to run for one or more subprocesses. The subprocesses will be
+            run in the calculation directory for each selected configuration.
+
+            By default (if `shell` is False), a `list[str]` provides the arguments for
+            one subprocess call and a `list[list[str]]` provides the arguments for a
+            sequence of subprocess calls. If `shell` is True, a single `str` provides
+            the command to run in a single subprocess, and a `list[str]` provides the
+            commands to run in a sequence of subprocesses.
+
+        write_log: bool = True
             If True, write the standard output and error of the command to files named
-            `subprocess.out.txt` and `subprocess.err.txt` in the calculation
+            `<log_base>.out.txt` and `<log_base>.err.txt` in the working
             directory. If False, the output is printed to the console.
+
+        shell: bool = False
+            If True, the specified command will be executed through the shell.
         """
         for record in self:
             if record.is_selected:
                 record.run_subprocess(
                     args=args,
                     write_log=write_log,
+                    shell=shell,
                 )
 
     def run_shell_script(
