@@ -10,6 +10,7 @@ setup(
         "casm",
         "casm.project",
         "casm.project.bset",
+        "casm.project.calc",
         "casm.project.enum",
         "casm.project.fit",
         "casm.project.plot",
