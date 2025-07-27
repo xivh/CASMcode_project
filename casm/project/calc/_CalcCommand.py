@@ -46,6 +46,12 @@ class CalcCommand:
     def remove(self, id: str):
         """Remove calculation settings data
 
+        .. attention::
+
+            This only clears the calculation type settings directory, it does not
+            remove the calculations directories found within enumeration directories,
+            or any other data.
+
         Parameters
         ----------
         id : str

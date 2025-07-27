@@ -117,6 +117,12 @@ class CalcData:
         return s.strip()
 
     def list(self):
+        """Print all files and directories in the calctype settings directory."""
+        print(f"'{self.id}' settings files:")
+        for name in self.listdir():
+            print("- " + name)
+
+    def listdir(self):
         """List files and directories in the calctype settings directory.
 
         Returns
@@ -229,6 +235,7 @@ class CalcData:
         self,
         config_selection: ConfigSelection,
         tool: Union[str, Any],
+        use_run_dirs: bool = True,
     ):
         """Setup calculations for a selection of Configurations in an enumeration.
 
@@ -258,8 +265,16 @@ class CalcData:
                 ):
                     ... write calculation input files ...
 
-
+        use_run_dirs: bool = True
+            If True, a subdirectory named `run.0` will be created in each configuration
+            calculation directory and the input files will be written to that
+            subdirectory. If False, the input files will be written directly to the
+            configuration's calculation directory.
         """
+        from casm.tools.shared.json_io import safe_dump
+
+        quiet = True
+
         if isinstance(tool, str):
             from casm.tools.shared.ase_utils import AseVaspTool
 
@@ -272,8 +287,41 @@ class CalcData:
 
         for record in config_selection:
             if record.is_selected:
+
+                calc_dir = record.calc_dir
+                if use_run_dirs:
+                    # Write input to `run.0` subdirectory
+                    input_file_dir = calc_dir / "run.0"
+                else:
+                    # Write input to the calculation directory directly
+                    input_file_dir = calc_dir
+                casm_structure = record.configuration.to_structure()
+
                 tool.setup(
-                    casm_structure=record.configuration.to_structure(),
-                    calc_dir=record.calc_dir,
-                    config=record.configuration,
+                    casm_structure=casm_structure,
+                    calc_dir=input_file_dir,
+                )
+
+                # Write status.json file
+                safe_dump(
+                    data={"status": "setup"},
+                    path=calc_dir / "status.json",
+                    force=True,
+                    quiet=quiet,
+                )
+
+                # Write structure.json file
+                safe_dump(
+                    data=casm_structure.to_dict(),
+                    path=calc_dir / "structure.json",
+                    force=True,
+                    quiet=quiet,
+                )
+
+                # Write configuration.json file
+                safe_dump(
+                    data=record.configuration.to_dict(),
+                    path=calc_dir / "config.json",
+                    force=True,
+                    quiet=quiet,
                 )

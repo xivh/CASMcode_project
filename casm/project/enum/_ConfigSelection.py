@@ -235,6 +235,20 @@ class ConfigSelectionRecord:
             raise ValueError(f"Unsupported source: {self.source}")
 
     @property
+    def structure(self) -> xtal.Structure:
+        """libcasm.xtal.Structure: The configuration's structure (vacancies not
+        included)."""
+        return self.configuration.to_structure()
+
+    @property
+    def structure_with_vacancies(self) -> xtal.Structure:
+        """libcasm.xtal.Structure: The configuration's structure with vacancies
+        included as atoms."""
+        return self.configuration.to_structure(
+            excluded_species=None,
+        )
+
+    @property
     def supercell(self) -> Configuration:
         """libcasm.configuration.Supercell: The configuration's supercell."""
         return self.configuration.supercell
@@ -439,6 +453,50 @@ class ConfigSelectionRecord:
         )
 
     @property
+    def calc_dir_tgz(self) -> Optional[pathlib.Path]:
+        """Optional[pathlib.Path]: The path of the calculation directory archive
+        for this configuration, if a `clex` is given for the parent selection."""
+        if self.parent.clex is None:
+            return None
+
+        return pathlib.Path(str(self.calc_dir) + ".tgz")
+
+    def compress_calc_dir(self):
+        """Compress the calculation directory for this configuration into a gzipped
+        archive, `<calc_dir>.tgz`, if it exists.
+
+        Returns
+        -------
+        tgz_file: Optional[pathlib.Path]
+            The path to the compressed .tgz file. If the calculation directory does not
+            exist, returns None.
+        """
+        calc_dir = self.calc_dir
+        if calc_dir is None or not calc_dir.exists():
+            return None
+
+        from casm.tools.shared.file_utils import compress
+
+        compress(
+            dir=self.calc_dir,
+            quiet=True,
+            remove_dir=True,
+            extension=".tgz",
+        )
+
+    def uncompress_calc_dir(self):
+        """Uncompress the calculation directory archive for this configuration, if it
+        exists."""
+        tgz_file = self.calc_dir_tgz
+
+        if not tgz_file.exists():
+            return
+
+        from casm.tools.shared.file_utils import uncompress
+
+        uncompress(tgz_file, quiet=True, remove_tgz_file=True)
+
+    @property
     def calc_status(self) -> str:
         """str: The status of the configuration's calculation, as determined by
         checking a `status.json` file in the configuration's calculation directory.
@@ -485,7 +543,7 @@ class ConfigSelectionRecord:
         return structure_file.exists()
 
     @property
-    def structure_with_properties(self) -> Optional[xtal.Structure]:
+    def calculated_structure_with_properties(self) -> Optional[xtal.Structure]:
         """Optional[xtal.Structure]: The structure with properties for the
         configuration, if it has been calculated, and saved in a
         `structure_with_properties.json` file in the configuration's calculation
@@ -894,13 +952,13 @@ class ConfigSelection:
         """pathlib.Path: The path to the configuration selection file."""
         return self._path if not self._gz else self._path_gz
 
-    def commit(self):
+    def commit(self, quiet: bool = False):
         """Save selection to file."""
         safe_dump(
             data=self._records,
             path=self.path,
             force=True,
-            quiet=True,
+            quiet=quiet,
             gz=self._gz,
         )
 
@@ -1311,3 +1369,13 @@ class ConfigSelection:
                     script=script,
                     write_log=write_log,
                 )
+
+    def __repr__(self):
+        """Return a string representation of the selection."""
+        s = "ConfigSelection:\n"
+        s += f"- name: {self.name}\n"
+        s += f"- enum: {self._enum.id}\n"
+        s += f"- n_total: {self.n_total}\n"
+        s += f"- n_selected: {self.n_selected}\n"
+        s += f"- n_unselected: {self.n_unselected}"
+        return s

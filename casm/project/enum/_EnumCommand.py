@@ -72,6 +72,10 @@ class EnumCommand:
     def remove(self, id: str):
         """Remove enumeration data
 
+        .. attention::
+
+            This also permanently removes calculation directories!
+
         Parameters
         ----------
         id : str

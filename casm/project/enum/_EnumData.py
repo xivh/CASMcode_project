@@ -660,6 +660,78 @@ class EnumData:
         """
         return ConfigSelection(enum=self, name=name, clex=clex, gz=gz, records=records)
 
+    def compress_training_data(
+        self,
+        calc_id: Optional[str] = None,
+        remove_dir: bool = True,
+        extension: str = ".tgz",
+    ):
+        """Compress training data into a tar gzipped archive file, if it exists
+
+        Parameters
+        ----------
+        calc_id: Optional[str] = None
+            If provided, the training data directory for a particular calctype is
+            compressed into tar gzipped archive file named
+            `<project>/enumerations/enum.<id>/training_data/calctype.<calc_id>.tgz`.
+            If not provided, all training data is compressed into a file
+            named `<project>/enumerations/enum.<id>/training_data.tgz`.
+        remove_dir: bool = True
+            If True, removes the original training data directory after compression.
+            If False, keeps the original directory.
+        extension: str = ".tgz"
+            The file extension for the compressed archive file. Default is ".tgz".
+
+        """
+        from casm.tools.shared.file_utils import compress
+
+        if calc_id is None:
+            dir = self.enum_dir / "training_data"
+        else:
+            dir = self.enum_dir / "training_data" / f"calctype.{calc_id}"
+        if not dir.exists():
+            return
+        compress(
+            dir=dir,
+            quiet=True,
+            remove_dir=remove_dir,
+            extension=extension,
+        )
+
+    def uncompress_training_data(
+        self,
+        calc_id: Optional[str] = None,
+        remove_tgz_file: bool = True,
+    ):
+        """Uncompress training data from a tar gzipped archive file
+
+        Parameters
+        ----------
+        calc_id: Optional[str] = None
+            If provided, the training data directory for a particular calctype is
+            uncompressed from a file named
+            `<project>/enumerations/enum.<id>/training_data/calctype.<calc_id>.tgz`.
+            If not provided, all training data is uncompressed from a file
+            named `<project>/enumerations/enum.<id>/training_data.tgz`.
+        remove_tgz_file: bool = True
+            If True, removes the original tar gzipped archive file after uncompression.
+            If False, keeps the original file.
+
+        """
+        from casm.tools.shared.file_utils import uncompress
+
+        if calc_id is None:
+            tgz_file = self.enum_dir / "training_data.tgz"
+        else:
+            tgz_file = self.enum_dir / f"training_data/calctype.{calc_id}.tgz"
+        if not tgz_file.exists():
+            return
+        uncompress(
+            tgz_file=tgz_file,
+            quiet=True,
+            remove_tgz_file=remove_tgz_file,
+        )
+
     # TODO:
     # def strain_by_grid_coordinates(
     #     self,
