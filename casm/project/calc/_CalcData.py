@@ -239,6 +239,12 @@ class CalcData:
     ):
         """Setup calculations for a selection of Configurations in an enumeration.
 
+        Notes
+        -----
+        Configurations which have a `calc_status` other than "none" will be skipped
+        and a warning will be printed. This is to avoid overwriting existing
+        calculation files.
+
         Parameters
         ----------
         config_selection: ConfigSelection
@@ -285,43 +291,59 @@ class CalcData:
             else:
                 raise ValueError(f"Unknown tool: {tool}")
 
+        n_jobs_not_ready = 0
+
         for record in config_selection:
-            if record.is_selected:
+            if not record.is_selected:
+                continue
 
-                calc_dir = record.calc_dir
-                if use_run_dirs:
-                    # Write input to `run.0` subdirectory
-                    input_file_dir = calc_dir / "run.0"
-                else:
-                    # Write input to the calculation directory directly
-                    input_file_dir = calc_dir
-                casm_structure = record.configuration.to_structure()
+            if record.calc_status != "none":
+                n_jobs_not_ready += 1
+                print(f"skipping: {record.name} (status={record.calc_status})")
+                continue
 
-                tool.setup(
-                    casm_structure=casm_structure,
-                    calc_dir=input_file_dir,
-                )
+            calc_dir = record.calc_dir
+            if use_run_dirs:
+                # Write input to `run.0` subdirectory
+                input_file_dir = calc_dir / "run.0"
+            else:
+                # Write input to the calculation directory directly
+                input_file_dir = calc_dir
+            casm_structure = record.configuration.to_structure()
 
-                # Write status.json file
-                safe_dump(
-                    data={"status": "setup"},
-                    path=calc_dir / "status.json",
-                    force=True,
-                    quiet=quiet,
-                )
+            tool.setup(
+                casm_structure=casm_structure,
+                calc_dir=input_file_dir,
+            )
 
-                # Write structure.json file
-                safe_dump(
-                    data=casm_structure.to_dict(),
-                    path=calc_dir / "structure.json",
-                    force=True,
-                    quiet=quiet,
-                )
+            # Write status.json file
+            safe_dump(
+                data={"status": "setup"},
+                path=calc_dir / "status.json",
+                force=True,
+                quiet=quiet,
+            )
 
-                # Write configuration.json file
-                safe_dump(
-                    data=record.configuration.to_dict(),
-                    path=calc_dir / "config.json",
-                    force=True,
-                    quiet=quiet,
-                )
+            # Write structure.json file
+            safe_dump(
+                data=casm_structure.to_dict(),
+                path=calc_dir / "structure.json",
+                force=True,
+                quiet=quiet,
+            )
+
+            # Write configuration.json file
+            safe_dump(
+                data=record.configuration.to_dict(),
+                path=calc_dir / "config.json",
+                force=True,
+                quiet=quiet,
+            )
+
+        if n_jobs_not_ready:
+            print()
+            print(
+                f"Warning: {n_jobs_not_ready} jobs have status != 'none', "
+                "so they were not setup."
+            )
+            print()

@@ -24,6 +24,8 @@ def _run_in(
     args: Union[str, list[str], list[list[str]]],
     working_dir: pathlib.Path,
     write_log: bool = True,
+    capture_output: bool = False,
+    text: Optional[bool] = None,
     shell: bool = False,
     log_base: str = "log",
 ):
@@ -48,11 +50,23 @@ def _run_in(
         If True, write the standard output and error of the command to files named
         `<log_base>.out.txt` and `<log_base>.err.txt` in the working
         directory. If False, the output is printed to the console.
+    capture_output: bool = False
+        If True, the standard output and error of the command will be captured and
+        returned as a list of `subprocess.CompletedProcess` objects. The `write_log`
+        argument may not be supplied at the same time as `capture_output`.
+    text: Optional[bool] = None
+        If True, the output will be captured as text (string) instead of bytes. If
+
     shell: bool = False
         If True, the specified command will be executed through the shell.
     log_base: str = "log"
         Base name for the log files. If `write_log` is True, the output files will
         be named `<log_base>.out.txt` and `<log_base>.err.txt`.
+
+    Returns
+    -------
+    completed_processes: list[subprocess.CompletedProcess]
+        A list of completed subprocesses, one for each command run.
     """
     import subprocess
 
@@ -95,14 +109,14 @@ def _run_in(
         with open(stdout_filename, "w") as stdout_file:
             with open(stderr_filename, "w") as stderr_file:
                 for single_args in multi_args:
-                    x = subprocess.run(
+                    subprocess.run(
                         single_args,
                         stdout=stdout_file,
                         stderr=stderr_file,
                         cwd=working_dir,
                         shell=shell,
                     )
-                    completed_processes.append(x)
+
     else:
         # Run the command in the working directory,
         # print stdout and stderr to console
@@ -110,6 +124,8 @@ def _run_in(
             x = subprocess.run(
                 single_args,
                 cwd=working_dir,
+                capture_output=capture_output,
+                text=text,
                 check=True,
                 shell=shell,
             )
@@ -165,6 +181,10 @@ class ConfigSelectionRecord:
             raise ValueError(
                 "Configuration selection record must have a 'selected' key."
             )
+
+        # Cache for reading calc status.json file
+        self._calc_status_data = None
+        self._calc_status_data_mtime = None
 
     @property
     def _enum(self) -> "EnumData":
@@ -504,11 +524,26 @@ class ConfigSelectionRecord:
         uncompress(tgz_file, quiet=True, remove_tgz_file=True)
 
     @property
-    def calc_status_data(self) -> dict:
-        """Optional[dict]: Current contents of the `status.json` file in the
+    def calc_status_data(self) -> Optional[dict]:
+        """Optional[dict]: Contents of the `status.json` file in the
         calculation directory, if it exists.
         """
-        return read_optional(self.calc_dir / "status.json")
+        if self.calc_dir is None:
+            # If no calculation directory is set, return None
+            self._calc_status_data = None
+            self._calc_status_data_mtime = None
+            return None
+        path = self.calc_dir / "status.json"
+        if not path.exists():
+            self._calc_status_data = None
+            self._calc_status_data_mtime = None
+            return None
+        curr_mtime = path.stat().st_mtime
+        if self._calc_status_data_mtime != curr_mtime:
+            # If the mtime has changed, read the file again
+            self._calc_status_data = read_optional(path)
+            self._calc_status_data_mtime = curr_mtime
+        return self._calc_status_data
 
     @property
     def calc_status(self) -> str:
@@ -526,7 +561,7 @@ class ConfigSelectionRecord:
             return "none"
         status = data.get("status")
         if status is None:
-            raise ValueError("Invalid status: 'status' attribute not found")
+            return "none"
         elif not isinstance(status, str):
             raise ValueError(f"Invalid status: expected str, got {type(status)}")
         return status
@@ -547,7 +582,7 @@ class ConfigSelectionRecord:
             return "none"
         jobid = data.get("jobid")
         if jobid is None:
-            raise ValueError("Invalid jobid: 'jobid' attribute not found")
+            return "none"
         elif not isinstance(jobid, str):
             raise ValueError(f"Invalid jobid: expected str, got {type(jobid)}")
         return jobid
@@ -565,10 +600,10 @@ class ConfigSelectionRecord:
         """
         data = self.calc_status_data
         if data is None:
-            return None
+            return "none"
         starttime = data.get("starttime")
         if starttime is None:
-            raise ValueError("Invalid starttime: 'starttime' attribute not found")
+            return "none"
         elif not isinstance(starttime, str):
             raise ValueError(f"Invalid starttime: expected str, got {type(starttime)}")
         return starttime
@@ -586,10 +621,10 @@ class ConfigSelectionRecord:
         """
         data = self.calc_status_data
         if data is None:
-            return None
+            return "none"
         stoptime = data.get("stoptime")
         if stoptime is None:
-            raise ValueError("Invalid stoptime: 'stoptime' attribute not found")
+            return "none"
         elif not isinstance(stoptime, str):
             raise ValueError(f"Invalid stoptime: expected str, got {type(stoptime)}")
         return stoptime
@@ -605,8 +640,17 @@ class ConfigSelectionRecord:
         """
         starttime = self.calc_starttime
         stoptime = self.calc_stoptime
-        if starttime is None or stoptime is None:
+        if starttime == "none":
             return "none"
+
+        # If stoptime is "none", we assume the calculation is still running and
+        # set stoptime to the current time.
+        running = False
+        if stoptime == "none":
+            from datetime import datetime
+
+            stoptime = datetime.now().isoformat()
+            running = True
 
         # starttime and stoptime are expected to be in format generated by
         # `$(date +%Y-%m-%dT%H:%M:%S)` in a bash script, which is ISO 8601 format.
@@ -617,12 +661,13 @@ class ConfigSelectionRecord:
             stop_dt = datetime.fromisoformat(stoptime)
         except ValueError as e:
             raise ValueError(
-                f"Invalid datetime format in status.json: starttime='{starttime}', stoptime='{stoptime}'"
+                f"Invalid datetime format in status.json: "
+                f"starttime='{starttime}', stoptime='{stoptime}'"
             ) from e
         runtime = stop_dt - start_dt
 
-        # Runtime is in timedelta format. Convert to HH:MM:SS format:
-        def to_slurm_walltime(runtime: datetime.timedelta) -> str:
+        # Runtime is in timedelta format. Convert to D-HH:MM:SS format:
+        def formatted(runtime: datetime.timedelta) -> str:
             total_seconds = int(runtime.total_seconds())
 
             days = total_seconds // (24 * 3600)
@@ -633,25 +678,20 @@ class ConfigSelectionRecord:
             seconds = total_seconds % 60
 
             if days > 0:
-                if seconds > 0:
-                    return f"{days}-{hours:02}:{minutes:02}:{seconds:02}"
-                elif minutes > 0:
-                    return f"{days}-{hours:02}:{minutes:02}"
-                else:
-                    return f"{days}-{hours:02}"
+                return f"{days}-{hours:02}:{minutes:02}:{seconds:02}"
             else:
                 if hours > 0:
                     return f"{hours}:{minutes:02}:{seconds:02}"
                 elif minutes > 0:
-                    if seconds > 0:
-                        return f"{minutes}:{seconds:02}"
-                    else:
-                        return f"{minutes}"
+                    return f"{minutes}:{seconds:02}"
                 else:
                     # Handles cases with only seconds, e.g., 30 seconds -> 0:30
                     return f"0:{seconds:02}"
 
-        return to_slurm_walltime(runtime)
+        formatted_time = formatted(runtime)
+        if running:
+            formatted_time = f"{formatted_time}+"
+        return formatted_time
 
     @property
     def is_calculated(self) -> bool:
@@ -739,6 +779,8 @@ class ConfigSelectionRecord:
         self,
         args: Union[str, list[str], list[list[str]]],
         write_log: bool = False,
+        capture_output: bool = False,
+        text: Optional[bool] = None,
         shell: bool = False,
     ):
         """Run a subprocess command in the calculation directory (whether or not the
@@ -761,6 +803,14 @@ class ConfigSelectionRecord:
             `<log_base>.out.txt` and `<log_base>.err.txt` in the working
             directory. If False, the output is printed to the console.
 
+        capture_output: bool = False
+            If True, the standard output and error of the command will be captured and
+            returned as a list of `subprocess.CompletedProcess` objects. The `write_log`
+            argument may not be supplied at the same time as `capture_output`.
+
+        text: Optional[bool] = None
+            If True, the output will be captured as text (str) instead of bytes.
+
         shell: bool = False
             If True, the specified command will be executed through the shell.
 
@@ -773,6 +823,8 @@ class ConfigSelectionRecord:
             args=args,
             working_dir=self.calc_dir,
             write_log=write_log,
+            capture_output=capture_output,
+            text=text,
             shell=shell,
             log_base="subprocess",
         )
@@ -1564,7 +1616,15 @@ class ConfigSelection:
                 status_count[status] = 1
 
         headers = ["Status", "Count"]
-        status_list = ["none", "setup", "started", "stopped", "complete"]
+        status_list = [
+            "none",
+            "setup",
+            "submitted",
+            "started",
+            "canceled",
+            "stopped",
+            "complete",
+        ]
         for status in status_count:
             if status not in status_list:
                 status_list.append(status)
