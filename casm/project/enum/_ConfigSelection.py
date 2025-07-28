@@ -924,6 +924,56 @@ class ConfigSelectionRecord:
         )
 
 
+class SelectedRecords:
+    def __init__(self, selection: "ConfigSelection"):
+        """Iterate over selected records in a ConfigSelection.
+
+        Parameters
+        ----------
+        selection : ConfigSelection
+            The configuration selection to work with.
+        """
+        self.selection = selection
+
+    def __iter__(self):
+        for _record in self.selection._records:
+            if _record["selected"]:
+                yield ConfigSelectionRecord(parent=self.selection, data=_record)
+
+
+class UnselectedRecords:
+    def __init__(self, selection: "ConfigSelection"):
+        """Iterate over unselected records in a ConfigSelection.
+
+        Parameters
+        ----------
+        selection : ConfigSelection
+            The configuration selection to work with.
+        """
+        self.selection = selection
+
+    def __iter__(self):
+        for _record in self.selection._records:
+            if not _record["selected"]:
+                yield ConfigSelectionRecord(parent=self.selection, data=_record)
+
+
+class AllRecords:
+    def __init__(self, selection: "ConfigSelection"):
+        """Iterate over all records in a ConfigSelection.
+
+        Parameters
+        ----------
+        selection : ConfigSelection
+            The configuration selection to work with.
+        """
+        self.selection = selection
+
+    def __iter__(self):
+        for _record in self.selection._records:
+            yield ConfigSelectionRecord(parent=self.selection, data=_record)
+
+
 class ConfigSelection:
     """A selection of configurations from an enumeration.
 
@@ -946,6 +996,13 @@ class ConfigSelection:
 
     - ``for record in selection``: Iterate over selected configurations, yielding
       :class:`ConfigSelectionRecord` for each selected configuration.
+    - ``for record in selection.selected``: Same as ``for record in selection``, but
+      stated explicitly that it only iterates over selected records.
+    - ``for record in selection.unselected``: Iterate over unselected configurations,
+      yielding :class:`ConfigSelectionRecord` for each unselected configuration.
+    - ``for record in selection.all``: Iterate over all configurations, yielding
+      :class:`ConfigSelectionRecord` for each configuration, regardless of selection
+      status.
 
 
     """
@@ -1453,8 +1510,53 @@ class ConfigSelection:
 
     def __iter__(self):
         """Iterate over the selected configuration records."""
-        for record in self._records:
-            yield ConfigSelectionRecord(parent=self, data=record)
+        for record in self.selected:
+            yield record
+
+    @property
+    def all(self):
+        """AllRecords: An iterable of all configuration records in the selection.
+
+        .. rubric:: Example Usage
+
+        .. code-block:: Python
+
+            for record in selection.all:
+                print(record.name, record.is_selected)
+
+        """
+        return AllRecords(self)
+
+    @property
+    def selected(self):
+        """SelectedRecords: An iterable of selected configuration records in the
+        selection.
+
+        .. rubric:: Example Usage
+
+        .. code-block:: Python
+
+            # Note that this is equivalent to using `for record in selection`
+            for record in selection.selected:
+                print(record.name, record.is_selected)
+
+        """
+        return SelectedRecords(self)
+
+    @property
+    def unselected(self):
+        """UnselectedRecords: An iterable of unselected configuration records in the
+        selection.
+
+        .. rubric:: Example Usage
+
+        .. code-block:: Python
+
+            for record in selection.unselected:
+                print(record.name, record.is_selected)
+
+        """
+        return UnselectedRecords(self)
 
     @property
     def n_selected(self) -> int:
@@ -1501,13 +1603,12 @@ class ConfigSelection:
         shell: bool = False
             If True, the specified command will be executed through the shell.
         """
-        for record in self:
-            if record.is_selected:
-                record.run_subprocess(
-                    args=args,
-                    write_log=write_log,
-                    shell=shell,
-                )
+        for record in self.selected:
+            record.run_subprocess(
+                args=args,
+                write_log=write_log,
+                shell=shell,
+            )
 
     def run_shell_script(
         self,
@@ -1533,12 +1634,11 @@ class ConfigSelection:
             `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
             directory. If False, the output is printed to the console.
         """
-        for record in self:
-            if record.is_selected:
-                record.run_shell_script(
-                    script=script,
-                    write_log=write_log,
-                )
+        for record in self.selected:
+            record.run_shell_script(
+                script=script,
+                write_log=write_log,
+            )
 
     def run_python_script(
         self,
@@ -1562,12 +1662,11 @@ class ConfigSelection:
             `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
             directory. If False, the output is printed to the console.
         """
-        for record in self:
-            if record.is_selected:
-                record.run_python_script(
-                    script=script,
-                    write_log=write_log,
-                )
+        for record in self.selected:
+            record.run_python_script(
+                script=script,
+                write_log=write_log,
+            )
 
     def __repr__(self):
         """Return a string representation of the selection."""
@@ -1606,9 +1705,7 @@ class ConfigSelection:
         from tabulate import tabulate
 
         status_count = dict()
-        for record in self:
-            if not record.is_selected:
-                continue
+        for record in self.selected:
             status = record.calc_status
             if status in status_count:
                 status_count[status] += 1

@@ -130,6 +130,49 @@ def test_ConfigSelection_SiGe_1(SiGe_occ_tmp_project):
     assert len(config_selection_in) == 214
 
 
+def test_ConfigSelection_iter(SiGe_occ_tmp_project):
+    project = SiGe_occ_tmp_project
+    assert isinstance(project, casm.project.Project)
+
+    enum_id = "main"
+    enum = project.enum.get(enum_id)
+    enum.occ_by_supercell(max=4, min=1)
+
+    sel = enum.config_selection("main")
+    sel.set_selected(lambda record: record.n_unitcells == 2)
+
+    assert len(sel) == 214
+    count = 0
+    for record in sel:
+        if record.is_selected:
+            count += 1
+    assert count == 7
+
+    # Iterate through the selected configurations
+    count = 0
+    for record in sel:
+        count += 1
+    assert count == 7
+
+    # Also iterate through the selected configurations
+    count = 0
+    for record in sel.selected:
+        count += 1
+    assert count == 7
+
+    # Iterate through the unselected configurations
+    count = 0
+    for record in sel.unselected:
+        count += 1
+    assert count == 207
+
+    # Iterate through all configurations
+    count = 0
+    for record in sel.all:
+        count += 1
+    assert count == 214
+
+
 def test_ConfigSelection_SiGe_2(SiGe_occ_tmp_project):
     project = SiGe_occ_tmp_project
     assert isinstance(project, casm.project.Project)
