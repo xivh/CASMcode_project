@@ -10,6 +10,7 @@ from casm.project import (
     ClexDescription,
 )
 from casm.project.json_io import (
+    read_optional,
     read_required,
     safe_dump,
 )
@@ -79,6 +80,8 @@ def _run_in(
                 filename = parent / f"{base}.{index}.{ext}"
         return filename
 
+    completed_processes = []
+
     if write_log:
         stdout_filename = _make_filename(
             parent=working_dir, base=log_base + ".out", ext="txt"
@@ -92,23 +95,27 @@ def _run_in(
         with open(stdout_filename, "w") as stdout_file:
             with open(stderr_filename, "w") as stderr_file:
                 for single_args in multi_args:
-                    subprocess.run(
+                    x = subprocess.run(
                         single_args,
                         stdout=stdout_file,
                         stderr=stderr_file,
                         cwd=working_dir,
                         shell=shell,
                     )
+                    completed_processes.append(x)
     else:
         # Run the command in the working directory,
         # print stdout and stderr to console
         for single_args in multi_args:
-            subprocess.run(
+            x = subprocess.run(
                 single_args,
                 cwd=working_dir,
                 check=True,
                 shell=shell,
             )
+            completed_processes.append(x)
+
+    return completed_processes
 
 
 class ConfigSelectionRecord:
@@ -497,6 +504,13 @@ class ConfigSelectionRecord:
         uncompress(tgz_file, quiet=True, remove_tgz_file=True)
 
     @property
+    def calc_status_data(self) -> dict:
+        """Optional[dict]: Current contents of the `status.json` file in the
+        calculation directory, if it exists.
+        """
+        return read_optional(self.calc_dir / "status.json")
+
+    @property
     def calc_status(self) -> str:
         """str: The status of the configuration's calculation, as determined by
         checking a `status.json` file in the configuration's calculation directory.
@@ -507,19 +521,137 @@ class ConfigSelectionRecord:
         exist, but the `"status"` attribute is not present, is not a str, or otherwise
         can't be read, an exception is raised.
         """
-        if self.calc_dir is None:
+        data = self.calc_status_data
+        if data is None:
             return "none"
-        status_file = self.calc_dir / "status.json"
-        if not status_file.exists():
-            return "none"
-
-        data = read_required(status_file)
         status = data.get("status")
         if status is None:
             raise ValueError("Invalid status: 'status' attribute not found")
         elif not isinstance(status, str):
             raise ValueError(f"Invalid status: expected str, got {type(status)}")
         return status
+
+    @property
+    def calc_jobid(self) -> str:
+        """str: The calculation's job ID, as determined by checking a `status.json`
+        file in the configuration's calculation directory.
+
+        Returns the value of the `"jobid"` attribute in the `status.json` file. If
+        no `clex` is given for the parent selection or the `status.json` file does
+        not exist in the calculation directory, or a `"jobid"` is not present,
+        returns "none". If the file does exist, but the `"status"` attribute is not
+        present, is not a str, or otherwise can't be read, an exception is raised.
+        """
+        data = self.calc_status_data
+        if data is None:
+            return "none"
+        jobid = data.get("jobid")
+        if jobid is None:
+            raise ValueError("Invalid jobid: 'jobid' attribute not found")
+        elif not isinstance(jobid, str):
+            raise ValueError(f"Invalid jobid: expected str, got {type(jobid)}")
+        return jobid
+
+    @property
+    def calc_starttime(self) -> Optional[str]:
+        """Optional[str]: The calculation's start time, as determined by checking a
+        `status.json` file in the configuration's calculation directory.
+
+        Returns the value of the `"starttime"` attribute in the `status.json` file.
+        If no `clex` is given for the parent selection or the `status.json` file does
+        not exist in the calculation directory, returns None. If the file does exist,
+        but the `"starttime"` attribute is not present, is not a str, or otherwise
+        can't be read, an exception is raised.
+        """
+        data = self.calc_status_data
+        if data is None:
+            return None
+        starttime = data.get("starttime")
+        if starttime is None:
+            raise ValueError("Invalid starttime: 'starttime' attribute not found")
+        elif not isinstance(starttime, str):
+            raise ValueError(f"Invalid starttime: expected str, got {type(starttime)}")
+        return starttime
+
+    @property
+    def calc_stoptime(self) -> Optional[str]:
+        """Optional[str]: The calculation's stop time, as determined by checking a
+        `status.json` file in the configuration's calculation directory.
+
+        Returns the value of the `"stoptime"` attribute in the `status.json` file.
+        If no `clex` is given for the parent selection or the `status.json` file does
+        not exist in the calculation directory, returns None. If the file does exist,
+        but the `"stoptime"` attribute is not present, is not a str, or otherwise
+        can't be read, an exception is raised.
+        """
+        data = self.calc_status_data
+        if data is None:
+            return None
+        stoptime = data.get("stoptime")
+        if stoptime is None:
+            raise ValueError("Invalid stoptime: 'stoptime' attribute not found")
+        elif not isinstance(stoptime, str):
+            raise ValueError(f"Invalid stoptime: expected str, got {type(stoptime)}")
+        return stoptime
+
+    @property
+    def calc_runtime(self) -> Optional[float]:
+        """Optional[str]: The calculation's runtime in HH:MM:SS format, as determined by
+        checking a `status.json` file in the configuration's calculation directory.
+
+        Calculates the runtime as the difference between `calc_stoptime` and
+        `calc_starttime`, if both are available. If either is not available, returns
+        None.
+        """
+        starttime = self.calc_starttime
+        stoptime = self.calc_stoptime
+        if starttime is None or stoptime is None:
+            return "none"
+
+        # starttime and stoptime are expected to be in format generated by
+        # `$(date +%Y-%m-%dT%H:%M:%S)` in a bash script, which is ISO 8601 format.
+        from datetime import datetime
+
+        try:
+            start_dt = datetime.fromisoformat(starttime)
+            stop_dt = datetime.fromisoformat(stoptime)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid datetime format in status.json: starttime='{starttime}', stoptime='{stoptime}'"
+            ) from e
+        runtime = stop_dt - start_dt
+
+        # Runtime is in timedelta format. Convert to HH:MM:SS format:
+        def to_slurm_walltime(runtime: datetime.timedelta) -> str:
+            total_seconds = int(runtime.total_seconds())
+
+            days = total_seconds // (24 * 3600)
+            total_seconds %= 24 * 3600
+            hours = total_seconds // 3600
+            total_seconds %= 3600
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+
+            if days > 0:
+                if seconds > 0:
+                    return f"{days}-{hours:02}:{minutes:02}:{seconds:02}"
+                elif minutes > 0:
+                    return f"{days}-{hours:02}:{minutes:02}"
+                else:
+                    return f"{days}-{hours:02}"
+            else:
+                if hours > 0:
+                    return f"{hours}:{minutes:02}:{seconds:02}"
+                elif minutes > 0:
+                    if seconds > 0:
+                        return f"{minutes}:{seconds:02}"
+                    else:
+                        return f"{minutes}"
+                else:
+                    # Handles cases with only seconds, e.g., 30 seconds -> 0:30
+                    return f"0:{seconds:02}"
+
+        return to_slurm_walltime(runtime)
 
     @property
     def is_calculated(self) -> bool:
@@ -631,8 +763,13 @@ class ConfigSelectionRecord:
 
         shell: bool = False
             If True, the specified command will be executed through the shell.
+
+        Returns
+        -------
+        completed_processes: list[subprocess.CompletedProcess]
+            A list of completed subprocesses, one for each command run.
         """
-        _run_in(
+        return _run_in(
             args=args,
             working_dir=self.calc_dir,
             write_log=write_log,
@@ -663,6 +800,11 @@ class ConfigSelectionRecord:
             If True, write the standard output and error of the script to files named
             `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
             directory. If False, the output is printed to the console.
+
+        Returns
+        -------
+        completed_processes: list[subprocess.CompletedProcess]
+            A list of completed subprocesses, one for each command run.
         """
         import os
         import shutil
@@ -679,7 +821,7 @@ class ConfigSelectionRecord:
         script_dest = calc_dir / script.name
         shutil.copy(script, script_dest)
 
-        _run_in(
+        return _run_in(
             args=args,
             working_dir=calc_dir,
             write_log=write_log,
@@ -706,6 +848,11 @@ class ConfigSelectionRecord:
             If True, write the standard output and error of the script to files named
             `<script_name>.out.txt` and `<script_name>.err.txt` in the calculation
             directory. If False, the output is printed to the console.
+
+        Returns
+        -------
+        completed_processes: list[subprocess.CompletedProcess]
+            A list of completed subprocesses, one for each command run.
         """
         import shutil
 
@@ -718,7 +865,7 @@ class ConfigSelectionRecord:
         script_dest = calc_dir / script.name
         shutil.copy(script, script_dest)
 
-        _run_in(
+        return _run_in(
             args=args,
             working_dir=calc_dir,
             write_log=write_log,
@@ -1375,7 +1522,55 @@ class ConfigSelection:
         s = "ConfigSelection:\n"
         s += f"- name: {self.name}\n"
         s += f"- enum: {self._enum.id}\n"
+        s += f"- clex: {self.clex.name if self.clex else 'None'}\n"
+        if self.clex is not None:
+            s += f"  - calctype: {self.clex.calctype}\n"
+            s += f"  - ref: {self.clex.ref}\n"
+            s += f"  - bset: {self.clex.bset}\n"
+            s += f"  - eci: {self.clex.eci}\n"
         s += f"- n_total: {self.n_total}\n"
         s += f"- n_selected: {self.n_selected}\n"
         s += f"- n_unselected: {self.n_unselected}"
         return s
+
+    def tabulate_calc_status(self):
+        """Collect and print a table of calculation statuses for selected
+        configurations.
+
+        .. rubric:: Example Output
+
+        .. code-block:: text
+
+            Status      Count
+            --------  -------
+            none            0
+            setup           0
+            started         0
+            stopped         0
+            complete      214
+
+
+        """
+        from tabulate import tabulate
+
+        status_count = dict()
+        for record in self:
+            if not record.is_selected:
+                continue
+            status = record.calc_status
+            if status in status_count:
+                status_count[status] += 1
+            else:
+                status_count[status] = 1
+
+        headers = ["Status", "Count"]
+        status_list = ["none", "setup", "started", "stopped", "complete"]
+        for status in status_count:
+            if status not in status_list:
+                status_list.append(status)
+
+        data = []
+        for status in status_list:
+            data.append([status, status_count.get(status, 0)])
+
+        print(tabulate(data, headers=headers))

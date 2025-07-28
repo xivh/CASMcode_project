@@ -16,10 +16,6 @@ from libcasm.configuration import (
     SupercellRecord,
     SupercellSet,
 )
-from libcasm.enumerate import (
-    ConfigEnumAllOccupations,
-    ScelEnum,
-)
 
 from ._ConfigEnumRunner import ConfigEnumRunner
 from ._ConfigSelection import ConfigSelection
@@ -394,6 +390,7 @@ class EnumData:
         dry_run: bool = False
             If True, do not save the results.
         """
+        from libcasm.enumerate import ScelEnum
 
         prim = self.proj.prim
         prefix = ""
@@ -523,6 +520,8 @@ class EnumData:
         dry_run: bool = False
             If True, do not save the results.
         """
+
+        from libcasm.enumerate import ConfigEnumAllOccupations
 
         if continue_f is None:
 
@@ -659,6 +658,38 @@ class EnumData:
 
         """
         return ConfigSelection(enum=self, name=name, clex=clex, gz=gz, records=records)
+
+    def all_config_selections(self):
+        """Return all configuration selections saved in the enumeration directory
+
+        Returns
+        -------
+        selections: list[str]
+            A list of configuration selection names, e.g. ["main", "all", "test"].
+            These correspond to files in the enumeration directory with names like
+            `config_selection.main.json`, `config_selection.all.json`, etc.
+        """
+
+        # list <name> for all files in the enumeration directory that match the
+        # pattern: config_selection.<name>.json or config_selection.<name>.json.gz
+        import os
+        import re
+
+        selections = set()
+        pattern = re.compile(r"^config_selection\.(.+?)\.json(\.gz)?$")
+
+        for filename in os.listdir(self.enum_dir):
+            path = self.enum_dir / filename
+            if not path.is_file():
+                continue
+
+            match = pattern.match(filename)
+            if not match:
+                continue
+
+            selections.add(match.group(1))
+
+        return sorted(list(selections))
 
     def compress_training_data(
         self,
