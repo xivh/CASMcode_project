@@ -23,6 +23,10 @@ module load vasp/{{ vasp_version }}
 # Max relaxation run index to allow
 IMAX={{ imax }}
 
+# Absolute path to status.json:
+STATUS_JSON=$(realpath status.json)
+TMP_JSON=$(realpath tmp.json)
+
 echo "~~~ Updating status.json ~~~"
 
 # If "status.json" does not exist, create it as an empty JSON object
@@ -58,9 +62,9 @@ cleanup() {
 
   # Update the status to "complete"
   jq --arg status "$STATUS" --arg stoptime "$STOPTIME" \
-    '.status = $status | .stoptime = $stoptime' status.json > tmp.json && \
-    mv tmp.json status.json
-  cat status.json
+    '.status = $status | .stoptime = $stoptime' $STATUS_JSON > $TMP_JSON && \
+    mv $TMP_JSON $STATUS_JSON
+  cat $STATUS_JSON
 
   echo "~~~ Cleanup complete ~~~"
 }
