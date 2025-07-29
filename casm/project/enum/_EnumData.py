@@ -1,3 +1,4 @@
+import pathlib
 import sys
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
@@ -566,25 +567,13 @@ class EnumData:
                 break
         runner.finish()
 
-    def occ_by_supercell_list(
-        self,
-    ):
-        print("occ_by_supercell_list")
-        return None
-
-    def occ_by_cluster(
-        self,
-    ):
-        print("occ_by_cluster")
-        return None
-
     def config_selection(
         self,
         name: str,
         clex: Union[str, ClexDescription, None] = None,
         gz: bool = False,
         records: Union[list[dict], None] = None,
-    ):
+    ) -> "ConfigSelection":
         """Make a ConfigSelection
 
         A :class:`~casm.project.enum.ConfigSelection` is a selection of configurations
@@ -691,9 +680,28 @@ class EnumData:
 
         return sorted(list(selections))
 
+    def calctype_dir(
+        self,
+        calctype_id: str,
+    ) -> pathlib.Path:
+        """Return the directory for a specific calculation type in the enumeration
+
+        Parameters
+        ----------
+        calctype_id: str
+            The calculation type identifier.
+
+        Returns
+        -------
+        pathlib.Path
+            The path to the calculation type directory in the enumeration, e.g.
+            `<project>/enumerations/enum.<id>/training_data/calctype.<calctype_id>/`.
+        """
+        return self.proj.dir.enum_calctype_dir(enum=self.id, calctype=calctype_id)
+
     def compress_training_data(
         self,
-        calc_id: Optional[str] = None,
+        calctype_id: Optional[str] = None,
         remove_dir: bool = True,
         extension: str = ".tgz",
     ):
@@ -701,10 +709,10 @@ class EnumData:
 
         Parameters
         ----------
-        calc_id: Optional[str] = None
+        calctype_id: Optional[str] = None
             If provided, the training data directory for a particular calctype is
             compressed into tar gzipped archive file named
-            `<project>/enumerations/enum.<id>/training_data/calctype.<calc_id>.tgz`.
+            `<project>/enumerations/enum.<id>/training_data/calctype.<calctype_id>.tgz`.
             If not provided, all training data is compressed into a file
             named `<project>/enumerations/enum.<id>/training_data.tgz`.
         remove_dir: bool = True
@@ -716,10 +724,10 @@ class EnumData:
         """
         from casm.tools.shared.file_utils import compress
 
-        if calc_id is None:
+        if calctype_id is None:
             dir = self.enum_dir / "training_data"
         else:
-            dir = self.enum_dir / "training_data" / f"calctype.{calc_id}"
+            dir = self.calctype_dir(calctype_id=calctype_id)
         if not dir.exists():
             return
         compress(
@@ -731,17 +739,17 @@ class EnumData:
 
     def uncompress_training_data(
         self,
-        calc_id: Optional[str] = None,
+        calctype_id: Optional[str] = None,
         remove_tgz_file: bool = True,
     ):
         """Uncompress training data from a tar gzipped archive file
 
         Parameters
         ----------
-        calc_id: Optional[str] = None
+        calctype_id: Optional[str] = None
             If provided, the training data directory for a particular calctype is
             uncompressed from a file named
-            `<project>/enumerations/enum.<id>/training_data/calctype.<calc_id>.tgz`.
+            `<project>/enumerations/enum.<id>/training_data/calctype.<calctype_id>.tgz`.
             If not provided, all training data is uncompressed from a file
             named `<project>/enumerations/enum.<id>/training_data.tgz`.
         remove_tgz_file: bool = True
@@ -751,10 +759,12 @@ class EnumData:
         """
         from casm.tools.shared.file_utils import uncompress
 
-        if calc_id is None:
+        if calctype_id is None:
             tgz_file = self.enum_dir / "training_data.tgz"
         else:
-            tgz_file = self.enum_dir / f"training_data/calctype.{calc_id}.tgz"
+            tgz_file = pathlib.Path(
+                str(self.calctype_dir(calctype_id=calctype_id)) + ".tgz"
+            )
         if not tgz_file.exists():
             return
         uncompress(
@@ -764,6 +774,18 @@ class EnumData:
         )
 
     # TODO:
+    # def occ_by_supercell_list(
+    #         self,
+    # ):
+    #     print("occ_by_supercell_list")
+    #     return None
+    #
+    # def occ_by_cluster(
+    #         self,
+    # ):
+    #     print("occ_by_cluster")
+    #     return None
+    #
     # def strain_by_grid_coordinates(
     #     self,
     # ):

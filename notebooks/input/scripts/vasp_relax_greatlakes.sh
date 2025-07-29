@@ -7,6 +7,12 @@
 #SBATCH --account={{ account }}
 #SBATCH --partition={{ partition }}
 
+echo "------------------------------------------------------"
+echo "Job ID: $SLURM_JOB_ID"
+echo "Allocated nodes: $SLURM_NODELIST"
+echo "------------------------------------------------------"
+echo ""
+
 echo "~~~ Beginning VASP relaxation ~~~"
 echo "cwd:"
 echo "$(pwd)"
@@ -96,16 +102,17 @@ cd ..
 # in the run or the maximum number of relaxation runs reached
 while [ $NSTEPS -gt 1 ] && [ $I -lt $IMAX ]
 do
- echo "Continue relaxation runs..."
- I=$(($I+1))
- cp -r run.$(($I-1)) run.$I
- rm run.$(($I-1))/POTCAR
- cd run.$I
- cp CONTCAR POSCAR
- echo "Begin run.$I..."
- mpirun vasp >& stdout
- NSTEPS=$(cat stdout | grep E0 | wc -l)
- cd ..
+  echo "Continue relaxation runs..."
+  I=$(($I+1))
+  cp -r run.$(($I-1)) run.$I
+  rm run.$(($I-1))/POTCAR
+  cd run.$I
+  rm OUTCAR
+  cp CONTCAR POSCAR
+  echo "Begin run.$I..."
+  mpirun vasp >& stdout
+  NSTEPS=$(cat stdout | grep E0 | wc -l)
+  cd ..
 done
 
 
@@ -116,6 +123,7 @@ I=$(($I+1))
 cp -r run.$(($I-1)) run.final
 rm run.$(($I-1))/POTCAR
 cd run.final
+rm OUTCAR
 cp CONTCAR POSCAR
 
 sed -i "s/.*IBRION.*/IBRION = -1/g" INCAR
@@ -123,7 +131,7 @@ sed -i "s/.*NSW.*/NSW = 0/g" INCAR
 sed -i "s/.*ISIF.*/ISIF = 2/g" INCAR
 sed -i "s/.*ISMEAR.*/ISMEAR = -5/g" INCAR
 
- echo "Begin run.final..."
+echo "Begin run.final..."
 mpirun vasp >& stdout
 cd ..
 

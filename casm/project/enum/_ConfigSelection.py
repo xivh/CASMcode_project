@@ -1218,6 +1218,57 @@ class ConfigSelection:
             gz=self._gz,
         )
 
+    def remove(self, quiet: bool = False):
+        """Remove the selection file from disk."""
+        from casm.tools.shared.json_io import printpathstr
+
+        path = self.path
+        if not quiet:
+            print(f"Removed selection file: {printpathstr(self.path)}")
+        if path.exists():
+            path.unlink()
+
+    def copy(
+        self,
+        name: str,
+        clex: Union[str, ClexDescription, None] = None,
+        clear_clex: bool = False,
+    ):
+        """Create a copy of the selection with a new name (does not commit).
+
+        Parameters
+        ----------
+        name: str
+            The name to use for the new configuration selection.
+        clex: Union[str, ClexDescription, None] = None
+            Optionally specify a new cluster expansion to use for the copy. If None, the
+            current cluster expansion is used.
+        clear_clex: bool = False
+            If True, the copy will be created without any cluster expansion. If False
+            (default), the cluster expansion used for the copy is determined by `clex`.
+
+        Returns
+        -------
+        new_config_selection: ConfigSelection
+            The new configuration selection with the same records as this one, but
+            with a new name and optionally a new cluster expansion.
+        """
+        import copy
+
+        if clear_clex:
+            clex = None
+        elif clex is None:
+            # Use the current clex if not provided
+            clex = self.clex
+
+        return ConfigSelection(
+            enum=self._enum,
+            name=name,
+            clex=clex,
+            gz=self._gz,
+            records=copy.deepcopy(self._records),
+        )
+
     @property
     def chemical_components(self) -> list[str]:
         """list[str]: The order of components in chemical composition vector
