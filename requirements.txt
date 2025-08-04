@@ -6,6 +6,7 @@ gunicorn
 latex2mathml
 numpy
 scipy
-libcasm-mapping>=2.1.0
-libcasm-clexmonte>=2.1.0
-casm-bset>=2.0.0
+libcasm-mapping>=2.2.0
+libcasm-clexmonte>=2.2.0
+casm-bset>=2.1.0
+casm-tools>=2.0a1
