@@ -228,7 +228,7 @@ class ProjectSettings(object):
         """
         if name is None:
             name = xtal_prim.to_dict().get("title", "")
-        pattern = R"^[a-zA-Z_]+\w*"
+        pattern = R"^[a-zA-Z_]+\w*$"
         if not re.match(
             pattern,
             name,
