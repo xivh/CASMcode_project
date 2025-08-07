@@ -48,9 +48,8 @@ class StructureRecord:
             Ideal configuration, if known.
         mappings: Optional[list[libcasm.mapping.info.ScoredStructureMapping]] = None
             Scored structure mappings.
-        selected_mapping_index: \
-        Optional[libcasm.mapping.info.ScoredStructureMapping] = None
-            A scored structure mapping.
+        selected_mapping_index: Optional[int] = None
+            Index into `mappings` of the selected mapping.
         mapped_structure: Optional[libcasm.xtal.Structure] = None
             Mapped structure with properties
         mapped_configuration: \
@@ -201,7 +200,7 @@ class StructureRecord:
         mappings = None
         if "mappings" in data:
             mappings = [
-                mapinfo.ScoredStructureMapping.from_dict(prim=prim, data=mapping)
+                mapinfo.ScoredStructureMapping.from_dict(prim=prim.xtal_prim, data=mapping)
                 for mapping in data["mappings"]
             ]
 
