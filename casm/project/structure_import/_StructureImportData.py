@@ -200,7 +200,9 @@ class StructureRecord:
         mappings = None
         if "mappings" in data:
             mappings = [
-                mapinfo.ScoredStructureMapping.from_dict(prim=prim.xtal_prim, data=mapping)
+                mapinfo.ScoredStructureMapping.from_dict(
+                    prim=prim.xtal_prim, data=mapping
+                )
                 for mapping in data["mappings"]
             ]
 
