@@ -37,10 +37,10 @@ def _print_symgroup(
     if out is None:
         out = sys.stdout
 
-    if coord == "frac":
+    if coord == "cart":
         out.write(group.brief_cart(lattice=lattice, index_from=index_from))
         out.write("\n")
-    elif coord == "cart":
+    elif coord == "frac":
         out.write(group.brief_frac(lattice=lattice, index_from=index_from))
         out.write("\n")
     else:
