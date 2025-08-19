@@ -347,7 +347,9 @@ You will need to:
         else:
             path = pathlib.Path(path)
 
-        check_path = project_path(path)
+        check_path = None
+        if path.exists():
+            check_path = project_path(path)
 
         if check_path is not None:
             if check_path.resolve() == path.resolve():
@@ -358,6 +360,10 @@ You will need to:
                 print("** Creating a sub-project. **")
                 print(f"A project already exists at {printpathstr(check_path)}")
                 print()
+
+        if not path.exists():
+            print(f"Creating CASM project directory at {printpathstr(path)}")
+            path.mkdir(parents=True, exist_ok=True)
 
         ### Get Prim
         if isinstance(prim, casmconfig.Prim):
