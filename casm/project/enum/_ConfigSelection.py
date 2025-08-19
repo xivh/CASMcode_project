@@ -9,7 +9,7 @@ import libcasm.xtal as xtal
 from casm.project import (
     ClexDescription,
 )
-from casm.project.json_io import (
+from casm.tools.shared.json_io import (
     read_optional,
     read_required,
     safe_dump,

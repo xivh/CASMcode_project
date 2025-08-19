@@ -10,7 +10,7 @@ import libcasm.configuration as casmconfig
 from casm.project import (
     Project,
 )
-from casm.project.json_io import read_required
+from casm.tools.shared.json_io import read_required
 
 repo_dir = pathlib.Path(os.path.abspath(__file__)).parent.parent
 prim_dir = repo_dir / "notebooks" / "input" / "prim"

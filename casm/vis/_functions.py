@@ -23,7 +23,7 @@ def get_config():
             The URL of the CASM API server.
 
     """
-    from casm.project.json_io import read_required
+    from casm.tools.shared.json_io import read_required
     from libcasm.xtal import pretty_json
 
     config_file = root / "config.json"

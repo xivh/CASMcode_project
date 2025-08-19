@@ -5,7 +5,7 @@ import libcasm.configuration as casmconfig
 import libcasm.mapping.info as mapinfo
 import libcasm.mapping.methods as mapmethods
 import libcasm.xtal as xtal
-from casm.project.json_io import read_optional, safe_dump
+from casm.tools.shared.json_io import read_optional, safe_dump
 
 if TYPE_CHECKING:
     from casm.project import Project

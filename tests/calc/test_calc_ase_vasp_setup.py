@@ -6,7 +6,7 @@ import pytest
 
 @pytest.mark.requires_ase
 def test_ZrO_composition_axes_1(ZrO_tmp_project):
-    import casm.project.ase_utils as ase_utils
+    import casm.tools.shared.ase_utils as ase_utils
 
     project = ZrO_tmp_project
     enum_id = "occ_by_supercell.1"
@@ -24,14 +24,10 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
     files = os.listdir(calctype_settings_dir)
     assert "INCAR" in files
     assert "KPOINTS" in files
+    assert "calc.json" in files
 
     x = ase_utils.AseVaspTool(
         calctype_settings_dir=calctype_settings_dir,
-        setups={
-            "Zr": "_sv",
-            "O": "",
-        },
-        xc="pbe",
     )
 
     for record in enum.configuration_set:

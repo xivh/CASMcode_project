@@ -62,7 +62,7 @@ def get_project_ids():
         A list of project IDs.
 
     """
-    from casm.project.json_io import read_optional
+    from casm.tools.shared.json_io import read_optional
 
     project_list_path = root / "project_list.json"
     default_list = list()
@@ -101,7 +101,7 @@ def add_project(
     """
     import casm.project
     import libcasm.xtal as xtal
-    from casm.project.json_io import read_optional, safe_dump
+    from casm.tools.shared.json_io import read_optional, safe_dump
 
     start = path.resolve()
 
@@ -304,7 +304,7 @@ def project_remove(proj_id):
         ``"message": str`` (if successful).
 
     """
-    from casm.project.json_io import read_optional, safe_dump
+    from casm.tools.shared.json_io import read_optional, safe_dump
 
     if not isinstance(proj_id, str):
         return jsonify({"error": "Project ID must be a string."}), 400
@@ -339,7 +339,7 @@ def project_get():
         DirectoryStructure,
     )
     from casm.project import project_path as get_project_path
-    from casm.project.json_io import read_required
+    from casm.tools.shared.json_io import read_required
 
     in_data = request.get_json()
     if "project_path" not in in_data:
@@ -391,7 +391,7 @@ def project_list_get():
         - prim_str: str
             The JSON string representation of the project's prim.
     """
-    from casm.project.json_io import read_optional
+    from casm.tools.shared.json_io import read_optional
 
     # read ~/.casmvis/project_list.json:
     project_list_path = root / "project_list.json"
@@ -401,7 +401,7 @@ def project_list_get():
 
 @app.route("/casm/project/starred/")
 def project_starred_get():
-    from casm.project.json_io import read_optional
+    from casm.tools.shared.json_io import read_optional
 
     # read root/starred.json:
     path = root / "starred.json"
@@ -429,7 +429,7 @@ def project_starred_put():
         - error: Optional[str]
             An error message if the operation failed.
     """
-    from casm.project.json_io import read_optional, safe_dump
+    from casm.tools.shared.json_io import read_optional, safe_dump
 
     # Accepts a list of str (IDs of starred projects)
 

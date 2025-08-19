@@ -7,7 +7,7 @@ import pytest
 
 import libcasm.xtal as xtal
 from casm.project import Project
-from casm.project.json_io import safe_dump
+from casm.tools.shared.json_io import safe_dump
 
 repo_dir = pathlib.Path(os.path.abspath(__file__)).parent.parent
 notebooks_dir = repo_dir / "notebooks"
@@ -100,6 +100,15 @@ Auto           ! fully automatic
   10           ! length (R_k)
 """
         )
+
+    settings = {
+        "setups": {
+            "Zr": "_sv",
+            "O": "",
+        },
+        "xc": "pbe",
+    }
+    safe_dump(settings, calctype_settings_dir / "calc.json", force=True)
 
     # !! CHANGE THIS AS NECESSARY !!
     # Set VASP_PP_PATH

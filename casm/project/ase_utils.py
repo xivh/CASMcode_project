@@ -1,11 +1,29 @@
+"""(deprecated) Utility functions for conversions between CASM and ASE
+
+.. deprecated:: 2.0a2
+    This module is deprecated and will be removed in a future version.
+    Use the AseVaspTool in `casm.tools.shared.ase_utils` instead.
+
+"""
+
 import os
 import pathlib
+
+# Raise a deprecation warning if this module is imported:
+import warnings
 from typing import Callable
 
 import ase
 import ase.calculators.vasp
 
 import libcasm.xtal as xtal
+
+warnings.warn(
+    "The module 'casm.project.ase_utils' is deprecated and will be removed in a future "
+    "version. Use 'casm.tools.shared.ase_utils' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def make_ase_atoms(casm_structure: xtal.Structure) -> ase.Atoms:
@@ -83,6 +101,10 @@ class AseVaspTool:
         xc: str,
     ):
         """Setup, run, and collect VASP calculations using ASE.
+
+        .. deprecated:: 2.0a2
+            This class is deprecated and will be removed in a future version.
+            Use the AseVaspTool in `casm.tools.shared.ase_utils` instead.
 
         For details on the parameters, see the `ase documentation for the vasp
         calculator <https://wiki.fysik.dtu.dk/ase/ase/calculators/vasp.html>`.

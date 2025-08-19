@@ -7,6 +7,12 @@ import libcasm.casmglobal as casmglobal
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
+from casm.tools.shared.json_io import (
+    printpathstr,
+    read_optional,
+    read_required,
+    safe_dump,
+)
 
 from ._CompositionAxes import CompositionAxes
 from ._DirectoryStructure import DirectoryStructure
@@ -19,12 +25,6 @@ from ._methods import (
 )
 from ._ProjectSettings import ProjectSettings
 from ._symgroup import symgroup_to_dict_with_group_classification
-from .json_io import (
-    printpathstr,
-    read_optional,
-    read_required,
-    safe_dump,
-)
 
 
 class Project:

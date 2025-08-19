@@ -5,7 +5,7 @@ from casm.project.bset._print_bset import (
     pretty_print_functions_by_orbit,
     pretty_print_occ_site_functions,
 )
-from casm.project.json_io import read_required
+from casm.tools.shared.json_io import read_required
 
 
 def test_site_functions(shared_datadir):

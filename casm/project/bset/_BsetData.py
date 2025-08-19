@@ -8,7 +8,7 @@ import numpy as np
 
 from casm.bset import build_cluster_functions, make_clex_basis_specs, write_clexulator
 from casm.bset.cluster_functions import ClexBasisSpecs, ClusterFunctionsBuilder
-from casm.project.json_io import printpathstr, read_optional, safe_dump
+from casm.tools.shared.json_io import printpathstr, read_optional, safe_dump
 from libcasm.clexulator import (
     Clexulator,
     LocalClexulator,

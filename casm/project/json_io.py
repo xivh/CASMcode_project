@@ -1,11 +1,29 @@
+"""(deprecated) JSON I/O methods
+
+.. deprecated:: 2.0a2
+    This module is deprecated and will be removed in a future version.
+    Use `casm.tools.shared.json_io` instead.
+
+"""
+
 import gzip
 import json
 import os
 import pathlib
 import tarfile
+
+# Raise a deprecation warning if this module is imported:
+import warnings
 from typing import Any, Union
 
 import libcasm.xtal as xtal
+
+warnings.warn(
+    "The module 'casm.project.json_io' is deprecated and will be removed in a "
+    "future version. Use 'casm.tools.shared.json_io' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def pretty_json(

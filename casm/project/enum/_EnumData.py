@@ -7,7 +7,7 @@ import numpy as np
 from casm.project import (
     ClexDescription,
 )
-from casm.project.json_io import (
+from casm.tools.shared.json_io import (
     read_optional,
     safe_dump,
 )

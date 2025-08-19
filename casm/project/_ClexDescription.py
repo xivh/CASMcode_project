@@ -1,4 +1,4 @@
-from .json_io import pretty_json
+from casm.tools.shared.json_io import pretty_json
 
 
 class ClexDescription:

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from casm.project.json_io import read_optional, safe_dump
+from casm.tools.shared.json_io import read_optional, safe_dump
 
 if TYPE_CHECKING:
     from casm.project import Project

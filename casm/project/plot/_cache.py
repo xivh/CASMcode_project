@@ -3,7 +3,7 @@ import pathlib
 from typing import Any
 
 import casm.project
-from casm.project.json_io import read_optional
+from casm.tools.shared.json_io import read_optional
 
 root = pathlib.Path(os.environ["HOME"]) / ".casmvis"
 

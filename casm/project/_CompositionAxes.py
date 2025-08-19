@@ -4,6 +4,10 @@ from typing import Any, Optional, TextIO, TypeVar, Union
 
 import libcasm.casmglobal as casmglobal
 import libcasm.xtal as xtal
+from casm.tools.shared.json_io import (
+    read_required,
+    safe_dump,
+)
 from libcasm.composition import (
     CompositionCalculator,
     CompositionConverter,
@@ -15,10 +19,6 @@ from libcasm.composition import (
 from ._ConfigCompositionCalculator import (
     ConfigCompositionCalculator,
     _independent_compositions,
-)
-from .json_io import (
-    read_required,
-    safe_dump,
 )
 
 
