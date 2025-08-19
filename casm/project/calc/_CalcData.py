@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class CalcData:
-    """Data structure for calculation settings data in a CASM project
+    """CASM project calculation settings
 
     The `calculation_settings` directory is a standard location for storing calculation
     settings for a particular calculation type inside a CASM project directory:
@@ -267,7 +267,6 @@ class CalcData:
                     self,
                     casm_structure: libcasm.xtal.Structure,
                     calc_dir: pathlib.Path,
-                    config: typing.Optional[libcasm.configuration.Configuration] = None,
                 ):
                     ... write calculation input files ...
 
