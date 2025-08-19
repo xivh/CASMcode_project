@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class EnumData:
-    """Data structure for enumeration data in a CASM project
+    """CASM project enumeration data
 
     The CASM project enumeration directory structure:
 
@@ -125,29 +125,32 @@ class EnumData:
         """dict: A description of the enumeration, saved as `meta.json`."""
 
         self.supercell_set = SupercellSet(prim=self.proj.prim)
-        """SupercellSet: A SupercellSet, saved as `scel_set.json`.
+        """libcasm.configuration.SupercellSet: A SupercellSet, saved as `scel_set.json`.
 
-        When `load` is called all supercells in `scel_list.json`, `scel_list.json`, 
-        `config_set.json`, and `config_list.json` are loaded into `supercell_set`. 
-        Supercells in a SupercellSet are unique, but are not required to be in 
-        canonical form so they may be symmetrically equivalent, depending on the use 
-        case.
+        :class:`~libcasm.configuration.Supercell` in a 
+        :class:`~libcasm.configuration.SupercellSet` are unique, but are not required 
+        to be in canonical form so they may be symmetrically equivalent, depending on 
+        the use case.
         """
 
         self.supercell_list = []
-        """list[Supercell]: A list of supercells, saved as `scel_list.json`."""
+        """list[libcasm.configuration.Supercell]: A list of Supercell, saved as 
+        `scel_list.json`."""
 
         self.configuration_set = ConfigurationSet()
-        """ConfigurationSet: A ConfigurationSet, saved as `config_set.json`
+        """libcasm.configuration.ConfigurationSet: A ConfigurationSet, saved as 
+        `config_set.json`
 
-        Configurations in a ConfigurationSet must be in the canonical supercell. 
-        Configurations in a ConfigurationSet are unique, but may be 
+        :class:`~libcasm.configuration.Configuration` in a 
+        :class:`~libcasm.configuration.ConfigurationSet` must be in the canonical 
+        supercell. Configurations in a ConfigurationSet are unique, but may be 
         non-primitive, non-canonical, or symmetrically equivalent, depending on the 
         use case.
         """
 
         self.configuration_list = []
-        """list[Configuration]: A list of configurations, saved as `config_list.json`.
+        """list[libcasm.configuration.Configuration]: A list of Configuration, saved as 
+        `config_list.json`.
 
         Configurations in a list do not need to be in the canonical supercell.
         """

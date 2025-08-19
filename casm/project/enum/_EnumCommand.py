@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class EnumCommand:
-    """Methods to enumerate supercells, configurations, events, etc."""
+    """Enumerations management"""
 
     def __init__(self, proj: "Project"):
         self.proj = proj
