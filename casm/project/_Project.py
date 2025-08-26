@@ -564,7 +564,6 @@ You will need to:
         # Create standard directories
         dir.symmetry_dir().mkdir(parents=True, exist_ok=True)
         dir.bset_dir(clex=settings.default_clex).mkdir(parents=True, exist_ok=True)
-        dir.eci_dir(clex=settings.default_clex).mkdir(parents=True, exist_ok=True)
         dir.calctype_settings_dir(calctype=settings.default_clex.calctype).mkdir(
             parents=True, exist_ok=True
         )

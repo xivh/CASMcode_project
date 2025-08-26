@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Added
+
+- Added casm.project.DirectoryStructureV1 to separate CASM v1 project structure from CASM v2 project structure.
+
+### Changed
+
+- Changed casm.project.DirectoryStructure to remove CASM v1 project structure paths, change paths to v2 project locations, and to deprecate methods with `_v2` suffix.
+
+
 ## [2.0a1] - 2025-08-08
 
 This release creates the casm-project package, which makes it easier to construct, fit, and use a cluster expansion in CASM version >= 2 by:

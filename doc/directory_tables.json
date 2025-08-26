@@ -1,0 +1,90 @@
+[
+  {
+    "section": "CASM Project Directory",
+    "anchor": "project-dir",
+    "location": "<project>/",
+    "files": [
+      {
+        "name": ".casm/",
+        "description": "CASM project settings and data",
+        "format": {
+          "href": "#casm-dir",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "basis_sets/",
+        "description": "Basis set input, results, and generated code",
+        "format": {
+          "href": "#basis-sets-dir",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "enumerations/",
+        "description": "Enumerated configurations, events, etc.",
+        "format": {
+          "href": "#enum-dir",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "symmetry/",
+        "description": "Symmetry analysis results",
+        "format": {
+          "href": "#symmetry-dir",
+          "text": "link-icon"
+        }
+      }
+    ]
+  },
+  {
+    "section": "CASM project settings and data",
+    "anchor": "casm-dir",
+    "location": "<project>/.casm/",
+    "files": [
+      {
+        "name": "prim.json",
+        "description": "Primitive crystal structure and allowed degrees of freedom (DoF)",
+        "format": {
+          "href": "#prim",
+          "text": "Prim"
+        }
+      },
+      {
+        "name": "chemical_composition_axes.json",
+        "description": "Chemical composition axes",
+        "format": {
+          "href": "TODO",
+          "text": "Composition Axes"
+        }
+      },
+      {
+        "name": "occupant_composition_axes.jfson",
+        "description": "Occupant composition axes",
+        "format": {
+          "href": "TODO",
+          "text": "Composition Axes"
+        }
+      },
+      {
+        "name": "project_settings.json",
+        "description": "CASM project settings",
+        "format": {
+          "href": "TODO",
+          "text": "Project Settings"
+        }
+      }
+    ],
+    "deprecated_files": [
+      {
+        "name": "composition_axes.json",
+        "description": "Chemical composition axes, for v1 compatibility.",
+        "format": {
+          "href": "TODO",
+          "text": "Composition Axes"
+        }
+      }
+    ]
+  }
+]

@@ -45,7 +45,7 @@ Documentation
     :maxdepth: 2
 
     installation
-    usage
+    Usage <usage/index>
     Reference <reference/casm/index>
     bibliography
 
