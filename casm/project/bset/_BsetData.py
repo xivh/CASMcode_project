@@ -70,7 +70,7 @@ class BsetOutputData:
         for orbit in orbits:
             _prototype = Cluster.from_dict(
                 data=orbit.get("prototype"),
-                prim=self.proj.prim.xtal_prim(),
+                xtal_prim=self.proj.prim.xtal_prim,
             )
             for func in orbit.get("cluster_functions"):
                 _prototype_clusters.append(_prototype)
@@ -92,7 +92,7 @@ class BsetOutputData:
     def cluster_size(self) -> np.ndarray:
         """numpy.ndarray[numpy.int[n_functions]]: The number of cluster sites, for each
         basis function"""
-        return np.array([len(x) for x in self.cluster_prototypes], dtype=int)
+        return np.array([len(x) for x in self.prototype_clusters], dtype=int)
 
     @property
     def equivalents_info(self):
