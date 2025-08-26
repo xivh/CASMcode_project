@@ -74,7 +74,7 @@ def ZrO_tmp_project(tmp_path):
     project = Project.init(path=project_path)
 
     ## calculation settings ##
-    calctype_settings_dir = project.dir.calctype_settings_dir_v2(
+    calctype_settings_dir = project.dir.calctype_settings_dir(
         calctype="vasp.default",
     )
     calctype_settings_dir.mkdir(parents=True, exist_ok=True)
@@ -154,7 +154,7 @@ def SiGe_occ_tmp_project(tmp_path):
     calctype_id = "vasp.default"
 
     # Make a calculation settings directory
-    calctype_settings_dir = project.dir.calctype_settings_dir_v2(
+    calctype_settings_dir = project.dir.calctype_settings_dir(
         calctype=calctype_id,
     )
     calctype_settings_dir.mkdir(parents=True, exist_ok=True)

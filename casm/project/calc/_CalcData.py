@@ -53,7 +53,7 @@ class CalcData:
         self.id = id
         """str: Calculation type identifier"""
 
-        settings_dir = self.proj.dir.calctype_settings_dir_v2(calctype=self.id)
+        settings_dir = self.proj.dir.calctype_settings_dir(calctype=self.id)
         self.settings_dir = settings_dir
         """pathlib.Path: Calculation settings directory"""
 

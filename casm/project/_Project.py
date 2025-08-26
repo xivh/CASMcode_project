@@ -15,7 +15,10 @@ from casm.tools.shared.json_io import (
 )
 
 from ._CompositionAxes import CompositionAxes
-from ._DirectoryStructure import DirectoryStructure
+from ._DirectoryStructure import (
+    DirectoryStructure,
+    DirectoryStructureV1,
+)
 from ._methods import (
     PrimToleranceSensitivity,
     get_dof_types,
@@ -36,6 +39,10 @@ class Project:
     ):
         self.dir: DirectoryStructure = DirectoryStructure(path=path)
         """casm.project.DirectoryStructure: Standard CASM directory structure"""
+
+        self._dir_v1: DirectoryStructureV1 = DirectoryStructureV1(path=path)
+        """casm.project.DirectoryStructureV1: CASM v1 directory structure (for
+        compatibility with v1 projects)"""
 
         self.path: pathlib.Path = self.dir.path
         """str: Path to CASM project."""
@@ -96,13 +103,13 @@ class Project:
                 path=self.dir.chemical_composition_axes()
             )
             self.chemical_composition_axes.load()
-        elif self.dir.composition_axes().exists():
+        elif self._dir_v1.composition_axes().exists():
             print(
                 "Note: Using existing composition_axes.json file for chemical "
                 "compositions (CASM v1 compatibility)."
             )
             self.chemical_composition_axes = CompositionAxes.from_dict(
-                data=read_optional(self.dir.composition_axes()),
+                data=read_optional(self._dir_v1.composition_axes()),
                 path=self.dir.chemical_composition_axes(),
             )
         else:
@@ -115,13 +122,13 @@ class Project:
             self.occupant_composition_axes = CompositionAxes.from_dict(
                 read_optional(self.dir.occupant_composition_axes())
             )
-        elif self.dir.composition_axes().exists():
+        elif self._dir_v1.composition_axes().exists():
             print(
                 "Note: Using existing composition_axes.json file for occupant "
                 "compositions (CASM v1 compatibility)."
             )
             self.occupant_composition_axes = CompositionAxes.from_dict(
-                read_optional(self.dir.composition_axes())
+                read_optional(self._dir_v1.composition_axes())
             )
         else:
             self.occupant_composition_axes = CompositionAxes.init_occupant_axes(

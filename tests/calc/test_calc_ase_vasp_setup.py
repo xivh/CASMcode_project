@@ -18,7 +18,7 @@ def test_ZrO_composition_axes_1(ZrO_tmp_project):
         min=1,
     )
 
-    calctype_settings_dir = project.dir.calctype_settings_dir_v2(
+    calctype_settings_dir = project.dir.calctype_settings_dir(
         calctype="vasp.default",
     )
     files = os.listdir(calctype_settings_dir)

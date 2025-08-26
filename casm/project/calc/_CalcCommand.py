@@ -59,7 +59,7 @@ class CalcCommand:
         """
         import shutil
 
-        calctype_settings_dir = self.proj.dir.calctype_settings_dir_v2(calctype=id)
+        calctype_settings_dir = self.proj.dir.calctype_settings_dir(calctype=id)
         if not calctype_settings_dir.exists():
             raise FileNotFoundError(f"Calculation type {id} does not exist.")
         shutil.rmtree(calctype_settings_dir)
@@ -76,8 +76,8 @@ class CalcCommand:
         """
         import shutil
 
-        src_dir = self.proj.dir.calctype_settings_dir_v2(calctype=src_id)
+        src_dir = self.proj.dir.calctype_settings_dir(calctype=src_id)
         if not src_dir.exists():
             raise FileNotFoundError(f"Calculation type {src_id} does not exist.")
-        dest_dir = self.proj.dir.calctype_settings_dir_v2(calctype=dest_id)
+        dest_dir = self.proj.dir.calctype_settings_dir(calctype=dest_id)
         shutil.copytree(src=src_dir, dst=dest_dir, dirs_exist_ok=True)
