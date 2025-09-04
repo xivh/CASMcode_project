@@ -25,6 +25,48 @@ intersphinx_casm_packages = [
 
 # -- CASM common configuration ---
 
+import sys
+from nbformat.notebooknode import NotebookNode as Notebook
+
+
+def add_newlines_to_merged_streams(
+    notebook: Notebook, resources: dict
+) -> (Notebook, dict):
+    """
+    A preprocessor function to add newlines between separate stream outputs
+    before MyST-NB merges them.
+    """
+    print("Running custom preprocessor to merge streams...")
+    sys.stdout.flush()
+
+    for cell in notebook.cells:
+        if cell.cell_type == "code":
+            stream_outputs = [
+                output for output in cell.outputs if output.output_type == "stream"
+            ]
+            if len(stream_outputs) > 1:
+                print(
+                    f"Found {len(stream_outputs)} streams in a cell. Merging with newlines..."
+                )
+
+                # Concatenate all stream outputs with newlines
+                merged_text = "\n\n".join(output.text for output in stream_outputs)
+
+                # Use the name of the first stream output for consistency
+                stream_name = stream_outputs[0].name
+
+                # Create a single new stream output with the merged text
+                new_output = {
+                    "output_type": "stream",
+                    "name": stream_name,
+                    "text": merged_text,
+                }
+
+                # Replace the old stream outputs with the new single output
+                cell.outputs[:] = [new_output]
+    return notebook, resources
+
+
 # -*- coding: utf-8 -*-
 #
 # CASM documentation build configuration file, created by
@@ -98,6 +140,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "numpydoc",
     "sphinx_copybutton",
+    "sphinx_togglebutton",
+    "myst_nb",
 ]
 
 bibtex_bibfiles = ["refs.bib"]
@@ -146,6 +190,23 @@ exclude_patterns = []
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
+
+# Options for notebook rendering
+# nb_scroll_outputs = False
+myst_enable_extensions = [
+    "colon_fence",
+    "dollarmath",
+    "amsmath",
+]
+myst_amsmath_enable = True
+
+# Combine multiple output into one (but this erases newlines)
+nb_merge_streams = True
+
+
+# # Add your custom preprocessor to modify outputs before merging
+# nb_custom_preprocessors = [add_newlines_to_merged_streams]
+
 
 # -- Options for HTML output ----------------------------------------------
 

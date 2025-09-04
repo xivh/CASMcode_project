@@ -32,6 +32,12 @@ class StructureImportCommand:
     def get(self, id: str, enum_id: Optional[str] = None):
         """Load structure import data
 
+        This constructs an :class:`~casm.project.structure_import.StructureImportData`
+        object for an import with the given id. If there is any existing data in the
+        corresponding import directory it is loaded. See
+        :class:`~casm.project.structure_import.StructureImportData` for more details.
+
+
         Parameters
         ----------
         id : str

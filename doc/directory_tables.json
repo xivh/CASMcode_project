@@ -86,5 +86,132 @@
         }
       }
     ]
+  },
+  {
+    "section": "CASM project settings and data",
+    "anchor": "enum-dir",
+    "location": "<project>/enumerations/<enum>",
+    "files": [
+      {
+        "name": "meta.json",
+        "description": "Description of the enumeration",
+        "format": {
+          "href": "#meta-file",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "scel_set.json",
+        "description": "Enumerated supercells, as a set",
+        "format": {
+          "href": "TODO",
+          "text": "SupercellSet"
+        }
+      },
+      {
+        "name": "scel_list.json",
+        "description": "Enumerated supercells, as a list",
+        "format": {
+          "href": "TODO",
+          "text": "list[SupercellSet]"
+        }
+      },
+      {
+        "name": "config_set.json",
+        "description": "Enumerated configurations, as a set",
+        "format": {
+          "href": "TODO",
+          "text": "ConfigurationSet"
+        }
+      },
+      {
+        "name": "config_list.json",
+        "description": "Enumerated configurations, as a list",
+        "format": {
+          "href": "TODO",
+          "text": "list[Configuration]"
+        }
+      },
+      {
+        "name": "training_data/<calctype>/<configname>/",
+        "description": "Calculation directories",
+        "format": {
+          "href": "#calculation-dir",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "kmc_events/<event>/",
+        "description": "Enumerated KMC events",
+        "format": {
+          "href": "#event-dir",
+          "text": "link-icon"
+        }
+      }
+    ]
+  },
+  ,
+  {
+    "section": "CASM project settings and data",
+    "anchor": "enum-dir",
+    "location": "<project>/enumerations/<enum>",
+    "files": [
+      {
+        "name": "meta.json",
+        "description": "Description of the enumeration",
+        "format": {
+          "href": "#meta-file",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "scel_set.json",
+        "description": "Enumerated supercells, as a set",
+        "format": {
+          "href": "TODO",
+          "text": "SupercellSet"
+        }
+      },
+      {
+        "name": "scel_list.json",
+        "description": "Enumerated supercells, as a list",
+        "format": {
+          "href": "TODO",
+          "text": "list[SupercellSet]"
+        }
+      },
+      {
+        "name": "config_set.json",
+        "description": "Enumerated configurations, as a set",
+        "format": {
+          "href": "TODO",
+          "text": "ConfigurationSet"
+        }
+      },
+      {
+        "name": "config_list.json",
+        "description": "Enumerated configurations, as a list",
+        "format": {
+          "href": "TODO",
+          "text": "list[Configuration]"
+        }
+      },
+      {
+        "name": "training_data/<calctype>/<configname>/",
+        "description": "Calculation directories",
+        "format": {
+          "href": "#calculation-dir",
+          "text": "link-icon"
+        }
+      },
+      {
+        "name": "kmc_events/<event>/",
+        "description": "Enumerated KMC events",
+        "format": {
+          "href": "#event-dir",
+          "text": "link-icon"
+        }
+      }
+    ]
   }
 ]

@@ -32,6 +32,12 @@ class FitCommand:
     def get(self, id: str):
         """Load fitting data
 
+        This constructs an :class:`~casm.project.fit.FittingData`
+        object for a fit with the given id. If there is any existing data in the
+        corresponding fit directory it is loaded. See
+        :class:`~casm.project.fit.FittingData` for more details.
+
+
         Parameters
         ----------
         id : str

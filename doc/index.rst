@@ -46,7 +46,7 @@ Documentation
 
     installation
     Usage <usage/index>
-    Reference <reference/casm/index>
+    Reference <reference/index>
     bibliography
 
 casm-project is available on GitHub_.
