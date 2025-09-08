@@ -112,6 +112,15 @@ class EnumCommand:
         Supercells and configurations in lists are appended to the destination
         enumeration if they are not already present.
 
+        Notes
+        -----
+        The names of configurations in the destination's `configuration_set` before the
+        merge are preserved. The names of configurations in the source's
+        `configuration_set` are not preserved. Configurations in destination's
+        `configuration_list` before the merge are preserved. Configurations in
+        the source's `configuration_list` are appended to desination's
+        `configuration_list` if they are not already present.
+
         Parameters
         ----------
         src_id : str

@@ -241,7 +241,23 @@ class EnumData:
             self.configuration_list = []
 
     def merge(self, src_data: "EnumData"):
-        """Merge enumeration data from another EnumData object into this one"""
+        """Merge enumeration data from another EnumData object into this one
+
+        Notes
+        -----
+        The names of configurations in `self.configuration_set` before the merge are
+        preserved. The names of configurations in `src_data.configuration_set` are not
+        preserved. Configurations in `self.configuration_list` before the merge are
+        preserved. Configurations in `src_data.configuration_list` are appended
+        to `self.configuration_list` if they are not already present.
+
+        Parameters
+        ----------
+        src_data: EnumData
+            The source EnumData object to merge into this one. The names of `src_data`
+            configurations are not preserved.
+
+        """
 
         # merge supercell set
         for record in src_data.supercell_set:
@@ -258,7 +274,7 @@ class EnumData:
             if self.configuration_set is None:
                 self.configuration_set = ConfigurationSet()
             for record in src_data.configuration_set:
-                self.configuration_set.add(record)
+                self.configuration_set.add(record.configuration)
 
         if src_data.configuration_list:
             for configuration in src_data.configuration_list:
