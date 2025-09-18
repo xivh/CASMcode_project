@@ -12,8 +12,8 @@ from flask import (
 )
 from flask_cors import CORS
 
-from casm.project.plot import ServerCache
-from casm.vis import get_config
+from ._functions import get_config
+from ._ServerCache import ServerCache
 
 # Get paths:
 this_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))

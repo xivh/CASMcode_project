@@ -5,7 +5,7 @@ import subprocess
 import time
 import webbrowser
 
-from casm.vis import get_config, get_pid_file
+from ._functions import get_config, get_pid_file
 
 config = get_config()
 

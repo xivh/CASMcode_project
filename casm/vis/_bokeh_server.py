@@ -10,13 +10,17 @@ import libcasm.xtal.prims as xtal_prims
 from casm.project.plot import (
     ConfigurationListDashboard,
     ConfigurationSetDashboard,
-    ServerCache,
+)
+
+from ._BokehServerManager import (
     add_application,
     start_applications,
 )
-
 from ._functions import (
     get_required_argument,
+)
+from ._ServerCache import (
+    ServerCache,
 )
 
 
