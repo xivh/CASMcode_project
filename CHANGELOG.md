@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added casm.project.DirectoryStructureV1 to separate CASM v1 project structure from CASM v2 project structure.
+- Added `start` and `stop` methods to `casm.vis` to start and stop the `casm-vis` servers.
 
 ### Changed
 
 - Changed casm.project.DirectoryStructure to remove CASM v1 project structure paths, change paths to v2 project locations, and to deprecate methods with `_v2` suffix.
+- Changed `casm-vis` interface to use `casm-vis start` and `casm-vis stop` commands.
 
 
 ## [2.0a1] - 2025-08-08

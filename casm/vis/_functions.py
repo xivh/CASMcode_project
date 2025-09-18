@@ -10,6 +10,11 @@ default_config = {
 }
 
 
+def get_root():
+    """Get the casm-vis root directory."""
+    return root
+
+
 def get_config():
     """Get casm-vis configuration variables.
 
@@ -35,6 +40,11 @@ def get_config():
         return default_config
 
     return read_required(path=config_file)
+
+
+def get_pid_file():
+    """Get the casm-vis PID file."""
+    return root / "casmvis.pid"
 
 
 def get_required_argument(doc, name):
