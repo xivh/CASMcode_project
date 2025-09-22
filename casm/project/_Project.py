@@ -144,6 +144,7 @@ class Project:
         self._structure_import = None
         self._fit = None
         self._system = None
+        self._vis = None
 
     def make_chemical_comp_calculator(self):
         """Make a chemical composition calculator using the current axes.
@@ -308,6 +309,15 @@ You will need to:
         if self._system is None:
             self._system = SystemCommand(proj=self)
         return self._system
+
+    @property
+    def vis(self):
+        """casm.project.vis.VisCommand: Visualize CASM project data."""
+        from casm.project.vis import VisCommand
+
+        if self._vis is None:
+            self._vis = VisCommand(proj=self)
+        return self._vis
 
     @staticmethod
     def init(

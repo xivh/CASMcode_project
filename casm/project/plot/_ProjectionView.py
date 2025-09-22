@@ -50,12 +50,27 @@ class ProjectionView:
             cabinet=(0.2, math.pi / 6.0),
         )
 
+        self.title_div = bokeh.models.Div(
+            text=f"""<b>{self.name}</b>""",
+            width=1200,
+            height=50,  # Sufficient height for the text
+            styles={
+                "display": "flex",  # Make the Div a flex container
+                # "justify-content": "center",  # Center content horizontally
+                "align-items": "center",  # Center content vertically
+                "font-size": "32px",  # Adjust font size
+                "padding-bottom": "10px",  # Add some space below
+                # 'border': '1px solid red' # Uncomment for debugging to see bounds
+            },
+        )
+
     def set_structure(
         self,
         structure: xtal.Structure,
         name: str,
     ):
         self.name = name
+        self.title_div.text = f"""<b>{self.name}</b>"""
         self.view_xz.set_structure(
             structure=structure,
             title="X-Z plane view",
@@ -109,23 +124,9 @@ class ProjectionView:
         p_cabinet.xaxis.axis_label = "b1 (cabinet)"
         p_cabinet.yaxis.axis_label = "b2 (cabinet)"
 
-        if self.name:
-            title_div = bokeh.models.Div(
-                text=f"""<b>{self.name}</b>""",
-                width=1200,
-                height=50,  # Sufficient height for the text
-                styles={
-                    "display": "flex",  # Make the Div a flex container
-                    # "justify-content": "center",  # Center content horizontally
-                    "align-items": "center",  # Center content vertically
-                    "font-size": "32px",  # Adjust font size
-                    "padding-bottom": "10px",  # Add some space below
-                    # 'border': '1px solid red' # Uncomment for debugging to see bounds
-                },
-            )
-
         return column(
-            title_div,
+            self.title_div,
             row(p_xy, p_cabinet),
             row(p_xz, p_yz),
+            margin=(0, 20),
         )

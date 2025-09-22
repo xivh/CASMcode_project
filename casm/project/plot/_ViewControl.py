@@ -1202,6 +1202,7 @@ class ViewControl:
                 height=30,
             ),
             tabs_layout,
+            margin=(0, 20),  # top/bottom, left/right
         )
 
         # control_layout = column(

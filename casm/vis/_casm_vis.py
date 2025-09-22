@@ -13,13 +13,13 @@ config = get_config()
 def run_server(script, port):
     """Run a server using gunicorn."""
     command = ["gunicorn", "-w", "4", "-b", f"localhost:{port}", script]
-    return subprocess.Popen(command)
+    return subprocess.Popen(command, start_new_session=True)
 
 
 def run_bokeh_server():
     """Run the Bokeh server."""
     command = ["casm-bokeh-server"]
-    return subprocess.Popen(command)
+    return subprocess.Popen(command, start_new_session=True)
 
 
 def _start_casmvis():

@@ -5,20 +5,20 @@ from bokeh.models import Spacer
 
 import libcasm.configuration as casmconfig
 
-from ._ConfigurationSetSelect import ConfigurationSetSelect
+from ._ConfigurationListSelect import ConfigurationListSelect
 from ._DashboardStyles import DashboardStyles
 from ._OpenWithButton import OpenWithButton, vesta_installed
 from ._ProjectionView import ProjectionView
 from ._ViewControl import ViewControl
 
 
-class ConfigurationSetDashboardv2:
-    """Dashboard for viewing Configurations from a ConfigurationSet"""
+class ConfigurationListDashboardv2:
+    """Dashboard for viewing Configurations from a Configuration list."""
 
     def __init__(
         self,
         prim: casmconfig.Prim,
-        configuration_set: casmconfig.ConfigurationSet,
+        configuration_list: list[casmconfig.Configuration],
         component_params: typing.Optional[dict] = None,
     ):
         """
@@ -30,8 +30,8 @@ class ConfigurationSetDashboardv2:
         prim: libcasm.configuration.Prim
             The primitive cell.
 
-        configuration_set: libcasm.configuration.ConfigurationSet
-            The :class:`~libcasm.configuration.ConfigurationSet` to visualize.
+        configuration_list: list[libcasm.configuration.Configuration]
+            The list of :class:`~libcasm.configuration.Configuration` to visualize.
 
         component_params: dict[str, dict]
             The bokeh scatter plot parameters used to draw atoms, with
@@ -52,8 +52,9 @@ class ConfigurationSetDashboardv2:
 
         ### Dashboard inputs - begin ###
 
-        self.configuration_set = configuration_set
-        """libcasm.configuration.ConfigurationSet: The ConfigurationSet to visualize."""
+        self.configuration_list = configuration_list
+        """list[libcasm.configuration.Configuration]: The list of Configuration to 
+        visualize."""
 
         self.selected_structure = None
         """libcasm.xtal.Structure: The structure to view in projection_view."""
@@ -64,8 +65,8 @@ class ConfigurationSetDashboardv2:
 
         ### Dashboard inputs - end ###
 
-        self.configuration_set_select = ConfigurationSetSelect(
-            configuration_set=self.configuration_set,
+        self.configuration_list_select = ConfigurationListSelect(
+            configuration_list=self.configuration_list,
             parent=self,
         )
 
@@ -116,7 +117,7 @@ class ConfigurationSetDashboardv2:
 
         ### Build and return the layout ###
 
-        select_layout = self.configuration_set_select.make_layout(styles=styles)
+        select_layout = self.configuration_list_select.make_layout(styles=styles)
 
         control_layout = self.view_control.make_controls_tabs_layout(
             select_control_layout=None,

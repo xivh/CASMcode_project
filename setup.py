@@ -17,7 +17,9 @@ setup(
         "casm.project.structure_import",
         "casm.project.sym",
         "casm.project.system",
+        "casm.project.vis",
         "casm.vis",
+        "casm.vis.client",
     ],
     install_requires=[],
 )
