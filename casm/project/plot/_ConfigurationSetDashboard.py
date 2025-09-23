@@ -111,10 +111,10 @@ class ConfigurationSetDashboard:
         """float: The alpha value for the marker alpha"""
 
         self.cabinet_scale = 0.2
-        """float: The scale factor for the cabinet view"""
+        """float: The scale factor for the projection view"""
 
         self.cabinet_angle = math.pi / 6.0
-        """float: The angle for the cabinet view"""
+        """float: The angle for the projection view"""
 
         component_params = copy.deepcopy(self._input_component_params)
         if component_params is None and len(self.configuration_set) != 0:

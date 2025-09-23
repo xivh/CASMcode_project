@@ -1,11 +1,10 @@
-import math
-
 import bokeh.models
 from bokeh.layouts import column, row
 
 import libcasm.xtal as xtal
 
 from ._DashboardStyles import DashboardStyles
+from ._view import SinglePointProjection
 from ._ViewAtomicStructure import (
     ViewAtomicStructure,
 )
@@ -44,10 +43,10 @@ class ProjectionView:
             v2=[0.0, 1.0, 0.0],
         )
 
-        self.view_cabinet = ViewAtomicStructure(
+        self.projection_view = ViewAtomicStructure(
             doc=None,
             component_params=component_params,
-            cabinet=(0.2, math.pi / 6.0),
+            projection=SinglePointProjection(),
         )
 
         self.title_div = bokeh.models.Div(
@@ -89,19 +88,16 @@ class ProjectionView:
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
         )
-        self.view_cabinet.set_structure(
+        self.projection_view.set_structure(
             structure=structure,
-            title="Cabinet perspective view",
+            title="Projection view",
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
-            new_cabinet=(
-                self.view_control.cabinet_scale,
-                self.view_control.cabinet_angle,
-            ),
+            new_projection=self.view_control.projection,
         )
-        self.view_cabinet.update_view_basis(
-            v1=self.view_control.cabinet_v1,
-            v2=self.view_control.cabinet_v2,
+        self.projection_view.update_view_basis(
+            v1=self.view_control.projection_v1,
+            v2=self.view_control.projection_v2,
         )
 
     def make_layout(
@@ -120,13 +116,13 @@ class ProjectionView:
         p_xy.xaxis.axis_label = "x"
         p_xy.yaxis.axis_label = "y"
 
-        p_cabinet = self.view_cabinet.make_plot()
-        p_cabinet.xaxis.axis_label = "b1 (cabinet)"
-        p_cabinet.yaxis.axis_label = "b2 (cabinet)"
+        p_projection = self.projection_view.make_plot()
+        p_projection.xaxis.axis_label = "b1 (projection)"
+        p_projection.yaxis.axis_label = "b2 (projection)"
 
         return column(
             self.title_div,
-            row(p_xy, p_cabinet),
+            row(p_xy, p_projection),
             row(p_xz, p_yz),
             margin=(0, 20),
         )

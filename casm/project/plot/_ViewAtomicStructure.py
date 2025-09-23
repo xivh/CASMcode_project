@@ -1,9 +1,8 @@
 import copy
 import json
-import math
 import pathlib
 import time
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import bokeh.document  # Document
 import bokeh.models  # ColumnDataSource, Slider
@@ -15,9 +14,9 @@ import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
 from ._view import (
-    apply_cabinet,
     make_cartesian_view_basis,
     make_lattice_cell_data,
+    make_projection_from_dict,
 )
 
 default_component_params_path = (
@@ -172,8 +171,7 @@ class ViewAtomicStructureParams:
         images_m_range: int = 1,
         marker_size_scale: float = 1.0,
         marker_alpha_scale: float = 1.0,
-        cabinet_scale: float = 0.2,
-        cabinet_angle: float = math.pi / 6.0,
+        projection: Any = None,
         component_params: Optional[dict] = None,
     ):
         self.images_a_range = images_a_range
@@ -182,8 +180,7 @@ class ViewAtomicStructureParams:
         self.images_m_range = images_m_range
         self.marker_size_scale = marker_size_scale
         self.marker_alpha_scale = marker_alpha_scale
-        self.cabinet_scale = cabinet_scale
-        self.cabinet_angle = cabinet_angle
+        self.projection = projection
         if component_params is None:
             # Get first record in configuration set:
             record = next(iter(self.configuration_set))
@@ -201,8 +198,7 @@ class ViewAtomicStructureParams:
             "images_m_range": self.images_m_range,
             "marker_size_scale": self.marker_size_scale,
             "marker_alpha_scale": self.marker_alpha_scale,
-            "cabinet_scale": self.cabinet_scale,
-            "cabinet_angle": self.cabinet_angle,
+            "projection": self.projection.to_dict(),
             "component_params": self.component_params,
         }
 
@@ -216,8 +212,7 @@ class ViewAtomicStructureParams:
             images_m_range=data["images_m_range"],
             marker_size_scale=data["marker_size_scale"],
             marker_alpha_scale=data["marker_alpha_scale"],
-            cabinet_scale=data["cabinet_scale"],
-            cabinet_angle=data["cabinet_angle"],
+            projection=make_projection_from_dict(data["projection"]),
             component_params=data["component_params"],
         )
 
@@ -231,7 +226,7 @@ class ViewAtomicStructure:
         component_params: dict[str, dict],
         v1: Optional[np.ndarray] = None,
         v2: Optional[np.ndarray] = None,
-        cabinet: Optional[tuple[float, float]] = None,
+        projection: Any = None,
         marker_size_scale: float = 1.0,
         marker_alpha_scale: float = 1.0,
     ):
@@ -271,11 +266,9 @@ class ViewAtomicStructure:
         v2: np.ndarray = [0.0, 0.0, 1.0]
             A shape `(3,)` array giving the Cartesian vector that should lie along
             the vertical axis.
-        cabinet: Optional[tuple[float, float]] = None
-            A tuple, :math:`(f, \theta)`, where :math:`f` is a factor indicating
-            fraction of "real" length displayed for vectors perpendicular to the
-            viewing plane, and :math:`\theta` is the angle the vectors are displayed
-            at. A typical value is ``(0.2, math.pi/6.0)``.
+        projection: Any = None
+            A projection object that defines how to project 3D coordinates to 2D.
+            Default is None.
         marker_size_scale: float = 1.0
             A scale factor to apply to the marker sizes.
         marker_alpha_scale: float = 1.0
@@ -339,14 +332,9 @@ class ViewAtomicStructure:
         """np.ndarray: A shape `(3,)` array giving the Cartesian vector that should lie
         along the vertical axis."""
 
-        self.cabinet = cabinet
-        """Optional[tuple[float, float]]: Optional "cabinet" perspective parameters.
-        
-        A tuple, :math:`(f, \theta)`, where :math:`f` is a factor indicating fraction
-        of "real" length displayed for vectors perpendicular to the viewing plane, and
-        :math:`\theta` is the angle the vectors are displayed at. A typical value is
-        ``(0.2, math.pi/6.0)``.
-        """
+        self.projection = projection
+        """Any: A projection object that defines how to project 3D coordinates to 2D.
+        Default uses :class:`~libcasm.project.plot.SinglePointProjection`."""
 
         self.view_basis = make_cartesian_view_basis(v1=v1, v2=v2)
         """np.ndarray: The inverse of the view basis, :math:`B`, a shape `(3, 3)` array 
@@ -468,7 +456,7 @@ class ViewAtomicStructure:
         title: str,
         new_marker_size_scale: Optional[float] = None,
         new_marker_alpha_scale: Optional[float] = None,
-        new_cabinet: Optional[tuple[float, float]] = None,
+        new_projection: Any = None,
     ):
         self.structure = structure.copy()
         self.title = title
@@ -477,8 +465,8 @@ class ViewAtomicStructure:
             self.marker_size_scale = new_marker_size_scale
         if new_marker_alpha_scale is not None:
             self.marker_alpha_scale = new_marker_alpha_scale
-        if new_cabinet is not None:
-            self.cabinet = new_cabinet
+        if new_projection is not None:
+            self.projection = new_projection
 
         # Create initial data:
         data = dict()
@@ -491,7 +479,8 @@ class ViewAtomicStructure:
 
         # Add projected coordinates
         coordinate_view = self.view_basis_inv @ coordinate_cart
-        apply_cabinet(self.cabinet, coordinate_view)
+        if self.projection is not None:
+            self.projection.apply(coordinate_view)
         data["px"] = coordinate_view[0, :]
         data["py"] = coordinate_view[1, :]
         data["pz"] = coordinate_view[2, :]
@@ -521,7 +510,7 @@ class ViewAtomicStructure:
         lattice_cell_data = make_lattice_cell_data(
             lattice=self.structure.lattice(),
             view_basis=self.view_basis,
-            cabinet=self.cabinet,
+            projection=self.projection,
             center=False,
             shift=None,
             hex=False,

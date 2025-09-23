@@ -57,8 +57,9 @@ class ConfigurationListSelect:
             self.i_index_on_page = 0
 
         else:
-            page_number_options = ["(None)"]
-            config_index_by_page_number = {"(None)": ["(None)"]}
+            page_number_options = None
+            config_index_by_page_number = None
+            self._disable_update = True
 
         self.page_number_options = page_number_options
         self.config_index_by_page_number = config_index_by_page_number
@@ -68,6 +69,9 @@ class ConfigurationListSelect:
         self.set_structure()
 
     def set_structure(self):
+        if self.i_page is None:
+            return
+
         config_index = int(
             self.config_index_by_page_number[self.i_page][self.i_index_on_page]
         )
@@ -92,15 +96,27 @@ class ConfigurationListSelect:
         self.configuration_set_div = bokeh.models.Div(
             text="""<b>Configuration list</b>""", width=200
         )
+        if self.i_page is None:
+            options = ["(None)"]
+            value = "(None)"
+        else:
+            options = self.page_number_options
+            value = self.i_page
         page_number_select = bokeh.models.Select(
-            options=self.page_number_options,
-            value=self.i_page,
+            options=options,
+            value=value,
             stylesheets=[styles.dark_bk_input_style],
             title="Page Number",
         )
+        if self.i_page is None:
+            options = ["(None)"]
+            value = "(None)"
+        else:
+            options = self.config_index_by_page_number[self.i_page]
+            value = options[self.i_index_on_page]
         config_index_select = bokeh.models.Select(
-            options=self.config_index_by_page_number[self.i_page],
-            value=self.config_index_by_page_number[self.i_page][self.i_index_on_page],
+            options=options,
+            value=value,
             stylesheets=[styles.dark_bk_input_style],
             title="Configuration Index",
         )

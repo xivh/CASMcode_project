@@ -122,7 +122,7 @@ class ConfigurationSetDashboardv2:
             select_control_layout=None,
             styles=styles,
             parent=self,
-            view_cabinet=self.projection_view.view_cabinet,
+            projection_view=self.projection_view.projection_view,
         )
 
         # Figures grid

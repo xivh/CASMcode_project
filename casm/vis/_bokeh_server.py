@@ -8,8 +8,8 @@ import casm.project as casmproj
 import libcasm.configuration as casmconfig
 import libcasm.xtal.prims as xtal_prims
 from casm.project.plot import (
-    ConfigurationListDashboard,
-    ConfigurationSetDashboard,
+    ConfigurationListDashboardv2,
+    ConfigurationSetDashboardv2,
 )
 
 from ._BokehServerManager import (
@@ -84,13 +84,14 @@ def add_casm_enum_vis(cache: ServerCache):
             enum = proj.enum.get(id=enum_id)
 
             if view_id == "configuration_set":
-                app = ConfigurationSetDashboard(
+                app = ConfigurationSetDashboardv2(
+                    prim=proj.prim,
                     configuration_set=enum.configuration_set,
                 )
             elif view_id == "configuration_list":
-                app = ConfigurationListDashboard(
+                app = ConfigurationListDashboardv2(
+                    prim=proj.prim,
                     configuration_list=enum.configuration_list,
-                    page_size=100,
                 )
             else:
                 raise ValueError(f"Unknown view_id: {view_id}")
