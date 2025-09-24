@@ -75,5 +75,5 @@ class VisCommand:
         if not enum.enum_dir.exists():
             raise FileNotFoundError(f"Enumeration '{enum_id}' does not exist.")
         url = f"{self._vis_url}/#/project/{self._proj_id}/enum/vis/"
-        url += f"?enum_id={enum_id}&view_id={view_id}"
+        url += f"?obj_id={enum_id}&view_id={view_id}"
         webbrowser.open(url=url, new=2)

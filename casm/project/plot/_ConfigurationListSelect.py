@@ -161,6 +161,8 @@ class ConfigurationListSelect:
         config_index_select.on_change("value", _config_index_callback)
 
         def _iterate_inc_callback(attr):
+            if self.i_page is None:
+                return
             self._disable_update = True
             if self.i_index_on_page == len(config_index_select.options) - 1:
                 if self.i_page == len(page_number_select.options) - 1:
@@ -185,6 +187,8 @@ class ConfigurationListSelect:
         iterate_inc.on_click(_iterate_inc_callback)
 
         def _iterate_dec_callback(attr):
+            if self.i_page is None:
+                return
             self._disable_update = True
             if self.i_index_on_page == 0:
                 if self.i_page == 0:

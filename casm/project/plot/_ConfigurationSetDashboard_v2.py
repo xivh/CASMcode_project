@@ -146,6 +146,7 @@ class ConfigurationSetDashboardv2:
             select_layout,
             control_layout,
             projection_view_layout,
+            margin=(20, 0),
         )
 
         return layout
