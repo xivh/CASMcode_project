@@ -67,6 +67,7 @@ def open_structure_with_vesta(
     temp_dir = tempfile.gettempdir()
     file_path = os.path.join(temp_dir, name)
     with open(file_path, "w") as f:
+        print(structure.to_poscar_str())
         f.write(structure.to_poscar_str())
         f.flush()
         os.fsync(f.fileno())

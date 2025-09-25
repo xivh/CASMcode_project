@@ -184,7 +184,7 @@ class ViewAtomicStructureParams:
         if component_params is None:
             # Get first record in configuration set:
             record = next(iter(self.configuration_set))
-            component_params = self._make_component_params(
+            component_params = make_prim_component_params(
                 prim=record.configuration.supercell.prim
             )
         self.component_params = component_params
@@ -305,21 +305,6 @@ class ViewAtomicStructure:
             }
 
         """
-
-        # make component_params_keys
-        component_params_keys = None
-        if component_params is not None:
-            for _params in component_params.values():
-                keys = sorted(list(_params.keys()))
-                if component_params_keys is None:
-                    component_params_keys = keys
-                elif keys != component_params_keys:
-                    raise ValueError(
-                        "Error in ViewConfiguration2d: "
-                        "component_params must have the same keys for all components"
-                    )
-        self.component_params_keys = component_params_keys
-        """list[str]: The keys of the component_params dict, sorted alphabetically."""
 
         self.marker_size_scale = marker_size_scale
         """float: A scale factor to apply to the marker sizes."""
@@ -457,6 +442,7 @@ class ViewAtomicStructure:
         new_marker_size_scale: Optional[float] = None,
         new_marker_alpha_scale: Optional[float] = None,
         new_projection: Any = None,
+        new_component_params: Optional[dict] = None,
     ):
         self.structure = structure.copy()
         self.title = title
@@ -467,6 +453,23 @@ class ViewAtomicStructure:
             self.marker_alpha_scale = new_marker_alpha_scale
         if new_projection is not None:
             self.projection = new_projection
+        if new_component_params is not None:
+            self.component_params = new_component_params
+
+        # make component_params_keys
+        component_params_keys = None
+        if self.component_params is not None:
+            for _params in self.component_params.values():
+                keys = sorted(list(_params.keys()))
+                if component_params_keys is None:
+                    component_params_keys = keys
+                elif keys != component_params_keys:
+                    raise ValueError(
+                        "Error in ViewConfiguration2d: "
+                        "component_params must have the same keys for all components"
+                    )
+        self.component_params_keys = component_params_keys
+        """list[str]: The keys of the component_params dict, sorted alphabetically."""
 
         # Create initial data:
         data = dict()
@@ -550,7 +553,6 @@ class ViewAtomicStructure:
         p = bokeh.plotting.figure(**figure_params)
 
         if len(self.lattice_cell_source.data) != 0:
-            scatter_kwargs = {x: x for x in self.component_params_keys}
             p.segment(
                 x0="px0",
                 y0="py0",
@@ -562,6 +564,7 @@ class ViewAtomicStructure:
             )
 
         if len(self.source.data) != 0:
+            scatter_kwargs = {x: x for x in self.component_params_keys}
             p.scatter(
                 "px",
                 "py",

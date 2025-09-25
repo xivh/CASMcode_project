@@ -75,18 +75,21 @@ class ProjectionView:
             title="X-Z plane view",
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+            new_component_params=self.view_control.component_params,
         )
         self.view_yz.set_structure(
             structure=structure,
             title="Y-Z plane view",
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+            new_component_params=self.view_control.component_params,
         )
         self.view_xy.set_structure(
             structure=structure,
             title="X-Y plane view",
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+            new_component_params=self.view_control.component_params,
         )
         self.projection_view.set_structure(
             structure=structure,
@@ -94,6 +97,7 @@ class ProjectionView:
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
             new_projection=self.view_control.projection,
+            new_component_params=self.view_control.component_params,
         )
         self.projection_view.update_view_basis(
             v1=self.view_control.projection_v1,

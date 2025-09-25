@@ -458,6 +458,13 @@ class ViewControl:
         same attributes must be present for all components.
         """
 
+    def reset_component_params(self, component_params: dict):
+        self._input_component_params = copy.deepcopy(component_params)
+        component_params = copy.deepcopy(self._input_component_params)
+        if component_params is None:
+            component_params = make_prim_component_params(prim=self.prim)
+        self.component_params = component_params
+
     def reset_projection_view(self):
         # self.cabinet_scale = 0.2
         # """float: The scale factor for the projection view"""
