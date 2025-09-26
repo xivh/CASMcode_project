@@ -86,19 +86,6 @@ def make_component_params(
     return component_params
 
 
-# 10 colors that are effective highlight colors (like neon yellow, cyan, magenta, etc.)
-highlight_line_colors = [
-    "#ffe700",  # neon yellow
-    "#4deeea",  # neon cyan
-    "#f000ff",  # neon magenta
-    "#74ee15",  # neon green
-    "#001eff",  # neon blue
-    "#ffaa00",  # neon orange
-    "#ff00aa",  # neon pink
-    "#00ff9c",  # neon turquoise
-]
-
-
 def add_line_component_params(
     component_params: dict,
     line_color_components: list[str],
@@ -241,15 +228,51 @@ class PrimColoringSelect:
             "site_name",
             "default_occ",
             "default_chemical_name",
+            "occ_dof",
+            "occ_dof_chemical_name",
+            "local_dof",
             "pointgroup_international",
             "pointgroup_schoenflies",
         ]
+
+        self.attr_type = {
+            "none": None,
+            "site_name": "str",
+            "default_occ": "str",
+            "default_chemical_name": "str",
+            "occ_dof": "list_str",
+            "occ_dof_chemical_name": "list_str",
+            "local_dof": "list_str",
+            "pointgroup_international": "str",
+            "pointgroup_schoenflies": "str",
+        }
+
+        self.attr_values = dict()
+        for key in self.keys:
+            if key == "none":
+                components = ["(None)"]
+            else:
+                if self.attr_type[key] == "str":
+                    components = list(set([data[key] for data in self.sublattice_data]))
+                elif self.attr_type[key] == "list_str":
+                    components = ["(None)"]
+                    for data in self.sublattice_data:
+                        for item in data[key]:
+                            if item not in components:
+                                components.append(item)
+                else:
+                    raise ValueError(f"Unknown attr_type: {self.attr_type[key]}")
+                components.sort()
+            self.attr_values[key] = components
 
         self.labels = {
             "none": "(None)",
             "site_name": "Equivalent sites",
             "default_occ": "Default occupant",
             "default_chemical_name": "Default occupant (chemical name)",
+            "occ_dof": "Allowed occupant",
+            "occ_dof_chemical_name": "Allowed occupant (chemical name)",
+            "local_dof": "Continuous DoF",
             "pointgroup_international": "Site symmetry (International)",
             "pointgroup_schoenflies": "Site symmetry (Schoenflies)",
         }
@@ -257,23 +280,48 @@ class PrimColoringSelect:
         ### Data preparation - end ###
 
         self.current_key = "none"
+        self.current_attr_values = dict()
+        for key in self.keys:
+            self.current_attr_values[key] = self.attr_values[key][0]
+        self.current_color = "cyan"
+        self.current_width = 5.0
         self.set_structure()
 
-    def set_structure(
-        self,
-        selected_value: typing.Optional[str] = None,
-        highlight_color: str = "cyan",
-        highlight_width: float = 2.0,
-    ):
+    def set_structure(self):
 
         key = self.current_key
+        selected_value = self.current_attr_values[key]
+        highlight_color = self.current_color
+        highlight_width = self.current_width
+
         psuedo_atom_type = []
-        for data in self.sublattice_data:
-            _name = data["default_chemical_name"]
-            if selected_value is not None:
+        attr_type = self.attr_type[key]
+        if attr_type is None:
+            for data in self.sublattice_data:
+                psuedo_atom_type.append(data["default_chemical_name"])
+        elif attr_type == "str":
+            if selected_value is None:
+                raise ValueError(
+                    "selected_value must be provided when key is not 'none'"
+                )
+            for data in self.sublattice_data:
+                _name = data["default_chemical_name"]
                 if data[key] == selected_value:
                     _name += "_sel"
-            psuedo_atom_type.append(_name)
+                psuedo_atom_type.append(_name)
+        elif attr_type == "list_str":
+            if selected_value is None:
+                raise ValueError(
+                    "selected_value must be provided when key is not 'none'"
+                )
+            for data in self.sublattice_data:
+                _name = data["default_chemical_name"]
+                if selected_value == "(None)":
+                    if len(data[key]) == 0:
+                        _name += "_sel"
+                elif selected_value in data[key]:
+                    _name += "_sel"
+                psuedo_atom_type.append(_name)
 
         structure = xtal.Structure(
             lattice=self.prim.xtal_prim.lattice(),
@@ -292,23 +340,14 @@ class PrimColoringSelect:
         )
         self.parent.selected_structure = structure
 
-        if selected_value is None:
+        if key == "none":
             name = "Prim"
         else:
             name = f"Prim, {self.labels[key]}={selected_value}"
         self.parent.selected_structure_name = name
 
-    def update(
-        self,
-        selected_value: typing.Optional[str] = None,
-        highlight_color: str = "cyan",
-        highlight_width: float = 2.0,
-    ):
-        self.set_structure(
-            selected_value=selected_value,
-            highlight_color=highlight_color,
-            highlight_width=highlight_width,
-        )
+    def update(self):
+        self.set_structure()
         self.parent.trigger_update()
 
     def make_layout(
@@ -319,7 +358,7 @@ class PrimColoringSelect:
 
         highlight_colorpicker = bokeh.models.ColorPicker(
             title="Color",
-            color="cyan",
+            color=self.current_color,
             width=50,
             stylesheets=[styles.dark_bk_input_style],
         )
@@ -328,12 +367,11 @@ class PrimColoringSelect:
             low=-0.01,
             high=100.01,
             step=0.5,
-            value=2.0,
-            width=50,
+            value=self.current_width,
+            width=70,
             stylesheets=[styles.dark_bk_input_style],
         )
 
-        self.coloring_by_div = bokeh.models.Div(text="""<b>Highlight</b>""", width=200)
         attr_select = bokeh.models.Select(
             options=[(key, self.labels[key]) for key in self.keys],
             value=self.current_key,
@@ -342,92 +380,84 @@ class PrimColoringSelect:
         )
 
         attr_value_select = dict()
-        attr_values = dict()
         all_value_select = []
         for key in self.keys:
-            if key == "none":
-                components = ["(None)"]
-            else:
-                components = list(set([data[key] for data in self.sublattice_data]))
-                components.sort()
-            attr_values[key] = components
+
             select = bokeh.models.Select(
-                options=components,
-                value=str(components[0]),
+                options=self.attr_values[key],
+                value=str(self.current_attr_values[key]),
                 stylesheets=[styles.dark_bk_input_style],
                 title="Value",
                 visible=self.current_key == key,
             )
 
-            def _callback(attr, old, new):
-                if new == "(None)":
-                    new = None
-                self.update(
-                    selected_value=new,
-                    highlight_color=highlight_colorpicker.color,
-                    highlight_width=highlight_width_spinner.value,
-                )
-
-            select.on_change("value", _callback)
-
             attr_value_select[key] = select
             all_value_select.append(select)
-
-        value_select_col = column(
-            *all_value_select,
-        )
 
         ### Widgets construction - end ###
 
         ### Callbacks - begin ###
+
+        for select in all_value_select:
+
+            def _callback(attr, old, new):
+                if self._disable_update:
+                    return
+
+                self._disable_update = True
+                self.current_attr_values[self.current_key] = new
+                self._disable_update = False
+
+                self.update()
+
+            select.on_change("value", _callback)
+
         def _coloring_by_callback(attr, old, new):
-            attr_select.value = new
+            if self._disable_update:
+                return
+
+            self._disable_update = True
             self.current_key = new
             for key, value_select in attr_value_select.items():
                 value_select.visible = key == new
-            if new == "none":
-                selected_value = None
-            else:
-                selected_value = attr_value_select[new].value
-            self.update(
-                selected_value=selected_value,
-                highlight_color=highlight_colorpicker.color,
-                highlight_width=highlight_width_spinner.value,
-            )
+            self._disable_update = False
+
+            self.update()
 
         attr_select.on_change("value", _coloring_by_callback)
 
         def _highlight_color_callback(attr, old, new):
-            if self.current_key == "none":
-                selected_value = None
-            else:
-                selected_value = attr_value_select[self.current_key].value
-            self.update(
-                selected_value=selected_value,
-                highlight_color=new,
-                highlight_width=highlight_width_spinner.value,
-            )
+            if self._disable_update:
+                return
+
+            self._disable_update = True
+            self.current_color = new
+            self._disable_update = False
+
+            self.update()
 
         highlight_colorpicker.on_change("color", _highlight_color_callback)
 
         def _highlight_width_callback(attr, old, new):
-            if self.current_key == "none":
-                selected_value = None
-            else:
-                selected_value = attr_value_select[self.current_key].value
-            self.update(
-                selected_value=selected_value,
-                highlight_color=highlight_colorpicker.color,
-                highlight_width=new,
-            )
+            if self._disable_update:
+                return
+
+            self._disable_update = True
+            self.current_width = new
+            self._disable_update = False
+
+            self.update()
 
         highlight_width_spinner.on_change("value", _highlight_width_callback)
 
         ### Callbacks - end ###
 
+        value_select_col = column(
+            *all_value_select,
+        )
+
         # Configuration selection:
         c1 = column(
-            # self.configuration_set_div,
             row(
                 attr_select,
                 value_select_col,

@@ -12,6 +12,9 @@ from ._ConfigurationSetDashboard import (
 from ._ConfigurationSetDashboard_v2 import (
     ConfigurationSetDashboardv2,
 )
+from ._PrimDashboard import (
+    PrimDashboard,
+)
 from ._StructureDashboard import (
     StructureDashboard,
 )
