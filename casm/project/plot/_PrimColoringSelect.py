@@ -11,7 +11,7 @@ from libcasm.configuration.io import symgroup_to_dict_with_group_classification
 
 from ._DashboardStyles import DashboardStyles
 from ._ViewAtomicStructure import (
-    make_prim_component_params,
+    update_highlight_params,
 )
 
 
@@ -109,26 +109,6 @@ def add_line_component_params(
     return new_component_params
 
 
-def make_highlight_params(
-    prim_component_params: dict,
-    highlight_color: str,
-    highlight_width: float = 2.0,
-):
-    highlight_params = dict(prim_component_params)
-
-    for name, params in highlight_params.items():
-        params["line_alpha"] = 1.0
-
-    for name, params in prim_component_params.items():
-
-        new_params = dict(params)
-        new_params["line_color"] = highlight_color
-        new_params["line_width"] = highlight_width
-        new_params["line_alpha"] = 1.0
-        highlight_params[name + "_sel"] = new_params
-    return highlight_params
-
-
 class PrimColoringSelect:
 
     def __init__(
@@ -136,13 +116,36 @@ class PrimColoringSelect:
         prim: casmconfig.Prim,
         parent: typing.Any,
     ):
+        """
+
+        .. rubric:: Constructor
+
+        Parameters
+        ----------
+        prim: libcasm.configuration.Prim
+            The prim.
+        parent: typing.Any
+            The parent dashboard, which must have the following attributes:
+
+            - view_control: The ViewControl instance, which must have the method
+                `reset_component_params(component_params: dict)`.
+            - selected_structure: The selected structure to visualize.
+            - selected_structure_name: The name of the selected structure.
+            - trigger_update(): A method to trigger the update of the dashboard.
+
+
+        """
         self.prim = prim
         self.parent = parent
 
         self._disable_update = False
-        self._prim_component_params = make_prim_component_params(prim=self.prim)
-
         ### Data preparation - begin ###
+
+        # self.parent.view_control.reset_component_params(
+        #     component_params=make_highlight_params(
+        #         component_params=make_prim_component_params(prim=self.prim),
+        #     ),
+        # )
 
         self.asymmetric_unit_indices = xtal.asymmetric_unit_indices(self.prim.xtal_prim)
 
@@ -225,6 +228,7 @@ class PrimColoringSelect:
 
         self.keys = [
             "none",
+            "sublattice",
             "site_name",
             "default_occ",
             "default_chemical_name",
@@ -237,6 +241,7 @@ class PrimColoringSelect:
 
         self.attr_type = {
             "none": None,
+            "sublattice": "str",
             "site_name": "str",
             "default_occ": "str",
             "default_chemical_name": "str",
@@ -253,7 +258,9 @@ class PrimColoringSelect:
                 components = ["(None)"]
             else:
                 if self.attr_type[key] == "str":
-                    components = list(set([data[key] for data in self.sublattice_data]))
+                    components = list(
+                        set([str(data[key]) for data in self.sublattice_data])
+                    )
                 elif self.attr_type[key] == "list_str":
                     components = ["(None)"]
                     for data in self.sublattice_data:
@@ -267,6 +274,7 @@ class PrimColoringSelect:
 
         self.labels = {
             "none": "(None)",
+            "sublattice": "Sublattice index",
             "site_name": "Equivalent sites",
             "default_occ": "Default occupant",
             "default_chemical_name": "Default occupant (chemical name)",
@@ -306,7 +314,7 @@ class PrimColoringSelect:
                 )
             for data in self.sublattice_data:
                 _name = data["default_chemical_name"]
-                if data[key] == selected_value:
+                if str(data[key]) == selected_value:
                     _name += "_sel"
                 psuedo_atom_type.append(_name)
         elif attr_type == "list_str":
@@ -329,15 +337,23 @@ class PrimColoringSelect:
             atom_type=psuedo_atom_type,
         )
 
-        component_params = make_highlight_params(
-            prim_component_params=make_prim_component_params(prim=self.prim),
+        update_highlight_params(
+            component_params=self.parent.view_control.component_params,
             highlight_color=highlight_color,
             highlight_width=highlight_width,
         )
 
-        self.parent.view_control.reset_component_params(
-            component_params=component_params
-        )
+        # component_params = make_highlight_params(
+        #     # prim_component_params=make_prim_component_params(prim=self.prim),
+        #     prim_component_params=self.parent.view_control.component_params,
+        #     highlight_color=highlight_color,
+        #     highlight_width=highlight_width,
+        # )
+        #
+        # self.parent.view_control.reset_component_params(
+        #     component_params=component_params
+        # )
+
         self.parent.selected_structure = structure
 
         if key == "none":

@@ -162,6 +162,75 @@ def make_prim_component_params(
     )
 
 
+def adjust_color(color: str, factor: float = -0.3):
+    """Make a color a bit darker or lighter.
+
+    Parameters
+    ----------
+    color: str
+        The color to adjust. Must be a valid matplotlib color.
+    factor: float
+        The factor to shift the RGB values by. Must be between -1 and 1.
+
+    Returns
+    -------
+    adjusted_color: str
+        The adjusted color as a hex string.
+
+    """
+    import matplotlib.colors
+
+    rgb = np.array(matplotlib.colors.to_rgb(color))
+    print("rgb 1:", rgb)
+    print("factor:", factor)
+    tol = 0.001
+    for i in range(3):
+        if factor < 0 - tol:
+            rgb[i] = rgb[i] * (1.0 + factor)
+        elif factor > 0 + tol:
+            rgb[i] = rgb[i] + (1.0 - rgb[i]) * factor
+    print("rgb 2:", rgb)
+    adjusted_rgb = np.clip(rgb, 0, 1)
+    print("adjusted_rgb:", adjusted_rgb)
+    adjusted_color = matplotlib.colors.to_hex(adjusted_rgb)
+    print("adjusted_color:", adjusted_color)
+    return adjusted_color
+
+
+def make_highlight_params(
+    component_params: dict,
+    highlight_color: str = "cyan",
+    highlight_width: float = 2.0,
+):
+    highlight_params = dict(component_params)
+
+    for name, params in highlight_params.items():
+        params["line_alpha"] = 1.0
+
+    for name, params in component_params.items():
+
+        new_params = dict(params)
+
+        new_params["color"] = adjust_color(params["color"], factor=-0.3)
+        new_params["line_color"] = highlight_color
+        new_params["line_width"] = highlight_width
+        new_params["line_alpha"] = 1.0
+        highlight_params[name + "_sel"] = new_params
+    return highlight_params
+
+
+def update_highlight_params(
+    component_params: dict,
+    highlight_color: str,
+    highlight_width: float = 2.0,
+):
+    for name, params in component_params.items():
+        if name.endswith("_sel"):
+            params["line_color"] = highlight_color
+            params["line_width"] = highlight_width
+            params["line_alpha"] = 1.0
+
+
 class ViewAtomicStructureParams:
     def __init__(
         self,

@@ -24,6 +24,8 @@ from ._view import (
 )
 from ._ViewAtomicStructure import (
     ViewAtomicStructure,
+    adjust_color,
+    make_highlight_params,
     make_prim_component_params,
 )
 
@@ -416,7 +418,13 @@ class ViewControl:
     ):
         self.prim = prim
 
-        self._input_component_params = copy.deepcopy(component_params)
+        self.component_params = copy.deepcopy(component_params)
+        if self.component_params is None:
+            self.component_params = make_highlight_params(
+                component_params=make_prim_component_params(prim=self.prim),
+            )
+
+        self.selected_color_factor = -0.3
 
         if projection is None:
             projection = SinglePointProjection()
@@ -446,7 +454,24 @@ class ViewControl:
         self.marker_alpha_scale = 1.0
         """float: The alpha value for the marker alpha"""
 
-        component_params = copy.deepcopy(self._input_component_params)
+        # component_params = copy.deepcopy(self._input_component_params)
+        # if component_params is None:
+        #     component_params = make_prim_component_params(prim=self.prim)
+        # self.component_params = component_params
+        # """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
+        # atom type name as key.
+        #
+        # Must include "color", "size", and "alpha". Additional bokeh plotting
+        # parameters like "line_color" and "line_width" may also be included. The
+        # same attributes must be present for all components.
+        # """
+
+    def reset_component_params(
+        self,
+        component_params: typing.Optional[dict] = None,
+    ):
+        # self._input_component_params = copy.deepcopy(component_params)
+        # component_params = copy.deepcopy(self._input_component_params)
         if component_params is None:
             component_params = make_prim_component_params(prim=self.prim)
         self.component_params = component_params
@@ -457,13 +482,6 @@ class ViewControl:
         parameters like "line_color" and "line_width" may also be included. The
         same attributes must be present for all components.
         """
-
-    def reset_component_params(self, component_params: dict):
-        self._input_component_params = copy.deepcopy(component_params)
-        component_params = copy.deepcopy(self._input_component_params)
-        if component_params is None:
-            component_params = make_prim_component_params(prim=self.prim)
-        self.component_params = component_params
 
     def reset_projection_view(self):
         # self.cabinet_scale = 0.2
@@ -672,6 +690,8 @@ class ViewControl:
             "m_range": self.images_m_range,
             "marker_size_scale": self.marker_size_scale,
             "marker_alpha_scale": self.marker_alpha_scale,
+            "selected_color_factor": self.selected_color_factor,
+            "component_params": self.component_params,
             "projection": self.projection.to_dict(),
             "projection_v1": self.projection_v1.tolist(),
             "projection_v2": self.projection_v2.tolist(),
@@ -685,6 +705,8 @@ class ViewControl:
         self.images_b_range = state["b_range"]
         self.images_c_range = state["c_range"]
         self.images_m_range = state["m_range"]
+        self.selected_color_factor = state["selected_color_factor"]
+        self.component_params = state["component_params"]
         self.marker_size_scale = state["marker_size_scale"]
         self.marker_alpha_scale = state["marker_alpha_scale"]
         self.projection = make_projection_from_dict(state["projection"])
@@ -921,6 +943,149 @@ class ViewControl:
             c1,
             c2,
         )
+
+    def make_colors_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        # Allow users to adjust the factor that makes "selected" colors lighter/darker
+        # than default colors:
+        selected_color_factor_div = bokeh.models.Div(
+            text="""<b>Selected Color Factor:&nbsp;&nbsp;</b>"""
+        )
+        selected_color_factor_spinner = bokeh.models.Spinner(
+            title="Factor",
+            description=(
+                "Use to adjust the color of selected atoms to be darker/lighter "
+                "than default colors. Numbers less than 0 make the color darker, "
+                "greater than 0 make it lighter."
+            ),
+            value=self.selected_color_factor,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=-10, high=10, step=1),
+        )
+
+        def update_selected_color_factor(attr, old, new):
+            self.selected_color_factor = new / 10.0
+            self._update_disabled = True
+
+            for comp, params in self.component_params.items():
+                if comp.endswith("_sel"):
+                    continue
+                default_color = params.get("color", "#FFFFFF")
+                adjusted_color = adjust_color(
+                    color=default_color,
+                    factor=self.selected_color_factor,
+                )
+                selected_name = f"{comp}_sel"
+                if selected_name in self.component_params:
+                    self.component_params[selected_name]["color"] = adjusted_color
+                    if selected_name in pickers_by_name:
+                        pickers_by_name[selected_name].color = adjusted_color
+
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        selected_color_factor_spinner.on_change("value", update_selected_color_factor)
+
+        # Color pickers for each component
+        pickers = []
+        pickers_by_name = dict()
+        for comp, params in self.component_params.items():
+            if comp.endswith("_sel"):
+                continue
+
+            row_items = []
+
+            color = params.get("color", "#FFFFFF")
+
+            # Create label div
+            label_div = bokeh.models.Div(
+                text=f"<b>{comp}:</b>",
+                width=40,
+                margin=(25, 5, 0, 0),
+                align="center",  # Center align vertically
+                styles={"text-align": "right"},
+            )
+            row_items.append(label_div)
+
+            # Create color picker
+            color_picker = bokeh.models.ColorPicker(
+                title="Default",
+                color=color,
+                width=60,
+                height=30,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            pickers_by_name[comp] = color_picker
+
+            row_items.append(color_picker)
+
+            # Add callback to update component params and trigger parent update
+            def make_color_update_callback(component_name):
+                def update_color(attr, old, new):
+                    print("new:", new)
+                    print("selected_color_factor:", self.selected_color_factor)
+                    new_adjusted = adjust_color(
+                        color=new,
+                        factor=self.selected_color_factor,
+                    )
+                    print("new_adjusted:", new_adjusted)
+                    selected_name = f"{component_name}_sel"
+
+                    self._update_disabled = True
+                    self.component_params[component_name]["color"] = new
+
+                    if not component_name.endswith("_sel"):
+                        pickers_by_name[selected_name].color = new_adjusted
+                        self.component_params[selected_name]["color"] = new_adjusted
+                    self._update_disabled = False
+                    if parent:
+                        parent.trigger_update()
+
+                return update_color
+
+            color_picker.on_change("color", make_color_update_callback(comp))
+
+            # Create "selected" color picker
+            if f"{comp}_sel" in self.component_params:
+                sel_color = self.component_params[f"{comp}_sel"].get("color", "#FF0000")
+                sel_color_picker = bokeh.models.ColorPicker(
+                    title="Selected",
+                    color=sel_color,
+                    width=60,
+                    height=30,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                pickers_by_name[f"{comp}_sel"] = sel_color_picker
+
+                sel_color_picker.on_change(
+                    "color", make_color_update_callback(f"{comp}_sel")
+                )
+
+                row_items.append(sel_color_picker)
+
+            # Add label and picker as a row
+            picker_row = row(*row_items, margin=(10, 10))
+            pickers.append(picker_row)
+
+        layout = column(
+            row(
+                selected_color_factor_div,
+                selected_color_factor_spinner,
+                width=300,
+                margin=(0, 10),
+            ),
+            bokeh.models.Div(text="""<b>Component Colors</b>""", width=300),
+            *pickers,
+            stylesheets=[
+                DashboardStyles().darkstyle,
+                DashboardStyles().typekit_stylesheet,
+            ],
+        )
+        return layout
 
     def make_projaxes_control_layout(
         self,
@@ -1375,6 +1540,11 @@ class ViewControl:
             parent=parent,
         )
 
+        colors_control_layout = self.make_colors_layout(
+            styles=styles,
+            parent=parent,
+        )
+
         projaxes_control_layout = self.make_projaxes_control_layout(
             styles=styles,
             parent=parent,
@@ -1395,6 +1565,7 @@ class ViewControl:
         tabs += [
             bokeh.models.TabPanel(child=images_control_layout, title="Supercell"),
             bokeh.models.TabPanel(child=markers_control_layout, title="Markers"),
+            bokeh.models.TabPanel(child=colors_control_layout, title="Colors"),
             bokeh.models.TabPanel(
                 child=projaxes_control_layout, title="Projection Axes"
             ),
