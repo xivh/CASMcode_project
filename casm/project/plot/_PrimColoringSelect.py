@@ -141,12 +141,6 @@ class PrimColoringSelect:
         self._disable_update = False
         ### Data preparation - begin ###
 
-        # self.parent.view_control.reset_component_params(
-        #     component_params=make_highlight_params(
-        #         component_params=make_prim_component_params(prim=self.prim),
-        #     ),
-        # )
-
         self.asymmetric_unit_indices = xtal.asymmetric_unit_indices(self.prim.xtal_prim)
 
         self.sublattice_data = []
@@ -342,17 +336,6 @@ class PrimColoringSelect:
             highlight_color=highlight_color,
             highlight_width=highlight_width,
         )
-
-        # component_params = make_highlight_params(
-        #     # prim_component_params=make_prim_component_params(prim=self.prim),
-        #     prim_component_params=self.parent.view_control.component_params,
-        #     highlight_color=highlight_color,
-        #     highlight_width=highlight_width,
-        # )
-        #
-        # self.parent.view_control.reset_component_params(
-        #     component_params=component_params
-        # )
 
         self.parent.selected_structure = structure
 

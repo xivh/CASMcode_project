@@ -1,3 +1,4 @@
+import pathlib
 import typing
 
 from bokeh.layouts import column, row
@@ -19,6 +20,7 @@ class PrimDashboard:
         self,
         prim: casmconfig.Prim,
         component_params: typing.Optional[dict] = None,
+        views_dir: typing.Optional[pathlib.Path] = None,
     ):
         """
 
@@ -39,10 +41,18 @@ class PrimDashboard:
             Must include "color", "size", and "alpha". Additional bokeh plotting
             parameters like "line_color" and "line_width" may also be included. The
             same attributes must be present for all components.
+
+        views_dir: typing.Optional[pathlib.Path] = None
+            The directory to save view files for use saving / loading state. If None,
+            views will not be saved.
         """
 
         self.prim = prim
         """libcasm.configuration.Prim: The primitive cell."""
+
+        self.views_dir = views_dir
+        """pathlib.Path: The directory to save view files for use saving / loading
+        state. If None, views will not be saved."""
 
         self.view_control = ViewControl(
             prim=self.prim,
@@ -69,7 +79,9 @@ class PrimDashboard:
             parent=self,
         )
 
-    def make_layout(self):
+    def make_layout(
+        self,
+    ):
         styles = DashboardStyles()
 
         ### Controls / Widgets / Views construction - begin ###
@@ -119,6 +131,7 @@ class PrimDashboard:
             styles=styles,
             parent=self,
             projection_view=self.projection_view.projection_view,
+            views_dir=self.views_dir,
         )
 
         # Figures grid

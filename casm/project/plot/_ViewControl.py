@@ -1,5 +1,7 @@
 import copy
+import json
 import math
+import pathlib
 import typing
 
 import bokeh.models
@@ -431,6 +433,13 @@ class ViewControl:
 
         self._initial_projection = projection
         self.projection = projection
+        self.parent = None
+
+        ### Widgets: ###
+        self._widgets = dict()
+        self._projaxes_input = None
+
+        ### Reset: ###
 
         self.reset()
 
@@ -692,26 +701,71 @@ class ViewControl:
             "marker_alpha_scale": self.marker_alpha_scale,
             "selected_color_factor": self.selected_color_factor,
             "component_params": self.component_params,
+            "initial_projection": self._initial_projection.to_dict(),
             "projection": self.projection.to_dict(),
             "projection_v1": self.projection_v1.tolist(),
             "projection_v2": self.projection_v2.tolist(),
+            "projection_rotation_angle": self.projection_rotation_angle,
+            "projaxes_input_order": self.projaxes_input_order,
+            "projaxes_input_mode": self.projaxes_input_mode,
         }
 
     def set_state(
         self,
         state: dict,
     ):
-        self.images_a_range = state["a_range"]
-        self.images_b_range = state["b_range"]
-        self.images_c_range = state["c_range"]
-        self.images_m_range = state["m_range"]
-        self.selected_color_factor = state["selected_color_factor"]
-        self.component_params = state["component_params"]
-        self.marker_size_scale = state["marker_size_scale"]
-        self.marker_alpha_scale = state["marker_alpha_scale"]
-        self.projection = make_projection_from_dict(state["projection"])
-        self.projection_v1 = np.array(state["projection_v1"])
-        self.projection_v2 = np.array(state["projection_v2"])
+        self.images_a_range = state.get("a_range", 1)
+        self.images_b_range = state.get("b_range", 1)
+        self.images_c_range = state.get("c_range", 1)
+        self.images_m_range = state.get("m_range", 1)
+        self.selected_color_factor = state.get("selected_color_factor", -0.3)
+        self.component_params = state.get("component_params", {})
+        self.marker_size_scale = state.get("marker_size_scale", 1.0)
+        self.marker_alpha_scale = state.get("marker_alpha_scale", 1.0)
+        self._initial_projection = make_projection_from_dict(
+            state.get(
+                "initial_projection",
+                SinglePointProjection().to_dict(),
+            )
+        )
+        self.projection = make_projection_from_dict(
+            state.get(
+                "projection",
+                SinglePointProjection().to_dict(),
+            )
+        )
+        self.projection_v1 = np.array(state.get("projection_v1", [1.0, 0.0, 0.0]))
+        self.projection_v2 = np.array(state.get("projection_v2", [0.0, 0.0, 1.0]))
+        self.projection_rotation_angle = state.get("projection_rotation_angle", 10.0)
+        self.projaxes_input_order = state.get("projaxes_input_order", "b1, b2")
+        self.projaxes_input_mode = state.get("projaxes_input_mode", "cart")
+
+        # Update widgets if they exist:
+        if "images" in self._widgets:
+            self._update_disabled = True
+            self._widgets["images"]["images_a_range"].value = self.images_a_range
+            self._widgets["images"]["images_b_range"].value = self.images_b_range
+            self._widgets["images"]["images_c_range"].value = self.images_c_range
+            self._widgets["images"]["images_m_range"].value = self.images_m_range
+            self._update_disabled = False
+
+        if "colors" in self._widgets:
+            self._update_disabled = True
+            self._widgets["colors"][
+                "selected_color_factor_spinner"
+            ].value = self.selected_color_factor
+            if "pickers_by_name" in self._widgets["colors"]:
+                for name, picker in self._widgets["colors"]["pickers_by_name"].items():
+                    if name in self.component_params:
+                        picker.color = self.component_params[name].get(
+                            "color", "#000000"
+                        )
+
+            self._update_disabled = False
+
+        if self._projaxes_input is not None:
+            self.parent.trigger_update()
+            self._projaxes_input.update_layout()
 
     def make_superstructure(
         self,
@@ -851,6 +905,14 @@ class ViewControl:
             width=200,
             margin=(0, 10),
         )
+
+        # Save images widgets:
+        self._widgets["images"] = dict()
+        self._widgets["images"]["images_a_range"] = images_a_range
+        self._widgets["images"]["images_b_range"] = images_b_range
+        self._widgets["images"]["images_c_range"] = images_c_range
+        self._widgets["images"]["images_m_range"] = images_m_range
+
         return row(
             c1,
             c2,
@@ -939,6 +1001,7 @@ class ViewControl:
             width=200,
             margin=(0, 10),
         )
+
         return row(
             c1,
             c2,
@@ -1026,13 +1089,10 @@ class ViewControl:
             # Add callback to update component params and trigger parent update
             def make_color_update_callback(component_name):
                 def update_color(attr, old, new):
-                    print("new:", new)
-                    print("selected_color_factor:", self.selected_color_factor)
                     new_adjusted = adjust_color(
                         color=new,
                         factor=self.selected_color_factor,
                     )
-                    print("new_adjusted:", new_adjusted)
                     selected_name = f"{component_name}_sel"
 
                     self._update_disabled = True
@@ -1085,6 +1145,14 @@ class ViewControl:
                 DashboardStyles().typekit_stylesheet,
             ],
         )
+
+        # Save colors widgets:
+        self._widgets["colors"] = dict()
+        self._widgets["colors"][
+            "selected_color_factor_spinner"
+        ] = selected_color_factor_spinner
+        self._widgets["colors"]["pickers_by_name"] = pickers_by_name
+
         return layout
 
     def make_projaxes_control_layout(
@@ -1304,6 +1372,9 @@ class ViewControl:
             ],
         )
 
+        # Save projection axes:
+        self._projaxes_input = projaxes_input
+
         return layout
 
     def make_projection_control_layout(
@@ -1505,12 +1576,185 @@ class ViewControl:
 
         return layout
 
+    def make_state_control_layout(
+        self,
+        views_dir: pathlib.Path,
+        styles=None,
+        parent=None,
+    ):
+        """
+        Create a layout for managing saved view states.
+
+        Parameters
+        ----------
+        views_dir : pathlib.Path
+            Directory where view states are saved.
+        styles : DashboardStyles, optional
+            Provides styling for the layout.
+        parent : typing.Any, optional
+            The parent Dashboard object.
+
+        Returns
+        -------
+        layout : bokeh.layouts.column
+            A Bokeh layout for managing saved view states.
+        """
+
+        # Save default state if not already present:
+        views_dir.mkdir(parents=True, exist_ok=True)
+        default_state_path = views_dir / "default.json"
+        if not default_state_path.exists():
+            with open(default_state_path, "w") as f:
+                f.write(xtal.pretty_json(self.get_state()))
+
+        # Dropdown to select saved states
+        saved_states_select = bokeh.models.Select(
+            title="Load a saved state",
+            options=([str(f.stem) for f in views_dir.glob("*.json")]),
+            value="default",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Input box to name the current state
+        state_name_input = bokeh.models.TextInput(
+            title="Save current state as",
+            placeholder="Enter a name for the current state",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Save button
+        save_button = bokeh.models.Button(
+            label="Save",
+            button_type="success",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Input box to name a state to delete
+        delete_state_name_input = bokeh.models.TextInput(
+            title="State to delete",
+            placeholder="Enter the name of a state to delete",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Delete button
+        delete_button = bokeh.models.Button(
+            label="Delete",
+            button_type="danger",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Message div
+        message_div = bokeh.models.Div(
+            text="", width=600, stylesheets=[styles.darkstyle] if styles else []
+        )
+
+        # Callbacks
+        def save_state():
+            if self._update_disabled:
+                return
+
+            name = state_name_input.value.strip()
+
+            if not name:
+                message_div.text = (
+                    "<b style='color: red;'>Please enter a valid name.</b>"
+                )
+                return
+
+            self._update_disabled = True
+            views_dir.mkdir(parents=True, exist_ok=True)
+            name = state_name_input.value.strip()
+            state_path = views_dir / f"{name}.json"
+            with open(state_path, "w") as f:
+                f.write(xtal.pretty_json(self.get_state()))
+            saved_states_select.options = [
+                str(f.stem) for f in views_dir.glob("*.json")
+            ]
+            saved_states_select.value = name
+
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{name}' saved.</b>"
+
+            self._update_disabled = False
+
+        def delete_state():
+            if self._update_disabled:
+                return
+
+            name = delete_state_name_input.value.strip()
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+
+            if name not in options:
+                message_div.text = (
+                    "<b style='color: red;'>"
+                    "Please enter a valid state name to delete."
+                    "</b>"
+                )
+                return
+
+            self._update_disabled = True
+            state_path = views_dir / f"{name}.json"
+            if state_path.exists():
+                state_path.unlink()
+            saved_states_select.options = [
+                str(f.stem) for f in views_dir.glob("*.json")
+            ]
+
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{name}' deleted.</b>"
+
+            self._update_disabled = False
+
+        def load_state(attr, old, new):
+            if self._update_disabled:
+                return
+            if not new:
+                return
+            state_path = views_dir / f"{new}.json"
+            if not state_path.exists():
+                return
+            self._update_disabled = True
+            with open(state_path, "r") as f:
+                self.set_state(json.load(f))
+
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{new}' loaded.</b>"
+
+            self._update_disabled = False
+
+        # Attach callbacks
+        save_button.on_click(save_state)
+        delete_button.on_click(delete_state)
+        saved_states_select.on_change("value", load_state)
+
+        # Layout
+        layout = column(
+            saved_states_select,
+            state_name_input,
+            save_button,
+            delete_state_name_input,
+            delete_button,
+            message_div,
+            stylesheets=(
+                [styles.darkstyle, styles.typekit_stylesheet] if styles else []
+            ),
+            width=350,
+        )
+        return layout
+
     def make_controls_tabs_layout(
         self,
         select_control_layout: typing.Optional[typing.Any],
         styles: DashboardStyles,
         parent: typing.Any,
         projection_view: ViewAtomicStructure,
+        views_dir: typing.Optional[pathlib.Path] = None,
     ):
         """
 
@@ -1524,12 +1768,17 @@ class ViewControl:
             The parent Dashboard
         projection_view: ViewAtomicStructure
             The projection view.
+        views_dir : typing.Optional[pathlib.Path] = None
+            Directory where view states are saved. If provided, a "State" tab will be
+            added to manage saved view states.
 
         Returns
         -------
         layout: bokeh.models.Tabs
             A Bokeh Tabs layout with view controls
         """
+        self.parent = parent
+
         images_control_layout = self.make_images_control_layout(
             styles=styles,
             parent=parent,
@@ -1573,6 +1822,16 @@ class ViewControl:
                 child=projection_control_layout, title="Projection Type"
             ),
         ]
+
+        if views_dir is not None:
+            state_control_layout = self.make_state_control_layout(
+                views_dir=views_dir,
+                styles=styles,
+                parent=parent,
+            )
+            tabs.append(
+                bokeh.models.TabPanel(child=state_control_layout, title="State")
+            )
 
         tabs_layout = bokeh.models.Tabs(
             tabs=tabs,

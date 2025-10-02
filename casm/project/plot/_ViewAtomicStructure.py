@@ -181,19 +181,14 @@ def adjust_color(color: str, factor: float = -0.3):
     import matplotlib.colors
 
     rgb = np.array(matplotlib.colors.to_rgb(color))
-    print("rgb 1:", rgb)
-    print("factor:", factor)
     tol = 0.001
     for i in range(3):
         if factor < 0 - tol:
             rgb[i] = rgb[i] * (1.0 + factor)
         elif factor > 0 + tol:
             rgb[i] = rgb[i] + (1.0 - rgb[i]) * factor
-    print("rgb 2:", rgb)
     adjusted_rgb = np.clip(rgb, 0, 1)
-    print("adjusted_rgb:", adjusted_rgb)
     adjusted_color = matplotlib.colors.to_hex(adjusted_rgb)
-    print("adjusted_color:", adjusted_color)
     return adjusted_color
 
 

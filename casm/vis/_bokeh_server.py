@@ -83,6 +83,7 @@ def add_casm_prim_vis(cache: ServerCache):
 
                 app = PrimDashboard(
                     prim=proj.prim,
+                    views_dir=proj.dir.views_dir(),
                 )
                 cache.app[app_key] = app
 
@@ -135,11 +136,13 @@ def add_casm_enum_vis(cache: ServerCache):
                     app = ConfigurationSetDashboardv2(
                         prim=proj.prim,
                         configuration_set=enum.configuration_set,
+                        views_dir=proj.dir.views_dir(),
                     )
                 elif view_id == "configuration_list":
                     app = ConfigurationListDashboardv2(
                         prim=proj.prim,
                         configuration_list=enum.configuration_list,
+                        views_dir=proj.dir.views_dir(),
                     )
                 else:
                     raise ValueError(f"Unknown view_id: {view_id}")
