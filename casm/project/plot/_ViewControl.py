@@ -25,7 +25,6 @@ from ._view import (
     make_projection_from_dict,
 )
 from ._ViewAtomicStructure import (
-    ViewAtomicStructure,
     adjust_color,
     make_highlight_params,
     make_prim_component_params,
@@ -38,7 +37,6 @@ class ProjectionAxesInput:
         view_control,
         styles: DashboardStyles = None,
         parent: typing.Any = None,
-        projection_view: ViewAtomicStructure = None,
     ):
         """
 
@@ -50,14 +48,12 @@ class ProjectionAxesInput:
             Used to style the Bokeh widgets.
         parent: typing.Any
             A Dashboard object, used to call ``parent.trigger_update()``.
-        projection_view: ViewAtomicStructure
-            The projection view.
 
         """
         self.view_control = view_control
         self.styles = styles
         self.parent = parent
-        self.projection_view = projection_view
+        # self.projection_view = projection_view
 
         # -- Make widgets ---
 
@@ -175,6 +171,10 @@ class ProjectionAxesInput:
 
         # -- Layout --
         self.make_layout()
+
+    @property
+    def projection_view(self):
+        return self.parent.projection_view.projection_view
 
     def _make_view_basis_div(self, B):
 
@@ -492,6 +492,38 @@ class ViewControl:
         same attributes must be present for all components.
         """
 
+    def reset_layout_type(
+        self,
+    ):
+        self.layout_type = "singleview"
+        """str: The layout of the views; one of "multiview" or "singleview"."""
+
+        self.multiview_figure_params = {
+            "width": 600,
+            "height": 400,
+            "match_aspect": True,
+        }
+
+        self.singleview_figure_params = {
+            "width": 1200,
+            "height": 800,
+            "match_aspect": True,
+        }
+        """dict: The parameters passed to bokeh.figure() when making the plots."""
+
+        self.title_params = {
+            "width": 1200,
+            "height": 50,  # Sufficient height for the text
+            "styles": {
+                "display": "flex",  # Make the Div a flex container
+                # "justify-content": "center",  # Center content horizontally
+                "align-items": "center",  # Center content vertically
+                "font-size": "32px",  # Adjust font size
+                "padding-bottom": "10px",  # Add some space below
+                # 'border': '1px solid red' # Uncomment for debugging to see bounds
+            },
+        }
+
     def reset_projection_view(self):
         # self.cabinet_scale = 0.2
         # """float: The scale factor for the projection view"""
@@ -541,6 +573,7 @@ class ViewControl:
         self.reset_images()
         self.reset_markers()
         self.reset_projection_view()
+        self.reset_layout_type()
         self.projection = self._initial_projection
 
         self._update_disabled = False
@@ -693,14 +726,22 @@ class ViewControl:
 
     def get_state(self):
         return {
+            #
+            # Images parameters
             "a_range": self.images_a_range,
             "b_range": self.images_b_range,
             "c_range": self.images_c_range,
             "m_range": self.images_m_range,
+            #
+            # Markers parameters
             "marker_size_scale": self.marker_size_scale,
             "marker_alpha_scale": self.marker_alpha_scale,
+            #
+            # Colors parameters
             "selected_color_factor": self.selected_color_factor,
             "component_params": self.component_params,
+            #
+            # Projection parameters
             "initial_projection": self._initial_projection.to_dict(),
             "projection": self.projection.to_dict(),
             "projection_v1": self.projection_v1.tolist(),
@@ -708,20 +749,33 @@ class ViewControl:
             "projection_rotation_angle": self.projection_rotation_angle,
             "projaxes_input_order": self.projaxes_input_order,
             "projaxes_input_mode": self.projaxes_input_mode,
+            #
+            # Layout parameters
+            "layout_type": self.layout_type,
+            "multiview_figure_params": self.multiview_figure_params,
+            "singleview_figure_params": self.singleview_figure_params,
         }
 
     def set_state(
         self,
         state: dict,
     ):
+
+        # Image parameters
         self.images_a_range = state.get("a_range", 1)
         self.images_b_range = state.get("b_range", 1)
         self.images_c_range = state.get("c_range", 1)
         self.images_m_range = state.get("m_range", 1)
-        self.selected_color_factor = state.get("selected_color_factor", -0.3)
-        self.component_params = state.get("component_params", {})
+
+        # Marker parameters
         self.marker_size_scale = state.get("marker_size_scale", 1.0)
         self.marker_alpha_scale = state.get("marker_alpha_scale", 1.0)
+
+        # Colors parameters
+        self.selected_color_factor = state.get("selected_color_factor", -0.3)
+        self.component_params = state.get("component_params", {})
+
+        # Projection parameters
         self._initial_projection = make_projection_from_dict(
             state.get(
                 "initial_projection",
@@ -739,6 +793,25 @@ class ViewControl:
         self.projection_rotation_angle = state.get("projection_rotation_angle", 10.0)
         self.projaxes_input_order = state.get("projaxes_input_order", "b1, b2")
         self.projaxes_input_mode = state.get("projaxes_input_mode", "cart")
+
+        # Layout parameters
+        self.layout_type = state.get("layout_type", "singleview")
+        self.multiview_figure_params = state.get(
+            "multiview_figure_params",
+            {
+                "width": 600,
+                "height": 400,
+                "match_aspect": True,
+            },
+        )
+        self.singleview_figure_params = state.get(
+            "singleview_figure_params",
+            {
+                "width": 1200,
+                "height": 800,
+                "match_aspect": True,
+            },
+        )
 
         # Update widgets if they exist:
         if "images" in self._widgets:
@@ -763,8 +836,27 @@ class ViewControl:
 
             self._update_disabled = False
 
+        if "layout" in self._widgets:
+            self._update_disabled = True
+            self._widgets["layout"]["layout_type_select"].value = self.layout_type
+            self._widgets["layout"]["singleview_width_spinner"].value = (
+                self.singleview_figure_params.get("width", 1200)
+            )
+            self._widgets["layout"]["singleview_height_spinner"].value = (
+                self.singleview_figure_params.get("height", 800)
+            )
+            self._widgets["layout"]["multiview_width_spinner"].value = (
+                self.multiview_figure_params.get("width", 600)
+            )
+            self._widgets["layout"]["multiview_height_spinner"].value = (
+                self.multiview_figure_params.get("height", 400)
+            )
+            self._update_disabled = False
+
         if self._projaxes_input is not None:
+            self.parent.projection_view.update_layout_type()
             self.parent.trigger_update()
+            self.parent.projection_view.update_layout()
             self._projaxes_input.update_layout()
 
     def make_superstructure(
@@ -1089,6 +1181,9 @@ class ViewControl:
             # Add callback to update component params and trigger parent update
             def make_color_update_callback(component_name):
                 def update_color(attr, old, new):
+                    if self._update_disabled:
+                        return
+
                     new_adjusted = adjust_color(
                         color=new,
                         factor=self.selected_color_factor,
@@ -1159,7 +1254,6 @@ class ViewControl:
         self,
         styles=None,
         parent=None,
-        projection_view: typing.Optional[ViewAtomicStructure] = None,
     ):
         # Projection rotation angle controls
         projection_rotation_angle_div = bokeh.models.Div(
@@ -1202,7 +1296,6 @@ class ViewControl:
             view_control=self,
             styles=styles,
             parent=parent,
-            projection_view=projection_view,
         )
 
         # Reset button:
@@ -1238,7 +1331,7 @@ class ViewControl:
         def rotate_b1_inc(attr):
             self.rotate_projection_view_basis(
                 np.array([1.0, 0.0, 0.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1249,7 +1342,7 @@ class ViewControl:
         def rotate_b1_dec(attr):
             self.rotate_projection_view_basis(
                 np.array([1.0, 0.0, 0.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 -self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1260,7 +1353,7 @@ class ViewControl:
         def rotate_b2_inc(attr):
             self.rotate_projection_view_basis(
                 np.array([0.0, 1.0, 0.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1271,7 +1364,7 @@ class ViewControl:
         def rotate_b2_dec(attr):
             self.rotate_projection_view_basis(
                 np.array([0.0, 1.0, 0.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 -self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1282,7 +1375,7 @@ class ViewControl:
         def rotate_b3_inc(attr):
             self.rotate_projection_view_basis(
                 np.array([0.0, 0.0, 1.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1293,7 +1386,7 @@ class ViewControl:
         def rotate_b3_dec(attr):
             self.rotate_projection_view_basis(
                 np.array([0.0, 0.0, 1.0]),
-                projection_view.view_basis,
+                parent.projection_view.projection_view.view_basis,
                 -self.projection_rotation_angle,
             )
             parent.trigger_update()
@@ -1311,7 +1404,7 @@ class ViewControl:
         def fix_axes_range_switch_action(attr, old, new):
             from bokeh.models import DataRange1d, Range1d
 
-            plot = projection_view.plot
+            plot = parent.projection_view.projection_view.plot
 
             if new is False:
                 plot.x_range = DataRange1d()
@@ -1381,7 +1474,6 @@ class ViewControl:
         self,
         styles=None,
         parent=None,
-        projection_view: typing.Optional[ViewAtomicStructure] = None,
     ):
         projection_type_div = bokeh.models.Div(text="""<b>Projection Type:</b>""")
         projection_type_select = bokeh.models.Select(
@@ -1576,6 +1668,171 @@ class ViewControl:
 
         return layout
 
+    # Layout for specifying layout_type, width, and height:
+    def make_layout_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        layout_type_select = bokeh.models.Select(
+            title="Layout Type",
+            value=self.layout_type,
+            options=["multiview", "singleview"],
+            stylesheets=[styles.dark_bk_input_style],
+            width=200,
+        )
+
+        singleview_div = bokeh.models.Div(text="""<b>Single View:</b>""")
+
+        singleview_width_spinner = bokeh.models.Spinner(
+            title="Figure width",
+            value=self.singleview_figure_params["width"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        singleview_height_spinner = bokeh.models.Spinner(
+            title="Figure height",
+            value=self.singleview_figure_params["height"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        multivew_div = bokeh.models.Div(text="""<b>Multi View:</b>""")
+
+        multiview_width_spinner = bokeh.models.Spinner(
+            title="Figure width",
+            value=self.multiview_figure_params["width"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        multiview_height_spinner = bokeh.models.Spinner(
+            title="Figure height",
+            value=self.multiview_figure_params["height"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        message_div = bokeh.models.Div(
+            text=(
+                "<b><i>Note: Changes are only applied after saving the view "
+                "state, refreshing the page, and loading the view state.</i></b>"
+            ),
+            width=600,
+            stylesheets=[styles.darkstyle] if styles else [],
+        )
+
+        # Callbacks
+        def update_layout_type(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.layout_type = new
+            self._update_disabled = False
+            parent.projection_view.update_layout_type()
+            parent.trigger_update()
+            parent.projection_view.update_layout()
+
+        layout_type_select.on_change("value", update_layout_type)
+
+        def update_singleview_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.singleview_figure_params["width"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        singleview_width_spinner.on_change("value", update_singleview_width)
+
+        def update_singleview_height(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.singleview_figure_params["height"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        singleview_height_spinner.on_change("value", update_singleview_height)
+
+        def update_multiview_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.multiview_figure_params["width"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        multiview_width_spinner.on_change("value", update_multiview_width)
+
+        def update_multiview_height(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.multiview_figure_params["height"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        multiview_height_spinner.on_change("value", update_multiview_height)
+
+        self._widgets["layout"] = dict()
+        self._widgets["layout"]["layout_type_select"] = layout_type_select
+        self._widgets["layout"]["multiview_width_spinner"] = multiview_width_spinner
+        self._widgets["layout"]["multiview_height_spinner"] = multiview_height_spinner
+        self._widgets["layout"]["singleview_width_spinner"] = singleview_width_spinner
+        self._widgets["layout"]["singleview_height_spinner"] = singleview_height_spinner
+
+        layout = column(
+            row(
+                column(
+                    layout_type_select,
+                    width=240,
+                    margin=(0, 10),
+                ),
+                column(
+                    multivew_div,
+                    multiview_height_spinner,
+                    multiview_width_spinner,
+                    width=150,
+                    margin=(0, 10),
+                ),
+                column(
+                    singleview_div,
+                    singleview_height_spinner,
+                    singleview_width_spinner,
+                    width=150,
+                    margin=(0, 10),
+                ),
+            ),
+            row(
+                message_div,
+                margin=(10, 0),
+            ),
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
+
+        self._widgets["layout"] = dict()
+        self._widgets["layout"]["layout_type_select"] = layout_type_select
+        self._widgets["layout"]["multiview_width_spinner"] = multiview_width_spinner
+        self._widgets["layout"]["multiview_height_spinner"] = multiview_height_spinner
+        self._widgets["layout"]["singleview_width_spinner"] = singleview_width_spinner
+        self._widgets["layout"]["singleview_height_spinner"] = singleview_height_spinner
+
+        return layout
+
     def make_state_control_layout(
         self,
         views_dir: pathlib.Path,
@@ -1608,10 +1865,12 @@ class ViewControl:
                 f.write(xtal.pretty_json(self.get_state()))
 
         # Dropdown to select saved states
+        options = [str(f.stem) for f in views_dir.glob("*.json")]
+        options += ["(current)"]
         saved_states_select = bokeh.models.Select(
             title="Load a saved state",
-            options=([str(f.stem) for f in views_dir.glob("*.json")]),
-            value="default",
+            options=options,
+            value="(current)",
             stylesheets=[styles.dark_bk_input_style] if styles else [],
             width=300,
         )
@@ -1670,10 +1929,10 @@ class ViewControl:
             state_path = views_dir / f"{name}.json"
             with open(state_path, "w") as f:
                 f.write(xtal.pretty_json(self.get_state()))
-            saved_states_select.options = [
-                str(f.stem) for f in views_dir.glob("*.json")
-            ]
-            saved_states_select.value = name
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
+            saved_states_select.options = options
+            saved_states_select.value = "(current)"
 
             state_name_input.value = ""
             delete_state_name_input.value = ""
@@ -1687,6 +1946,7 @@ class ViewControl:
 
             name = delete_state_name_input.value.strip()
             options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
 
             if name not in options:
                 message_div.text = (
@@ -1700,9 +1960,14 @@ class ViewControl:
             state_path = views_dir / f"{name}.json"
             if state_path.exists():
                 state_path.unlink()
+
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
+
             saved_states_select.options = [
                 str(f.stem) for f in views_dir.glob("*.json")
             ]
+            saved_states_select.value = "(current)"
 
             state_name_input.value = ""
             delete_state_name_input.value = ""
@@ -1722,6 +1987,7 @@ class ViewControl:
             with open(state_path, "r") as f:
                 self.set_state(json.load(f))
 
+            saved_states_select.value = "(current)"
             state_name_input.value = ""
             delete_state_name_input.value = ""
             message_div.text = f"<b>State '{new}' loaded.</b>"
@@ -1753,7 +2019,6 @@ class ViewControl:
         select_control_layout: typing.Optional[typing.Any],
         styles: DashboardStyles,
         parent: typing.Any,
-        projection_view: ViewAtomicStructure,
         views_dir: typing.Optional[pathlib.Path] = None,
     ):
         """
@@ -1766,8 +2031,6 @@ class ViewControl:
             Provides styling
         parent: typing.Any
             The parent Dashboard
-        projection_view: ViewAtomicStructure
-            The projection view.
         views_dir : typing.Optional[pathlib.Path] = None
             Directory where view states are saved. If provided, a "State" tab will be
             added to manage saved view states.
@@ -1797,13 +2060,16 @@ class ViewControl:
         projaxes_control_layout = self.make_projaxes_control_layout(
             styles=styles,
             parent=parent,
-            projection_view=projection_view,
         )
 
         projection_control_layout = self.make_projection_control_layout(
             styles=styles,
             parent=parent,
-            projection_view=projection_view,
+        )
+
+        layout_control_layout = self.make_layout_control_layout(
+            styles=styles,
+            parent=parent,
         )
 
         tabs = []
@@ -1821,6 +2087,7 @@ class ViewControl:
             bokeh.models.TabPanel(
                 child=projection_control_layout, title="Projection Type"
             ),
+            bokeh.models.TabPanel(child=layout_control_layout, title="Layout"),
         ]
 
         if views_dir is not None:

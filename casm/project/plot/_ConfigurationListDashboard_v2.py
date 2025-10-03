@@ -133,7 +133,6 @@ class ConfigurationListDashboardv2:
             select_control_layout=None,
             styles=styles,
             parent=self,
-            projection_view=self.projection_view.projection_view,
             views_dir=self.views_dir,
         )
 
