@@ -119,11 +119,6 @@ def make_component_params(
                 chemical_names=_chemical_names
             )
 
-    # # Normalize "size" so the mean is 30.0:
-    sizes = np.array([params["size"] for params in component_params.values()])
-    size_min = np.min(sizes)
-    for params in component_params.values():
-        params["size"] = 30.0 * params["size"] / size_min
     return component_params
 
 
@@ -293,6 +288,7 @@ class ViewAtomicStructure:
         projection: Any = None,
         marker_size_scale: float = 1.0,
         marker_alpha_scale: float = 1.0,
+        figure_params: Optional[dict] = None,
     ):
         """
         .. rubric:: Constructor
@@ -337,6 +333,9 @@ class ViewAtomicStructure:
             A scale factor to apply to the marker sizes.
         marker_alpha_scale: float = 1.0
             A scale factor to apply to the marker alpha values.
+        figure_params: dict = None
+            A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` when
+            creating the figure. If None, default parameters are used.
 
         """
         self.system = None
@@ -373,6 +372,9 @@ class ViewAtomicStructure:
         self.marker_size_scale = marker_size_scale
         """float: A scale factor to apply to the marker sizes."""
 
+        self.marker_alpha_scale = marker_alpha_scale
+        """float: A scale factor to apply to the marker alpha values."""
+
         self.v1 = v1
         """np.ndarray: A shape `(3,)` array giving the Cartesian vector that should lie
         along the horizontal axis."""
@@ -384,6 +386,19 @@ class ViewAtomicStructure:
         self.projection = projection
         """Any: A projection object that defines how to project 3D coordinates to 2D.
         Default uses :class:`~libcasm.project.plot.SinglePointProjection`."""
+
+        if figure_params is None:
+            figure_params = dict(
+                width=600,
+                height=400,
+                match_aspect=True,
+            )
+        if "title" in figure_params:
+            del figure_params["title"]
+
+        self.figure_params = figure_params
+        """dict: A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` 
+        when creating the figure. If None, default parameters are used."""
 
         self.view_basis = make_cartesian_view_basis(v1=v1, v2=v2)
         """np.ndarray: The inverse of the view basis, :math:`B`, a shape `(3, 3)` array 
@@ -555,13 +570,17 @@ class ViewAtomicStructure:
         # Add component properties
         atom_type = self.structure.atom_type()
         for key in self.component_params_keys:
-            data[key] = list()
             if key == "size":
+                data["radius"] = list()
                 for name in atom_type:
-                    data[key].append(
-                        self.component_params[name][key] * self.marker_size_scale
+                    data["radius"].append(
+                        self.component_params[name][key]
+                        * self.marker_size_scale
+                        / 100.0
+                        / 3.0
                     )
             elif key == "alpha":
+                data[key] = list()
                 for name in atom_type:
                     alpha = self.component_params[name][key] * self.marker_alpha_scale
                     if alpha < 0.0:
@@ -570,8 +589,16 @@ class ViewAtomicStructure:
                         alpha = 1.0
                     data[key].append(alpha)
             else:
+                data[key] = list()
                 for name in atom_type:
                     data[key].append(self.component_params[name][key])
+
+        # Get indices of `data["pz"]` in sorted order (least to greatest):
+        sorted_indices = np.argsort(data["pz"])
+
+        # Sort all data entries by `data["pz"]`:
+        for key in data.keys():
+            data[key] = np.array(data[key])[sorted_indices].tolist()
 
         # Add lattice vectors
         lattice_cell_data = make_lattice_cell_data(
@@ -608,13 +635,7 @@ class ViewAtomicStructure:
         title = "(None)"
         if len(self.figure_source.data) != 0:
             title = self.figure_source.data["title"][0]
-        figure_params = dict(
-            title=title,
-            width=600,
-            height=400,
-            match_aspect=True,
-        )
-        p = bokeh.plotting.figure(**figure_params)
+        p = bokeh.plotting.figure(title=title, **self.figure_params)
 
         if len(self.lattice_cell_source.data) != 0:
             p.segment(
@@ -629,9 +650,13 @@ class ViewAtomicStructure:
 
         if len(self.source.data) != 0:
             scatter_kwargs = {x: x for x in self.component_params_keys}
-            p.scatter(
+            if "size" in scatter_kwargs:
+                del scatter_kwargs["size"]
+
+            p.circle(
                 "px",
                 "py",
+                "radius",
                 source=self.source,
                 **scatter_kwargs,
             )
