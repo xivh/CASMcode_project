@@ -576,6 +576,10 @@ class ViewControl:
         self.reset_layout_type()
         self.projection = self._initial_projection
 
+        # Misc.
+        self.misc_show_grid_lines = True
+        self.misc_transparency_mode = False
+
         self._update_disabled = False
         """bool: Flag used internally to prevent triggering updates in some callbacks"""
 
@@ -754,6 +758,10 @@ class ViewControl:
             "layout_type": self.layout_type,
             "multiview_figure_params": self.multiview_figure_params,
             "singleview_figure_params": self.singleview_figure_params,
+            #
+            # Misc parameters
+            "misc_show_grid_lines": self.misc_show_grid_lines,
+            "misc_transparency_mode": self.misc_transparency_mode,
         }
 
     def set_state(
@@ -813,6 +821,10 @@ class ViewControl:
             },
         )
 
+        # Misc parameters
+        self.misc_show_grid_lines = state.get("misc_show_grid_lines", True)
+        self.misc_transparency_mode = state.get("misc_transparency_mode", False)
+
         # Update widgets if they exist:
         if "images" in self._widgets:
             self._update_disabled = True
@@ -851,6 +863,13 @@ class ViewControl:
             self._widgets["layout"]["multiview_height_spinner"].value = (
                 self.multiview_figure_params.get("height", 400)
             )
+            self._update_disabled = False
+
+        if "misc" in self._widgets:
+            self._update_disabled = True
+            widgets = self._widgets["misc"]
+            widgets["grid_lines_switch"].active = self.misc_show_grid_lines
+            widgets["transparency_mode_switch"].active = self.misc_transparency_mode
             self._update_disabled = False
 
         if self._projaxes_input is not None:
@@ -1714,15 +1733,6 @@ class ViewControl:
             **dict(width=80, low=100, high=2000, step=50),
         )
 
-        message_div = bokeh.models.Div(
-            text=(
-                "<b><i>Note: Changes are only applied after saving the view "
-                "state, refreshing the page, and loading the view state.</i></b>"
-            ),
-            width=600,
-            stylesheets=[styles.darkstyle] if styles else [],
-        )
-
         # Callbacks
         def update_layout_type(attr, old, new):
             if self._update_disabled:
@@ -1814,10 +1824,6 @@ class ViewControl:
                     margin=(0, 10),
                 ),
             ),
-            row(
-                message_div,
-                margin=(10, 0),
-            ),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
@@ -1830,6 +1836,62 @@ class ViewControl:
         self._widgets["layout"]["multiview_height_spinner"] = multiview_height_spinner
         self._widgets["layout"]["singleview_width_spinner"] = singleview_width_spinner
         self._widgets["layout"]["singleview_height_spinner"] = singleview_height_spinner
+
+        return layout
+
+    def make_misc_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        # Set grid lines visibility
+        grid_lines_switch = bokeh.models.Switch(
+            label="Show Grid Lines",
+            active=self.misc_show_grid_lines,
+        )
+
+        # Make axes, labels, title, background, etc. transparent
+        transparency_mode_switch = bokeh.models.Switch(
+            label="Transparency mode",
+            active=self.misc_transparency_mode,
+        )
+
+        def grid_lines_switch_action(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.misc_show_grid_lines = new
+            parent.projection_view.set_grid_visibility(new)
+            self._update_disabled = False
+
+        grid_lines_switch.on_change("active", grid_lines_switch_action)
+
+        def transparency_mode_switch_action(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.misc_transparency_mode = new
+            parent.projection_view.set_transparency_mode(new)
+            self._update_disabled = False
+
+        transparency_mode_switch.on_change("active", transparency_mode_switch_action)
+
+        self._widgets["misc"] = dict()
+        self._widgets["misc"]["grid_lines_switch"] = grid_lines_switch
+        self._widgets["misc"]["transparency_mode_switch"] = transparency_mode_switch
+
+        layout = column(
+            grid_lines_switch,
+            transparency_mode_switch,
+            width=200,
+            margin=(0, 10),
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
 
         return layout
 
@@ -2072,6 +2134,11 @@ class ViewControl:
             parent=parent,
         )
 
+        misc_control_layout = self.make_misc_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
         tabs = []
         if select_control_layout:
             tabs.append(
@@ -2088,6 +2155,7 @@ class ViewControl:
                 child=projection_control_layout, title="Projection Type"
             ),
             bokeh.models.TabPanel(child=layout_control_layout, title="Layout"),
+            bokeh.models.TabPanel(child=misc_control_layout, title="Misc"),
         ]
 
         if views_dir is not None:

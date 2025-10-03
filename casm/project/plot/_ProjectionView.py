@@ -21,6 +21,10 @@ class ProjectionView:
         self.view_control = view_control
         self.name = "(None)"
 
+        self._p_xz = None
+        self._p_yz = None
+        self._p_xy = None
+        self._p_projection = None
         self._layout = None
         self._styles = None
 
@@ -145,6 +149,90 @@ class ProjectionView:
             v2=self.view_control.projection_v2,
         )
 
+    def _plots(self):
+        plots = []
+        if self._p_xz is not None:
+            plots.append(self._p_xz)
+        if self._p_yz is not None:
+            plots.append(self._p_yz)
+        if self._p_xy is not None:
+            plots.append(self._p_xy)
+        if self._p_projection is not None:
+            plots.append(self._p_projection)
+        return plots
+
+    def set_grid_visibility(self, value: bool):
+
+        for plot in self._plots():
+            plot.xgrid.visible = value
+            plot.ygrid.visible = value
+
+    def set_transparent(self):
+
+        self.set_grid_visibility(False)
+
+        for plot in self._plots():
+
+            # Make title clear
+            plot.title.text_alpha = 0.0
+
+            # Make axes invisible
+            plot.xaxis.major_tick_line_alpha = 0.0
+            plot.xaxis.minor_tick_line_alpha = 0.0
+            plot.xaxis.axis_line_alpha = 0.0
+            plot.yaxis.major_tick_line_alpha = 0.0
+            plot.yaxis.minor_tick_line_alpha = 0.0
+            plot.yaxis.axis_line_alpha = 0.0
+
+            # Make axes labels invisible
+            plot.xaxis.major_label_text_alpha = 0.0
+            plot.yaxis.major_label_text_alpha = 0.0
+            plot.xaxis.axis_label_text_alpha = 0.0
+            plot.yaxis.axis_label_text_alpha = 0.0
+
+            # Clear grids
+            plot.xgrid.visible = False
+            plot.ygrid.visible = False
+
+            # Clear background and borders
+            plot.background_fill_alpha = 0.0
+            plot.border_fill_alpha = 0.0
+            plot.outline_line_alpha = 0.0
+
+    def set_not_transparent(self):
+        for plot in self._plots():
+            # Make title visible
+            plot.title.text_alpha = 1.0
+
+            # Make axes visible
+            plot.xaxis.major_tick_line_alpha = 1.0
+            plot.xaxis.minor_tick_line_alpha = 1.0
+            plot.xaxis.axis_line_alpha = 1.0
+            plot.yaxis.major_tick_line_alpha = 1.0
+            plot.yaxis.minor_tick_line_alpha = 1.0
+            plot.yaxis.axis_line_alpha = 1.0
+
+            # Make axes labels visible
+            plot.xaxis.major_label_text_alpha = 1.0
+            plot.yaxis.major_label_text_alpha = 1.0
+            plot.xaxis.axis_label_text_alpha = 1.0
+            plot.yaxis.axis_label_text_alpha = 1.0
+
+            # Restore grids
+            plot.xgrid.visible = self.view_control.misc_show_grid_lines
+            plot.ygrid.visible = self.view_control.misc_show_grid_lines
+
+            # Restore background and borders
+            plot.background_fill_alpha = 1.0
+            plot.border_fill_alpha = 1.0
+            plot.outline_line_alpha = 1.0
+
+    def set_transparency_mode(self, value: bool):
+        if value:
+            self.set_transparent()
+        else:
+            self.set_not_transparent()
+
     def make_layout(
         self,
         styles: DashboardStyles,
@@ -155,21 +243,28 @@ class ProjectionView:
             p_xz = self.view_xz.make_plot()
             p_xz.xaxis.axis_label = "x"
             p_xz.yaxis.axis_label = "z"
+            self._p_xz = p_xz
 
             p_yz = self.view_yz.make_plot()
             p_yz.xaxis.axis_label = "y"
             p_yz.yaxis.axis_label = "z"
+            self._p_yz = p_yz
 
             p_xy = self.view_xy.make_plot()
             p_xy.xaxis.axis_label = "x"
             p_xy.yaxis.axis_label = "y"
+            self._p_xy = p_xy
 
         elif self.view_control.layout_type != "singleview":
             raise ValueError(f"Invalid layout type: {self.view_control.layout_type}")
 
         p_projection = self.projection_view.make_plot()
+        self._p_projection = p_projection
         p_projection.xaxis.axis_label = "b1 (projection)"
         p_projection.yaxis.axis_label = "b2 (projection)"
+
+        self.set_grid_visibility(self.view_control.misc_show_grid_lines)
+        self.set_transparency_mode(self.view_control.misc_transparency_mode)
 
         if self.view_control.layout_type == "multiview":
             layout = column(
