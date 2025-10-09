@@ -39,7 +39,7 @@ class ConfigurationSetDashboardv2:
             The bokeh scatter plot parameters used to draw atoms, with
             atom type name as key.
 
-            Must include "color", "size", and "alpha". Additional bokeh plotting
+            Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
             parameters like "line_color" and "line_width" may also be included. The
             same attributes must be present for all components.
 

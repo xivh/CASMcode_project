@@ -570,15 +570,19 @@ class ViewAtomicStructure:
         # Add component properties
         atom_type = self.structure.atom_type()
         for key in self.component_params_keys:
-            if key == "size":
+            if key == "radius_pm":
                 data["radius"] = list()
                 for name in atom_type:
                     data["radius"].append(
                         self.component_params[name][key]
                         * self.marker_size_scale
                         / 100.0
-                        / 3.0
+                        / 2.0
                     )
+                data["radius"] = self.projection.projected_radius(
+                    radius=data["radius"],
+                    values=coordinate_view,
+                )
             elif key == "alpha":
                 data[key] = list()
                 for name in atom_type:
@@ -652,6 +656,8 @@ class ViewAtomicStructure:
             scatter_kwargs = {x: x for x in self.component_params_keys}
             if "size" in scatter_kwargs:
                 del scatter_kwargs["size"]
+            if "radius_pm" in scatter_kwargs:
+                del scatter_kwargs["radius_pm"]
 
             p.circle(
                 "px",

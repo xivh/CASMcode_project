@@ -269,6 +269,23 @@ class CabinetProjection:
         """
         apply_cabinet((self.scale, self.angle), values)
 
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to cabinet projection.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        return np.array(radius)
+
     def to_dict(self):
         """Serialize to a dictionary."""
         return {"type": "cabinet", "scale": self.scale, "angle": self.angle}
@@ -331,6 +348,29 @@ class SinglePointProjection:
             values[0, i] /= 1.0 + delta_z / d
             values[1, i] /= 1.0 + delta_z / d
 
+    # Get change in radius due to perspective (i.e. change in x + delta_x):
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to perspective.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        d = self.viewer_distance
+        projected_radius = np.array(radius)
+        for i in range(values.shape[1]):
+            delta_z = self.plane_offset - values[2, i]
+            projected_radius[i] /= 1.0 + delta_z / d
+        return projected_radius
+
     def to_dict(self):
         """Serialize to a dictionary."""
         return {
@@ -374,6 +414,23 @@ class IsometricProjection:
         """
         # Coordinates are already put into isometric view basis, so nothing to do
         pass
+
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to isometric projection.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        return np.array(radius)
 
     def to_dict(self):
         """Serialize to a dictionary."""

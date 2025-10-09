@@ -118,6 +118,7 @@ class ProjectionAxesInput:
                         title=f"b{b+1}{i + 1}",
                         value=0,
                         stylesheets=[self.styles.dark_bk_input_style],
+                        format="0.0",
                         **dict(width=80, low=None, high=None, step=0.1),
                     )
                 )
@@ -470,7 +471,7 @@ class ViewControl:
         # """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
         # atom type name as key.
         #
-        # Must include "color", "size", and "alpha". Additional bokeh plotting
+        # Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
         # parameters like "line_color" and "line_width" may also be included. The
         # same attributes must be present for all components.
         # """
@@ -487,7 +488,7 @@ class ViewControl:
         """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
         atom type name as key.
 
-        Must include "color", "size", and "alpha". Additional bokeh plotting
+        Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
         parameters like "line_color" and "line_width" may also be included. The
         same attributes must be present for all components.
         """
@@ -1136,12 +1137,13 @@ class ViewControl:
                 "greater than 0 make it lighter."
             ),
             value=self.selected_color_factor,
+            format="0.0",
             stylesheets=[styles.dark_bk_input_style] if styles else [],
-            **dict(width=80, low=-10, high=10, step=1),
+            **dict(width=80, low=-1, high=1, step=0.1),
         )
 
         def update_selected_color_factor(attr, old, new):
-            self.selected_color_factor = new / 10.0
+            self.selected_color_factor = new
             self._update_disabled = True
 
             for comp, params in self.component_params.items():
@@ -1241,9 +1243,40 @@ class ViewControl:
 
                 row_items.append(sel_color_picker)
 
+            # Create "alpha" spinner
+            alpha_spinner = bokeh.models.Spinner(
+                title="Alpha",
+                value=params.get("alpha", 0.8),
+                width=80,
+                low=0.0,
+                high=1.0,
+                step=0.1,
+                format="0.0",
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+
+            def make_alpha_update_callback(component_name):
+                def update_alpha(attr, old, new):
+                    if self._update_disabled:
+                        return
+
+                    self._update_disabled = True
+                    self.component_params[component_name]["alpha"] = new
+                    self._update_disabled = False
+                    if parent:
+                        parent.trigger_update()
+
+                return update_alpha
+
+            row_items.append(alpha_spinner)
+
             # Add label and picker as a row
             picker_row = row(*row_items, margin=(10, 10))
             pickers.append(picker_row)
+
+            alpha_spinner.on_change("value", make_alpha_update_callback(comp))
+
+            # end componenet styler loop
 
         layout = column(
             row(

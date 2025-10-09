@@ -5,7 +5,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 280.0
+    "radius_pm": 280.0
   },
   "Ag": {
     "alpha": 0.8,
@@ -13,7 +13,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 253.0
+    "radius_pm": 253.0
   },
   "Al": {
     "alpha": 0.8,
@@ -21,7 +21,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 225.0
+    "radius_pm": 225.0
   },
   "Am": {
     "alpha": 0.8,
@@ -29,7 +29,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 283.0
+    "radius_pm": 283.0
   },
   "Ar": {
     "alpha": 0.8,
@@ -37,7 +37,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 194.0
+    "radius_pm": 194.0
   },
   "As": {
     "alpha": 0.8,
@@ -45,7 +45,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 188.0
+    "radius_pm": 188.0
   },
   "At": {
     "alpha": 0.8,
@@ -53,7 +53,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 270.0
   },
   "Au": {
     "alpha": 0.8,
@@ -61,7 +61,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 232.0
+    "radius_pm": 232.0
   },
   "B": {
     "alpha": 0.8,
@@ -69,7 +69,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 191.0
+    "radius_pm": 191.0
   },
   "Ba": {
     "alpha": 0.8,
@@ -77,7 +77,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 303.0
+    "radius_pm": 303.0
   },
   "Be": {
     "alpha": 0.8,
@@ -85,7 +85,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 198.0
+    "radius_pm": 198.0
   },
   "Bh": {
     "alpha": 0.8,
@@ -93,7 +93,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 128.0
   },
   "Bi": {
     "alpha": 0.8,
@@ -101,7 +101,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 254.0
+    "radius_pm": 254.0
   },
   "Bk": {
     "alpha": 0.8,
@@ -109,7 +109,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 340.0
+    "radius_pm": 340.0
   },
   "Br": {
     "alpha": 0.8,
@@ -117,7 +117,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 186.0
+    "radius_pm": 186.0
   },
   "C": {
     "alpha": 0.8,
@@ -125,7 +125,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 177.0
+    "radius_pm": 177.0
   },
   "Ca": {
     "alpha": 0.8,
@@ -133,7 +133,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 262.0
+    "radius_pm": 262.0
   },
   "Cd": {
     "alpha": 0.8,
@@ -141,7 +141,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 249.0
+    "radius_pm": 249.0
   },
   "Ce": {
     "alpha": 0.8,
@@ -149,7 +149,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 288.0
+    "radius_pm": 288.0
   },
   "Cf": {
     "alpha": 0.8,
@@ -157,7 +157,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 305.0
+    "radius_pm": 305.0
   },
   "Cl": {
     "alpha": 0.8,
@@ -165,7 +165,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 182.0
+    "radius_pm": 182.0
   },
   "Cm": {
     "alpha": 0.8,
@@ -173,15 +173,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 305.0
+    "radius_pm": 305.0
   },
   "Cn": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 122.0
   },
   "Co": {
     "alpha": 0.8,
@@ -189,7 +189,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 240.0
+    "radius_pm": 240.0
   },
   "Cr": {
     "alpha": 0.8,
@@ -197,7 +197,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 245.0
+    "radius_pm": 245.0
   },
   "Cs": {
     "alpha": 0.8,
@@ -205,7 +205,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 348.0
+    "radius_pm": 348.0
   },
   "Cu": {
     "alpha": 0.8,
@@ -213,7 +213,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 238.0
+    "radius_pm": 238.0
   },
   "Db": {
     "alpha": 0.8,
@@ -221,15 +221,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 139.0
   },
   "Ds": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 132.0
   },
   "Dy": {
     "alpha": 0.8,
@@ -237,7 +237,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 287.0
+    "radius_pm": 287.0
   },
   "Er": {
     "alpha": 0.8,
@@ -245,7 +245,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 283.0
+    "radius_pm": 283.0
   },
   "Es": {
     "alpha": 0.8,
@@ -253,7 +253,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 270.0
+    "radius_pm": 270.0
   },
   "Eu": {
     "alpha": 0.8,
@@ -261,7 +261,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 287.0
+    "radius_pm": 287.0
   },
   "F": {
     "alpha": 0.8,
@@ -269,7 +269,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 146.0
+    "radius_pm": 146.0
   },
   "Fe": {
     "alpha": 0.8,
@@ -277,15 +277,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 244.0
+    "radius_pm": 244.0
   },
   "Fl": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 180.0
   },
   "Fm": {
     "alpha": 0.8,
@@ -293,7 +293,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 290.0
   },
   "Fr": {
     "alpha": 0.8,
@@ -301,7 +301,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 348.0
   },
   "Ga": {
     "alpha": 0.8,
@@ -309,7 +309,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 232.0
+    "radius_pm": 232.0
   },
   "Gd": {
     "alpha": 0.8,
@@ -317,7 +317,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 283.0
+    "radius_pm": 283.0
   },
   "Ge": {
     "alpha": 0.8,
@@ -325,7 +325,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 229.0
+    "radius_pm": 229.0
   },
   "H": {
     "alpha": 0.8,
@@ -333,7 +333,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 120.0
+    "radius_pm": 120.0
   },
   "He": {
     "alpha": 0.8,
@@ -341,7 +341,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 143.0
+    "radius_pm": 143.0
   },
   "Hf": {
     "alpha": 0.8,
@@ -349,7 +349,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 263.0
+    "radius_pm": 263.0
   },
   "Hg": {
     "alpha": 0.8,
@@ -357,7 +357,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 245.0
+    "radius_pm": 245.0
   },
   "Ho": {
     "alpha": 0.8,
@@ -365,7 +365,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 281.0
+    "radius_pm": 281.0
   },
   "Hs": {
     "alpha": 0.8,
@@ -373,7 +373,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 126.0
   },
   "I": {
     "alpha": 0.8,
@@ -381,7 +381,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 204.0
+    "radius_pm": 204.0
   },
   "In": {
     "alpha": 0.8,
@@ -389,7 +389,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 243.0
+    "radius_pm": 243.0
   },
   "Ir": {
     "alpha": 0.8,
@@ -397,7 +397,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 241.0
+    "radius_pm": 241.0
   },
   "K": {
     "alpha": 0.8,
@@ -405,7 +405,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 273.0
+    "radius_pm": 273.0
   },
   "Kr": {
     "alpha": 0.8,
@@ -413,7 +413,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 207.0
+    "radius_pm": 207.0
   },
   "La": {
     "alpha": 0.8,
@@ -421,7 +421,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 298.0
+    "radius_pm": 298.0
   },
   "Li": {
     "alpha": 0.8,
@@ -429,7 +429,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 212.0
+    "radius_pm": 212.0
   },
   "Lr": {
     "alpha": 0.8,
@@ -437,7 +437,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 246.0
   },
   "Lu": {
     "alpha": 0.8,
@@ -445,23 +445,23 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 274.0
+    "radius_pm": 274.0
   },
   "Lv": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 183.0
   },
   "Mc": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 187.0
   },
   "Md": {
     "alpha": 0.8,
@@ -469,7 +469,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 246.0
   },
   "Mg": {
     "alpha": 0.8,
@@ -477,7 +477,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 251.0
+    "radius_pm": 251.0
   },
   "Mn": {
     "alpha": 0.8,
@@ -485,7 +485,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 245.0
+    "radius_pm": 245.0
   },
   "Mo": {
     "alpha": 0.8,
@@ -493,7 +493,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 245.0
+    "radius_pm": 245.0
   },
   "Mt": {
     "alpha": 0.8,
@@ -501,7 +501,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 128.0
   },
   "N": {
     "alpha": 0.8,
@@ -509,7 +509,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 166.0
+    "radius_pm": 166.0
   },
   "Na": {
     "alpha": 0.8,
@@ -517,7 +517,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 250.0
+    "radius_pm": 250.0
   },
   "Nb": {
     "alpha": 0.8,
@@ -525,7 +525,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 256.0
+    "radius_pm": 256.0
   },
   "Nd": {
     "alpha": 0.8,
@@ -533,7 +533,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 295.0
+    "radius_pm": 295.0
   },
   "Ne": {
     "alpha": 0.8,
@@ -541,15 +541,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 158.0
+    "radius_pm": 158.0
   },
   "Nh": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 170.0
   },
   "Ni": {
     "alpha": 0.8,
@@ -557,7 +557,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 240.0
+    "radius_pm": 240.0
   },
   "No": {
     "alpha": 0.8,
@@ -565,7 +565,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 197.0
   },
   "Np": {
     "alpha": 0.8,
@@ -573,7 +573,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 282.0
+    "radius_pm": 282.0
   },
   "O": {
     "alpha": 0.8,
@@ -581,7 +581,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 150.0
+    "radius_pm": 150.0
   },
   "Os": {
     "alpha": 0.8,
@@ -589,7 +589,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 248.0
+    "radius_pm": 248.0
   },
   "P": {
     "alpha": 0.8,
@@ -597,7 +597,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 190.0
+    "radius_pm": 190.0
   },
   "Pa": {
     "alpha": 0.8,
@@ -605,7 +605,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 288.0
+    "radius_pm": 288.0
   },
   "Pb": {
     "alpha": 0.8,
@@ -613,7 +613,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 260.0
+    "radius_pm": 260.0
   },
   "Pd": {
     "alpha": 0.8,
@@ -621,7 +621,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 215.0
+    "radius_pm": 215.0
   },
   "Pm": {
     "alpha": 0.8,
@@ -629,7 +629,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 185.0
   },
   "Po": {
     "alpha": 0.8,
@@ -637,7 +637,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 168.0
   },
   "Pr": {
     "alpha": 0.8,
@@ -645,7 +645,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 292.0
+    "radius_pm": 292.0
   },
   "Pt": {
     "alpha": 0.8,
@@ -653,7 +653,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 229.0
+    "radius_pm": 229.0
   },
   "Pu": {
     "alpha": 0.8,
@@ -661,7 +661,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 281.0
+    "radius_pm": 281.0
   },
   "Ra": {
     "alpha": 0.8,
@@ -669,7 +669,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 215.0
   },
   "Rb": {
     "alpha": 0.8,
@@ -677,7 +677,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 321.0
+    "radius_pm": 321.0
   },
   "Re": {
     "alpha": 0.8,
@@ -685,7 +685,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 249.0
+    "radius_pm": 249.0
   },
   "Rf": {
     "alpha": 0.8,
@@ -693,15 +693,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 150.0
   },
   "Rg": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 114.0
   },
   "Rh": {
     "alpha": 0.8,
@@ -709,7 +709,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 244.0
+    "radius_pm": 244.0
   },
   "Rn": {
     "alpha": 0.8,
@@ -717,7 +717,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 240.0
+    "radius_pm": 240.0
   },
   "Ru": {
     "alpha": 0.8,
@@ -725,7 +725,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 246.0
+    "radius_pm": 246.0
   },
   "S": {
     "alpha": 0.8,
@@ -733,7 +733,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 189.0
+    "radius_pm": 189.0
   },
   "Sb": {
     "alpha": 0.8,
@@ -741,7 +741,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 247.0
+    "radius_pm": 247.0
   },
   "Sc": {
     "alpha": 0.8,
@@ -749,7 +749,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 258.0
+    "radius_pm": 258.0
   },
   "Se": {
     "alpha": 0.8,
@@ -757,7 +757,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 182.0
+    "radius_pm": 182.0
   },
   "Sg": {
     "alpha": 0.8,
@@ -765,7 +765,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 132.0
   },
   "Si": {
     "alpha": 0.8,
@@ -773,7 +773,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 219.0
+    "radius_pm": 219.0
   },
   "Sm": {
     "alpha": 0.8,
@@ -781,7 +781,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 290.0
+    "radius_pm": 290.0
   },
   "Sn": {
     "alpha": 0.8,
@@ -789,7 +789,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 242.0
+    "radius_pm": 242.0
   },
   "Sr": {
     "alpha": 0.8,
@@ -797,7 +797,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 284.0
+    "radius_pm": 284.0
   },
   "Ta": {
     "alpha": 0.8,
@@ -805,7 +805,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 253.0
+    "radius_pm": 253.0
   },
   "Tb": {
     "alpha": 0.8,
@@ -813,7 +813,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 279.0
+    "radius_pm": 279.0
   },
   "Tc": {
     "alpha": 0.8,
@@ -821,7 +821,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 244.0
+    "radius_pm": 244.0
   },
   "Te": {
     "alpha": 0.8,
@@ -829,7 +829,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 199.0
+    "radius_pm": 199.0
   },
   "Th": {
     "alpha": 0.8,
@@ -837,7 +837,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 293.0
+    "radius_pm": 293.0
   },
   "Ti": {
     "alpha": 0.8,
@@ -845,7 +845,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 246.0
+    "radius_pm": 246.0
   },
   "Tl": {
     "alpha": 0.8,
@@ -853,7 +853,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 247.0
+    "radius_pm": 247.0
   },
   "Tm": {
     "alpha": 0.8,
@@ -861,15 +861,15 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 279.0
+    "radius_pm": 279.0
   },
   "Ts": {
     "alpha": 0.8,
-    "color": null,
+    "color": "black",
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": null
+    "radius_pm": 138.0
   },
   "U": {
     "alpha": 0.8,
@@ -877,7 +877,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 271.0
+    "radius_pm": 271.0
   },
   "V": {
     "alpha": 0.8,
@@ -885,7 +885,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 242.0
+    "radius_pm": 242.0
   },
   "Va": {
     "alpha": 0.8,
@@ -893,7 +893,7 @@
     "line_color": "black",
     "line_dash": "dotted",
     "line_width": 0.25,
-    "size": 150.0
+    "radius_pm": 150.0
   },
   "W": {
     "alpha": 0.8,
@@ -901,7 +901,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 257.0
+    "radius_pm": 257.0
   },
   "Xe": {
     "alpha": 0.8,
@@ -909,7 +909,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 228.0
+    "radius_pm": 228.0
   },
   "Y": {
     "alpha": 0.8,
@@ -917,7 +917,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 275.0
+    "radius_pm": 275.0
   },
   "Yb": {
     "alpha": 0.8,
@@ -925,7 +925,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 280.0
+    "radius_pm": 280.0
   },
   "Zn": {
     "alpha": 0.8,
@@ -933,7 +933,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 239.0
+    "radius_pm": 239.0
   },
   "Zr": {
     "alpha": 0.8,
@@ -941,7 +941,7 @@
     "line_color": "black",
     "line_dash": "solid",
     "line_width": 0.25,
-    "size": 252.0
+    "radius_pm": 252.0
   }
 }
 
