@@ -847,6 +847,34 @@ class ViewControl:
                             "color", "#000000"
                         )
 
+            # Update line style widgets
+            if "line_dash_selects_by_name" in self._widgets["styles"]:
+                for name, select in self._widgets["styles"][
+                    "line_dash_selects_by_name"
+                ].items():
+                    if name in self.component_params:
+                        select.value = self.component_params[name].get(
+                            "line_dash", "solid"
+                        )
+
+            if "line_color_pickers_by_name" in self._widgets["styles"]:
+                for name, picker in self._widgets["styles"][
+                    "line_color_pickers_by_name"
+                ].items():
+                    if name in self.component_params:
+                        picker.color = self.component_params[name].get(
+                            "line_color", "#000000"
+                        )
+
+            if "line_width_spinners_by_name" in self._widgets["styles"]:
+                for name, spinner in self._widgets["styles"][
+                    "line_width_spinners_by_name"
+                ].items():
+                    if name in self.component_params:
+                        spinner.value = self.component_params[name].get(
+                            "line_width", 1.0
+                        )
+
             self._update_disabled = False
 
         if "layout" in self._widgets:
