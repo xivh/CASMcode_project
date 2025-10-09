@@ -1196,6 +1196,19 @@ class ViewControl:
 
             return update_line_dash
 
+        def make_line_color_update_callback(component_name):
+            def update_line_color(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_color"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_color
+
         def update_selected_color_factor(attr, old, new):
             self.selected_color_factor = new
             self._update_disabled = True
@@ -1294,6 +1307,18 @@ class ViewControl:
             )
             line_dash_select.on_change("value", make_line_dash_update_callback(comp))
             row_items.append(line_dash_select)
+
+            # Create "line_color" picker
+            line_color = params.get("line_color", "#000000")
+            line_color_picker = bokeh.models.ColorPicker(
+                title="Line Color",
+                color=line_color,
+                width=60,
+                height=30,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_color_picker.on_change("color", make_line_color_update_callback(comp))
+            row_items.append(line_color_picker)
 
             # Add label and picker as a row
             picker_row = row(*row_items, margin=(10, 10))
