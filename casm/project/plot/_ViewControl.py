@@ -1209,6 +1209,19 @@ class ViewControl:
 
             return update_line_color
 
+        def make_line_width_update_callback(component_name):
+            def update_line_width(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_width"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_width
+
         def update_selected_color_factor(attr, old, new):
             self.selected_color_factor = new
             self._update_disabled = True
@@ -1319,6 +1332,20 @@ class ViewControl:
             )
             line_color_picker.on_change("color", make_line_color_update_callback(comp))
             row_items.append(line_color_picker)
+
+            # Create "line_width" spinner
+            line_width_spinner = bokeh.models.Spinner(
+                title="Line Width",
+                value=params.get("line_width", 1.0),
+                width=80,
+                low=0.0,
+                high=10.0,
+                step=0.25,
+                format="0.00",
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_width_spinner.on_change("value", make_line_width_update_callback(comp))
+            row_items.append(line_width_spinner)
 
             # Add label and picker as a row
             picker_row = row(*row_items, margin=(10, 10))
