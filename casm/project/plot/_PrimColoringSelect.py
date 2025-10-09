@@ -10,9 +10,6 @@ import libcasm.xtal as xtal
 from libcasm.configuration.io import symgroup_to_dict_with_group_classification
 
 from ._DashboardStyles import DashboardStyles
-from ._ViewAtomicStructure import (
-    update_highlight_params,
-)
 
 
 def make_site_groups(
@@ -293,8 +290,6 @@ class PrimColoringSelect:
 
         key = self.current_key
         selected_value = self.current_attr_values[key]
-        highlight_color = self.current_color
-        highlight_width = self.current_width
 
         psuedo_atom_type = []
         attr_type = self.attr_type[key]
@@ -331,12 +326,6 @@ class PrimColoringSelect:
             atom_type=psuedo_atom_type,
         )
 
-        update_highlight_params(
-            component_params=self.parent.view_control.component_params,
-            highlight_color=highlight_color,
-            highlight_width=highlight_width,
-        )
-
         self.parent.selected_structure = structure
 
         if key == "none":
@@ -345,7 +334,12 @@ class PrimColoringSelect:
             name = f"Prim, {self.labels[key]}={selected_value}"
         self.parent.selected_structure_name = name
 
-    def update(self):
+    def update(self, update_highlight_style: bool = False):
+        if update_highlight_style:
+            self.parent.view_control.update_highlight_style(
+                highlight_color=self.current_color,
+                highlight_width=self.current_width,
+            )
         self.set_structure()
         self.parent.trigger_update()
 
@@ -433,7 +427,7 @@ class PrimColoringSelect:
             self.current_color = new
             self._disable_update = False
 
-            self.update()
+            self.update(update_highlight_style=True)
 
         highlight_colorpicker.on_change("color", _highlight_color_callback)
 
@@ -445,7 +439,7 @@ class PrimColoringSelect:
             self.current_width = new
             self._disable_update = False
 
-            self.update()
+            self.update(update_highlight_style=True)
 
         highlight_width_spinner.on_change("value", _highlight_width_callback)
 

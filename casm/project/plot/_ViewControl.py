@@ -910,6 +910,53 @@ class ViewControl:
             structure=structure,
         )
 
+    def update_highlight_style(
+        self,
+        highlight_color: str,
+        highlight_width: float = 2.0,
+    ):
+        """Update the highlight (selected component) line color and width in both
+        component_params and the corresponding widgets.
+
+        This method updates all selected component parameters and their associated
+        widgets to use the specified highlight color and width.
+
+        Parameters
+        ----------
+        highlight_color : str
+            The color to use for highlighted/selected components (e.g., "#FF0000")
+        highlight_width : float, optional
+            The line width to use for highlighted/selected components (default: 2.0)
+        """
+        if "styles" not in self._widgets:
+            return
+
+        self._update_disabled = True
+
+        # Update component_params for all selected components
+        for name, params in self.component_params.items():
+            if name.endswith("_sel"):
+                params["line_color"] = highlight_color
+                params["line_width"] = highlight_width
+                params["line_alpha"] = 1.0
+
+        # Update widgets if they exist
+        line_color_pickers = self._widgets["styles"].get(
+            "line_color_pickers_by_name", {}
+        )
+        line_width_spinners = self._widgets["styles"].get(
+            "line_width_spinners_by_name", {}
+        )
+
+        for name in self.component_params.keys():
+            if name.endswith("_sel"):
+                if name in line_color_pickers:
+                    line_color_pickers[name].color = highlight_color
+                if name in line_width_spinners:
+                    line_width_spinners[name].value = highlight_width
+
+        self._update_disabled = False
+
     # trigger:
     # self.set_image_index(self.selected_image_index)
     # set_structure(
@@ -1142,9 +1189,12 @@ class ViewControl:
             **dict(width=80, low=-1, high=1, step=0.1),
         )
 
-        # Color pickers for each component
+        # Component styling widgets
         pickers = []
         pickers_by_name = dict()
+        line_color_pickers_by_name = dict()
+        line_dash_selects_by_name = dict()
+        line_width_spinners_by_name = dict()
 
         # Callback factory functions
         def make_color_update_callback(component_name):
@@ -1303,6 +1353,7 @@ class ViewControl:
                 width=100,
                 stylesheets=[styles.dark_bk_input_style] if styles else [],
             )
+            line_dash_selects_by_name[comp] = line_dash_select
             line_dash_select.on_change("value", make_line_dash_update_callback(comp))
             row_items.append(line_dash_select)
 
@@ -1315,6 +1366,7 @@ class ViewControl:
                 height=30,
                 stylesheets=[styles.dark_bk_input_style] if styles else [],
             )
+            line_color_pickers_by_name[comp] = line_color_picker
             line_color_picker.on_change("color", make_line_color_update_callback(comp))
             row_items.append(line_color_picker)
 
@@ -1329,6 +1381,7 @@ class ViewControl:
                 format="0.00",
                 stylesheets=[styles.dark_bk_input_style] if styles else [],
             )
+            line_width_spinners_by_name[comp] = line_width_spinner
             line_width_spinner.on_change("value", make_line_width_update_callback(comp))
             row_items.append(line_width_spinner)
 
@@ -1380,6 +1433,7 @@ class ViewControl:
                     width=100,
                     stylesheets=[styles.dark_bk_input_style] if styles else [],
                 )
+                line_dash_selects_by_name[f"{comp}_sel"] = sel_line_dash_select
                 sel_line_dash_select.on_change(
                     "value", make_line_dash_update_callback(f"{comp}_sel")
                 )
@@ -1394,6 +1448,7 @@ class ViewControl:
                     height=30,
                     stylesheets=[styles.dark_bk_input_style] if styles else [],
                 )
+                line_color_pickers_by_name[f"{comp}_sel"] = sel_line_color_picker
                 sel_line_color_picker.on_change(
                     "color", make_line_color_update_callback(f"{comp}_sel")
                 )
@@ -1410,6 +1465,7 @@ class ViewControl:
                     format="0.00",
                     stylesheets=[styles.dark_bk_input_style] if styles else [],
                 )
+                line_width_spinners_by_name[f"{comp}_sel"] = sel_line_width_spinner
                 sel_line_width_spinner.on_change(
                     "value", make_line_width_update_callback(f"{comp}_sel")
                 )
@@ -1442,6 +1498,13 @@ class ViewControl:
             "selected_color_factor_spinner"
         ] = selected_color_factor_spinner
         self._widgets["styles"]["pickers_by_name"] = pickers_by_name
+        self._widgets["styles"][
+            "line_color_pickers_by_name"
+        ] = line_color_pickers_by_name
+        self._widgets["styles"]["line_dash_selects_by_name"] = line_dash_selects_by_name
+        self._widgets["styles"][
+            "line_width_spinners_by_name"
+        ] = line_width_spinners_by_name
 
         return layout
 
