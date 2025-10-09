@@ -835,13 +835,13 @@ class ViewControl:
             self._widgets["images"]["images_m_range"].value = self.images_m_range
             self._update_disabled = False
 
-        if "colors" in self._widgets:
+        if "styles" in self._widgets:
             self._update_disabled = True
-            self._widgets["colors"][
+            self._widgets["styles"][
                 "selected_color_factor_spinner"
             ].value = self.selected_color_factor
-            if "pickers_by_name" in self._widgets["colors"]:
-                for name, picker in self._widgets["colors"]["pickers_by_name"].items():
+            if "pickers_by_name" in self._widgets["styles"]:
+                for name, picker in self._widgets["styles"]["pickers_by_name"].items():
                     if name in self.component_params:
                         picker.color = self.component_params[name].get(
                             "color", "#000000"
@@ -1119,7 +1119,7 @@ class ViewControl:
             c2,
         )
 
-    def make_colors_layout(
+    def make_styles_layout(
         self,
         styles=None,
         parent=None,
@@ -1428,7 +1428,7 @@ class ViewControl:
                 width=300,
                 margin=(0, 10),
             ),
-            bokeh.models.Div(text="""<b>Component Colors</b>""", width=300),
+            bokeh.models.Div(text="""<b>Component Styles</b>""", width=300),
             *pickers,
             stylesheets=[
                 DashboardStyles().darkstyle,
@@ -1436,12 +1436,12 @@ class ViewControl:
             ],
         )
 
-        # Save colors widgets:
-        self._widgets["colors"] = dict()
-        self._widgets["colors"][
+        # Save styles widgets:
+        self._widgets["styles"] = dict()
+        self._widgets["styles"][
             "selected_color_factor_spinner"
         ] = selected_color_factor_spinner
-        self._widgets["colors"]["pickers_by_name"] = pickers_by_name
+        self._widgets["styles"]["pickers_by_name"] = pickers_by_name
 
         return layout
 
@@ -2290,7 +2290,7 @@ class ViewControl:
             parent=parent,
         )
 
-        colors_control_layout = self.make_colors_layout(
+        styles_control_layout = self.make_styles_layout(
             styles=styles,
             parent=parent,
         )
@@ -2323,7 +2323,7 @@ class ViewControl:
         tabs += [
             bokeh.models.TabPanel(child=images_control_layout, title="Supercell"),
             bokeh.models.TabPanel(child=markers_control_layout, title="Markers"),
-            bokeh.models.TabPanel(child=colors_control_layout, title="Colors"),
+            bokeh.models.TabPanel(child=styles_control_layout, title="Styles"),
             bokeh.models.TabPanel(
                 child=projaxes_control_layout, title="Projection Axes"
             ),
