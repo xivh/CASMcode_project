@@ -487,6 +487,9 @@ def make_lattice_cell_data(
     shift: Optional[np.array] = None,
     hex: bool = False,
     dim: int = 3,
+    color: str = "green",
+    line_width: float = 2.0,
+    line_dash: str = "solid",
 ):
     """Plot the lattice cell.
 
@@ -509,6 +512,12 @@ def make_lattice_cell_data(
     dim: int = 3
         Use dim==3 to draw 3d lattice cells, and dim==2 to draw 2d lattice
         cells.
+    color: str = "green"
+        The color to use for the lattice cell lines.
+    line_width: float = 2.0
+        The line width to use for the lattice cell lines.
+    line_dash: str = "solid"
+        The line dash to use for the lattice cell lines.
     """
     view_basis_inv = np.linalg.pinv(view_basis)
 
@@ -572,9 +581,14 @@ def make_lattice_cell_data(
     #     line_width=2,
     # )
 
+    size = begin_values.shape[1]
+
     return {
         "px0": begin_values[0, :],
         "py0": begin_values[1, :],
         "px1": end_values[0, :],
         "py1": end_values[1, :],
+        "line_color": [color] * size,
+        "line_width": [line_width] * size,
+        "line_dash": [line_dash] * size,
     }

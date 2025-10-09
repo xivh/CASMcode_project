@@ -282,6 +282,7 @@ class ViewAtomicStructure:
     def __init__(
         self,
         doc: bokeh.document.Document,
+        lattice_segment_params: dict,
         component_params: dict[str, dict],
         v1: Optional[np.ndarray] = None,
         v2: Optional[np.ndarray] = None,
@@ -297,6 +298,17 @@ class ViewAtomicStructure:
         ----------
         doc : bokeh.document.Document
             The Bokeh document
+        lattice_segment_params : dict
+            A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` when
+            creating the lattice cell segments. Example:
+
+            .. code-block:: python
+
+                lattice_segment_params = dict(
+                    color="green",
+                    line_width=2,
+                )
+
         component_params : dict[str, dict]
             A dict of component name to scatter plot keyword arguments. Every dict
             must have the same keys.
@@ -344,6 +356,19 @@ class ViewAtomicStructure:
         self.doc = doc
         """bokeh.document.Document: The Bokeh document, used to add callbacks that
         update the figure."""
+
+        self.lattice_segment_params = lattice_segment_params
+        """dict: A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` 
+        when creating the lattice cell segments. Example:
+        
+        .. code-block:: python
+        
+            lattice_segment_params = dict(
+                color="green",
+                line_width=2,
+            )
+        
+        """
 
         self.component_params = component_params
         """dict[str, dict]: A dict of component name to scatter plot keyword arguments.
@@ -521,6 +546,7 @@ class ViewAtomicStructure:
         new_marker_size_scale: Optional[float] = None,
         new_marker_alpha_scale: Optional[float] = None,
         new_projection: Any = None,
+        new_lattice_segment_params: Optional[dict] = None,
         new_component_params: Optional[dict] = None,
     ):
         self.structure = structure.copy()
@@ -532,6 +558,8 @@ class ViewAtomicStructure:
             self.marker_alpha_scale = new_marker_alpha_scale
         if new_projection is not None:
             self.projection = new_projection
+        if new_lattice_segment_params is not None:
+            self.lattice_segment_params = new_lattice_segment_params
         if new_component_params is not None:
             self.component_params = new_component_params
 
@@ -613,6 +641,7 @@ class ViewAtomicStructure:
             shift=None,
             hex=False,
             dim=3,
+            **self.lattice_segment_params,
         )
 
         if self.doc is None:
@@ -648,8 +677,9 @@ class ViewAtomicStructure:
                 x1="px1",
                 y1="py1",
                 source=self.lattice_cell_source,
-                color="green",
-                line_width=2,
+                line_color="line_color",
+                line_width="line_width",
+                line_dash="line_dash",
             )
 
         if len(self.source.data) != 0:

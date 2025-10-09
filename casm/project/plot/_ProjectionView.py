@@ -53,6 +53,7 @@ class ProjectionView:
         reinitialize the views accordingly.
 
         """
+        lattice_segment_params = self.view_control.lattice_segment_params
         component_params = self.view_control.component_params
 
         if self.view_control.layout_type == "multiview":
@@ -60,6 +61,7 @@ class ProjectionView:
             figure_params = self.view_control.multiview_figure_params
             self.view_xz = ViewAtomicStructure(
                 doc=None,
+                lattice_segment_params=lattice_segment_params,
                 component_params=component_params,
                 v1=[1.0, 0.0, 0.0],
                 v2=[0.0, 0.0, 1.0],
@@ -68,6 +70,7 @@ class ProjectionView:
 
             self.view_yz = ViewAtomicStructure(
                 doc=None,
+                lattice_segment_params=lattice_segment_params,
                 component_params=component_params,
                 v1=[0.0, 1.0, 0.0],
                 v2=[0.0, 0.0, 1.0],
@@ -76,6 +79,7 @@ class ProjectionView:
 
             self.view_xy = ViewAtomicStructure(
                 doc=None,
+                lattice_segment_params=lattice_segment_params,
                 component_params=component_params,
                 v1=[1.0, 0.0, 0.0],
                 v2=[0.0, 1.0, 0.0],
@@ -83,6 +87,7 @@ class ProjectionView:
             )
             self.projection_view = ViewAtomicStructure(
                 doc=None,
+                lattice_segment_params=lattice_segment_params,
                 component_params=component_params,
                 projection=SinglePointProjection(),
                 figure_params=figure_params,
@@ -96,6 +101,7 @@ class ProjectionView:
             self.view_xy = None
             self.projection_view = ViewAtomicStructure(
                 doc=None,
+                lattice_segment_params=lattice_segment_params,
                 component_params=component_params,
                 projection=SinglePointProjection(),
                 figure_params=figure_params,
@@ -117,6 +123,7 @@ class ProjectionView:
                 title="X-Z plane view",
                 new_marker_size_scale=self.view_control.marker_size_scale,
                 new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+                new_lattice_segment_params=self.view_control.lattice_segment_params,
                 new_component_params=self.view_control.component_params,
             )
             self.view_yz.set_structure(
@@ -124,6 +131,7 @@ class ProjectionView:
                 title="Y-Z plane view",
                 new_marker_size_scale=self.view_control.marker_size_scale,
                 new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+                new_lattice_segment_params=self.view_control.lattice_segment_params,
                 new_component_params=self.view_control.component_params,
             )
             self.view_xy.set_structure(
@@ -131,6 +139,7 @@ class ProjectionView:
                 title="X-Y plane view",
                 new_marker_size_scale=self.view_control.marker_size_scale,
                 new_marker_alpha_scale=self.view_control.marker_alpha_scale,
+                new_lattice_segment_params=self.view_control.lattice_segment_params,
                 new_component_params=self.view_control.component_params,
             )
         elif self.view_control.layout_type != "singleview":
@@ -142,6 +151,7 @@ class ProjectionView:
             new_marker_size_scale=self.view_control.marker_size_scale,
             new_marker_alpha_scale=self.view_control.marker_alpha_scale,
             new_projection=self.view_control.projection,
+            new_lattice_segment_params=self.view_control.lattice_segment_params,
             new_component_params=self.view_control.component_params,
         )
         self.projection_view.update_view_basis(

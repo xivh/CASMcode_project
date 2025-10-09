@@ -421,6 +421,12 @@ class ViewControl:
     ):
         self.prim = prim
 
+        self.lattice_segment_params = {
+            "color": "green",
+            "line_width": 2.0,
+            "line_dash": "solid",
+        }
+
         self.component_params = copy.deepcopy(component_params)
         if self.component_params is None:
             self.component_params = make_highlight_params(
@@ -744,6 +750,7 @@ class ViewControl:
             #
             # Colors parameters
             "selected_color_factor": self.selected_color_factor,
+            "lattice_segment_params": self.lattice_segment_params,
             "component_params": self.component_params,
             #
             # Projection parameters
@@ -782,6 +789,14 @@ class ViewControl:
 
         # Colors parameters
         self.selected_color_factor = state.get("selected_color_factor", -0.3)
+        self.lattice_segment_params = state.get(
+            "lattice_segment_params",
+            {
+                "color": "green",
+                "line_width": 2.0,
+                "line_dash": "solid",
+            },
+        )
         self.component_params = state.get("component_params", {})
 
         # Projection parameters
@@ -837,6 +852,16 @@ class ViewControl:
 
         if "styles" in self._widgets:
             self._update_disabled = True
+
+            self._widgets["styles"]["lattice_line_dash_select"].value = (
+                self.lattice_segment_params.get("line_dash", "solid")
+            )
+            self._widgets["styles"]["lattice_line_color_picker"].color = (
+                self.lattice_segment_params.get("color", "green")
+            )
+            self._widgets["styles"]["lattice_line_width_spinner"].value = (
+                self.lattice_segment_params.get("line_width", 2.0)
+            )
 
             self._widgets["styles"][
                 "selected_color_factor_spinner"
@@ -1210,6 +1235,78 @@ class ViewControl:
         styles=None,
         parent=None,
     ):
+        line_dash_options = ["solid", "dashed", "dotted", "dotdash", "dashdot"]
+
+        # Control lattice styles
+        lattice_div = bokeh.models.Div(
+            text="""<b>Lattice Line Style:</b>""",
+            width=200,
+            styles={"text-align": "left"},
+        )
+
+        lattice_line_dash_select = bokeh.models.Select(
+            title="Style",
+            value=self.lattice_segment_params.get("line_dash", "solid"),
+            options=line_dash_options,
+            width=100,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        lattice_line_color_picker = bokeh.models.ColorPicker(
+            title="Color",
+            color=self.lattice_segment_params.get("color", "#00FF00"),
+            width=60,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        lattice_line_width_spinner = bokeh.models.Spinner(
+            title="Width",
+            value=self.lattice_segment_params.get("line_width", 2.0),
+            low=0.0,
+            step=0.25,
+            width=80,
+            format="0.0",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Lattice style callbacks:
+
+        def update_lattice_line_dash(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["line_dash"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_dash_select.on_change("value", update_lattice_line_dash)
+
+        def update_lattice_line_color(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["color"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_color_picker.on_change("color", update_lattice_line_color)
+
+        def update_lattice_line_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["line_width"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_width_spinner.on_change("value", update_lattice_line_width)
+
         # Allow users to adjust the factor that makes "selected" colors lighter/darker
         # than default colors:
         selected_color_factor_div = bokeh.models.Div(
@@ -1228,6 +1325,32 @@ class ViewControl:
             stylesheets=[styles.dark_bk_input_style] if styles else [],
             **dict(width=80, low=-1, high=1, step=0.1),
         )
+
+        # Update selected color factor callback:
+
+        def update_selected_color_factor(attr, old, new):
+            self.selected_color_factor = new
+            self._update_disabled = True
+
+            for comp, params in self.component_params.items():
+                if comp.endswith("_sel"):
+                    continue
+                default_color = params.get("color", "#FFFFFF")
+                adjusted_color = adjust_color(
+                    color=default_color,
+                    factor=self.selected_color_factor,
+                )
+                selected_name = f"{comp}_sel"
+                if selected_name in self.component_params:
+                    self.component_params[selected_name]["color"] = adjusted_color
+                    if selected_name in pickers_by_name:
+                        pickers_by_name[selected_name].color = adjusted_color
+
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        selected_color_factor_spinner.on_change("value", update_selected_color_factor)
 
         # Component styling widgets
         pickers = []
@@ -1328,30 +1451,6 @@ class ViewControl:
 
             return update_line_width
 
-        def update_selected_color_factor(attr, old, new):
-            self.selected_color_factor = new
-            self._update_disabled = True
-
-            for comp, params in self.component_params.items():
-                if comp.endswith("_sel"):
-                    continue
-                default_color = params.get("color", "#FFFFFF")
-                adjusted_color = adjust_color(
-                    color=default_color,
-                    factor=self.selected_color_factor,
-                )
-                selected_name = f"{comp}_sel"
-                if selected_name in self.component_params:
-                    self.component_params[selected_name]["color"] = adjusted_color
-                    if selected_name in pickers_by_name:
-                        pickers_by_name[selected_name].color = adjusted_color
-
-            self._update_disabled = False
-            if parent:
-                parent.trigger_update()
-
-        selected_color_factor_spinner.on_change("value", update_selected_color_factor)
-
         # Create widgets for each component
         for comp, params in self.component_params.items():
             if comp.endswith("_sel"):
@@ -1443,7 +1542,6 @@ class ViewControl:
             )
 
             # Default line style selector
-            line_dash_options = ["solid", "dashed", "dotted", "dotdash", "dashdot"]
             line_dash_select = bokeh.models.Select(
                 title="Style",
                 value=params.get("line_dash", "solid"),
@@ -1612,10 +1710,22 @@ class ViewControl:
 
         layout = column(
             row(
+                lattice_div,
+            ),
+            row(
+                lattice_line_dash_select,
+                lattice_line_color_picker,
+                lattice_line_width_spinner,
+                width=300,
+                margin=(0, 10, 0, 50),
+            ),
+            row(
                 selected_color_factor_div,
+            ),
+            row(
                 selected_color_factor_spinner,
                 width=300,
-                margin=(0, 0, 0, 0),
+                margin=(0, 10, 0, 50),
             ),
             bokeh.models.Div(
                 text="""<b>Component Styles:</b>""",
@@ -1631,6 +1741,11 @@ class ViewControl:
 
         # Save styles widgets:
         self._widgets["styles"] = dict()
+        self._widgets["styles"]["lattice_line_dash_select"] = lattice_line_dash_select
+        self._widgets["styles"]["lattice_line_color_picker"] = lattice_line_color_picker
+        self._widgets["styles"][
+            "lattice_line_width_spinner"
+        ] = lattice_line_width_spinner
         self._widgets["styles"]["radius_spinners_by_name"] = radius_spinners_by_name
         self._widgets["styles"][
             "selected_color_factor_spinner"
