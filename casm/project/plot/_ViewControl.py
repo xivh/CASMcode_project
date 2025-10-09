@@ -1142,6 +1142,60 @@ class ViewControl:
             **dict(width=80, low=-1, high=1, step=0.1),
         )
 
+        # Color pickers for each component
+        pickers = []
+        pickers_by_name = dict()
+
+        # Callback factory functions
+        def make_color_update_callback(component_name):
+            def update_color(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                new_adjusted = adjust_color(
+                    color=new,
+                    factor=self.selected_color_factor,
+                )
+                selected_name = f"{component_name}_sel"
+
+                self._update_disabled = True
+                self.component_params[component_name]["color"] = new
+
+                if not component_name.endswith("_sel"):
+                    pickers_by_name[selected_name].color = new_adjusted
+                    self.component_params[selected_name]["color"] = new_adjusted
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_color
+
+        def make_alpha_update_callback(component_name):
+            def update_alpha(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["alpha"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_alpha
+
+        def make_line_dash_update_callback(component_name):
+            def update_line_dash(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_dash"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_dash
+
         def update_selected_color_factor(attr, old, new):
             self.selected_color_factor = new
             self._update_disabled = True
@@ -1166,9 +1220,7 @@ class ViewControl:
 
         selected_color_factor_spinner.on_change("value", update_selected_color_factor)
 
-        # Color pickers for each component
-        pickers = []
-        pickers_by_name = dict()
+        # Create widgets for each component
         for comp, params in self.component_params.items():
             if comp.endswith("_sel"):
                 continue
@@ -1196,33 +1248,7 @@ class ViewControl:
                 stylesheets=[styles.dark_bk_input_style] if styles else [],
             )
             pickers_by_name[comp] = color_picker
-
             row_items.append(color_picker)
-
-            # Add callback to update component params and trigger parent update
-            def make_color_update_callback(component_name):
-                def update_color(attr, old, new):
-                    if self._update_disabled:
-                        return
-
-                    new_adjusted = adjust_color(
-                        color=new,
-                        factor=self.selected_color_factor,
-                    )
-                    selected_name = f"{component_name}_sel"
-
-                    self._update_disabled = True
-                    self.component_params[component_name]["color"] = new
-
-                    if not component_name.endswith("_sel"):
-                        pickers_by_name[selected_name].color = new_adjusted
-                        self.component_params[selected_name]["color"] = new_adjusted
-                    self._update_disabled = False
-                    if parent:
-                        parent.trigger_update()
-
-                return update_color
-
             color_picker.on_change("color", make_color_update_callback(comp))
 
             # Create "selected" color picker
@@ -1254,27 +1280,24 @@ class ViewControl:
                 format="0.0",
                 stylesheets=[styles.dark_bk_input_style] if styles else [],
             )
-
-            def make_alpha_update_callback(component_name):
-                def update_alpha(attr, old, new):
-                    if self._update_disabled:
-                        return
-
-                    self._update_disabled = True
-                    self.component_params[component_name]["alpha"] = new
-                    self._update_disabled = False
-                    if parent:
-                        parent.trigger_update()
-
-                return update_alpha
-
+            alpha_spinner.on_change("value", make_alpha_update_callback(comp))
             row_items.append(alpha_spinner)
+
+            # Create "line_dash" selector
+            line_dash_options = ["solid", "dashed", "dotted", "dotdash", "dashdot"]
+            line_dash_select = bokeh.models.Select(
+                title="Line Style",
+                value=params.get("line_dash", "solid"),
+                options=line_dash_options,
+                width=100,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_dash_select.on_change("value", make_line_dash_update_callback(comp))
+            row_items.append(line_dash_select)
 
             # Add label and picker as a row
             picker_row = row(*row_items, margin=(10, 10))
             pickers.append(picker_row)
-
-            alpha_spinner.on_change("value", make_alpha_update_callback(comp))
 
             # end componenet styler loop
 
