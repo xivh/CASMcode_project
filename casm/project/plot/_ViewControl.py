@@ -1253,8 +1253,6 @@ class ViewControl:
 
             row_items = []
 
-            color = params.get("color", "#FFFFFF")
-
             # Create label div
             label_div = bokeh.models.Div(
                 text=f"<b>{comp}:</b>",
@@ -1265,9 +1263,12 @@ class ViewControl:
             )
             row_items.append(label_div)
 
-            # Create color picker
+            # === SECTION 1: Default Fill Styles ===
+
+            # Default fill color picker
+            color = params.get("color", "#FFFFFF")
             color_picker = bokeh.models.ColorPicker(
-                title="Default",
+                title="Fill",
                 color=color,
                 width=60,
                 height=30,
@@ -1277,25 +1278,7 @@ class ViewControl:
             row_items.append(color_picker)
             color_picker.on_change("color", make_color_update_callback(comp))
 
-            # Create "selected" color picker
-            if f"{comp}_sel" in self.component_params:
-                sel_color = self.component_params[f"{comp}_sel"].get("color", "#FF0000")
-                sel_color_picker = bokeh.models.ColorPicker(
-                    title="Selected",
-                    color=sel_color,
-                    width=60,
-                    height=30,
-                    stylesheets=[styles.dark_bk_input_style] if styles else [],
-                )
-                pickers_by_name[f"{comp}_sel"] = sel_color_picker
-
-                sel_color_picker.on_change(
-                    "color", make_color_update_callback(f"{comp}_sel")
-                )
-
-                row_items.append(sel_color_picker)
-
-            # Create "alpha" spinner
+            # Default alpha spinner
             alpha_spinner = bokeh.models.Spinner(
                 title="Alpha",
                 value=params.get("alpha", 0.8),
@@ -1309,7 +1292,9 @@ class ViewControl:
             alpha_spinner.on_change("value", make_alpha_update_callback(comp))
             row_items.append(alpha_spinner)
 
-            # Create "line_dash" selector
+            # === SECTION 2: Default Line Styles ===
+
+            # Default line style selector
             line_dash_options = ["solid", "dashed", "dotted", "dotdash", "dashdot"]
             line_dash_select = bokeh.models.Select(
                 title="Line Style",
@@ -1321,7 +1306,7 @@ class ViewControl:
             line_dash_select.on_change("value", make_line_dash_update_callback(comp))
             row_items.append(line_dash_select)
 
-            # Create "line_color" picker
+            # Default line color picker
             line_color = params.get("line_color", "#000000")
             line_color_picker = bokeh.models.ColorPicker(
                 title="Line Color",
@@ -1333,7 +1318,7 @@ class ViewControl:
             line_color_picker.on_change("color", make_line_color_update_callback(comp))
             row_items.append(line_color_picker)
 
-            # Create "line_width" spinner
+            # Default line width spinner
             line_width_spinner = bokeh.models.Spinner(
                 title="Line Width",
                 value=params.get("line_width", 1.0),
@@ -1347,11 +1332,94 @@ class ViewControl:
             line_width_spinner.on_change("value", make_line_width_update_callback(comp))
             row_items.append(line_width_spinner)
 
-            # Add label and picker as a row
+            # === SECTION 3 & 4: Selected Fill and Line Styles ===
+
+            if f"{comp}_sel" in self.component_params:
+                sel_params = self.component_params[f"{comp}_sel"]
+
+                # === SECTION 3: Selected Fill Styles ===
+
+                # Selected fill color picker
+                sel_color = sel_params.get("color", "#FF0000")
+                sel_color_picker = bokeh.models.ColorPicker(
+                    title="Sel Fill",
+                    color=sel_color,
+                    width=60,
+                    height=30,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                pickers_by_name[f"{comp}_sel"] = sel_color_picker
+                sel_color_picker.on_change(
+                    "color", make_color_update_callback(f"{comp}_sel")
+                )
+                row_items.append(sel_color_picker)
+
+                # Selected alpha spinner
+                sel_alpha_spinner = bokeh.models.Spinner(
+                    title="Sel Alpha",
+                    value=sel_params.get("alpha", 0.8),
+                    width=80,
+                    low=0.0,
+                    high=1.0,
+                    step=0.1,
+                    format="0.0",
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                sel_alpha_spinner.on_change(
+                    "value", make_alpha_update_callback(f"{comp}_sel")
+                )
+                row_items.append(sel_alpha_spinner)
+
+                # === SECTION 4: Selected Line Styles ===
+
+                # Selected line style selector
+                sel_line_dash_select = bokeh.models.Select(
+                    title="Sel Line Style",
+                    value=sel_params.get("line_dash", "solid"),
+                    options=line_dash_options,
+                    width=100,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                sel_line_dash_select.on_change(
+                    "value", make_line_dash_update_callback(f"{comp}_sel")
+                )
+                row_items.append(sel_line_dash_select)
+
+                # Selected line color picker
+                sel_line_color = sel_params.get("line_color", "#000000")
+                sel_line_color_picker = bokeh.models.ColorPicker(
+                    title="Sel Line Color",
+                    color=sel_line_color,
+                    width=60,
+                    height=30,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                sel_line_color_picker.on_change(
+                    "color", make_line_color_update_callback(f"{comp}_sel")
+                )
+                row_items.append(sel_line_color_picker)
+
+                # Selected line width spinner
+                sel_line_width_spinner = bokeh.models.Spinner(
+                    title="Sel Line Width",
+                    value=sel_params.get("line_width", 1.0),
+                    width=80,
+                    low=0.0,
+                    high=10.0,
+                    step=0.25,
+                    format="0.00",
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                sel_line_width_spinner.on_change(
+                    "value", make_line_width_update_callback(f"{comp}_sel")
+                )
+                row_items.append(sel_line_width_spinner)
+
+            # Add label and all widgets as a row
             picker_row = row(*row_items, margin=(10, 10))
             pickers.append(picker_row)
 
-            # end componenet styler loop
+            # end component styler loop
 
         layout = column(
             row(
