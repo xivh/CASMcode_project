@@ -140,6 +140,7 @@ class ConfigurationSetSelect:
                 else:
                     self.i_supercell += 1
                 supercell_name_value = self.supercell_name_options[self.i_supercell]
+                supercell_name_select.value = supercell_name_value
 
                 config_id_options = self.config_id_options[supercell_name_value]
                 self.i_config = 0
@@ -165,6 +166,7 @@ class ConfigurationSetSelect:
                 else:
                     self.i_supercell -= 1
                 supercell_name_value = self.supercell_name_options[self.i_supercell]
+                supercell_name_select.value = supercell_name_value
 
                 config_id_options = self.config_id_options[supercell_name_value]
                 self.i_config = len(config_id_options) - 1
