@@ -31,7 +31,7 @@ jobs:
 
       - name: upload sdist and wheel
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist
           path: dist
@@ -71,7 +71,7 @@ jobs:
 
       - name: upload docs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: casm-project-docs
           path: doc/_build/html
