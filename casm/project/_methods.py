@@ -624,3 +624,27 @@ def get_generic_dof_types(
         generic_dof.add(_make_generic(dof))
 
     return sorted(list(generic_dof))
+
+
+def print_asymmetric_units(prim: Union[xtal.Prim, casmconfig.Prim]):
+    """Print the asymmetric units for a prim.
+
+
+    Given a prim, print the asymmetric units
+    and the occupation degrees of freedom on
+    each site. Each asymmetric unit is a group
+    of equivalent sites for the configurational
+    cluster expansion.
+
+    Parameters
+    ----------
+    prim: Union[xtal.Prim, casmconfig.Prim]
+        The prim to print.
+    """
+    xtal_prim = _as_xtal_prim(prim=prim)
+    asymmetric_unit_indices = xtal.asymmetric_unit_indices(xtal_prim)
+    occ_dof = xtal_prim.occ_dof()
+    for asym_index, asym_unit in enumerate(asymmetric_unit_indices):
+        print(f"Asymmetric Unit: {asym_index}")
+        for site in asym_unit:
+            print(f"Sublattice {site}: Occupants={occ_dof[site]}")

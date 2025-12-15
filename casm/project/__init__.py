@@ -11,6 +11,7 @@ from ._methods import (
     make_symmetrized_lattice,
     make_symmetrized_prim,
     project_path,
+    print_asymmetric_units,
 )
 from ._Project import Project
 from ._ProjectSettings import ProjectSettings
