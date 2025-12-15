@@ -148,10 +148,10 @@ def dump(
         path.parent.mkdir(parents=True, exist_ok=True)
         if gz is True:
             with gzip.open(path, "w") as f:
-                f.write(json.dumps(data).encode("utf-8"))
+                f.write(xtal.pretty_json(data).encode("utf-8"))
         else:
             with open(path, "w") as f:
-                json.dump(data, f)
+                f.write(xtal.pretty_json(data))
 
     path = pathlib.Path(path)
     if path.exists():
