@@ -2,11 +2,12 @@ import argparse
 import copy
 import os
 import pathlib
-import typing
+from typing import Annotated, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, model_validator
 
 from ._functions import get_config
 from ._ServerCache import ServerCache
@@ -47,27 +48,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# http codes:
 
-# Success:
-http_success = 200
+# --- Pydantic models ---
 
-# i.e. wrong parameters or types
-http_bad_request = 400
 
-# (unprocessable entity) i.e. parameters are correct type but invalid value
-http_bad_logic = 422
+class FilesRequest(BaseModel):
+    path: Optional[str] = None
+
+
+class FileItem(BaseModel):
+    path: str
+    is_dir: bool
+
+
+class ProjectAddRequest(BaseModel):
+    project_path: str
+    id: Optional[str] = None
+
+
+class ProjectInfo(BaseModel):
+    id: str
+    project_path: str
+    generic_dof: list[str]
+    prim_str: str
+
+
+class ProjectRemoveRequest(BaseModel):
+    project_path: Optional[str] = None
+    id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_exactly_one(self):
+        has_path = self.project_path is not None
+        has_id = self.id is not None
+        if has_path and has_id:
+            raise ValueError("Provide only one of 'project_path' or 'id'.")
+        if not has_path and not has_id:
+            raise ValueError("One of 'project_path' or 'id' is required.")
+        return self
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class ObjectId(BaseModel):
+    id: str
+
+
+# --- Helper functions ---
 
 
 def get_project_ids():
-    """Get the project IDs from the project_list.json file.
-
-    Returns
-    -------
-    project_ids: list[str]
-        A list of project IDs.
-
-    """
+    """Get the project IDs from the project_list.json file."""
     from casm.tools.shared.json_io import read_optional
 
     project_list_path = root / "project_list.json"
@@ -78,7 +111,7 @@ def get_project_ids():
 
 def add_project(
     path: pathlib.Path,
-    id: typing.Optional[str] = None,
+    id: Optional[str] = None,
 ):
     """Add a project to the project list.
 
@@ -198,127 +231,7 @@ def is_subdirectory(path: pathlib.Path, top: pathlib.Path) -> bool:
     return top in path.parents
 
 
-@app.get("/casm/")
-def home():
-    return HTMLResponse(content=home_html)
-
-
-@app.post("/files/")
-async def files_post(request: Request):
-    """Get the files in a directory.
-
-    Expects to receive a JSON object with the following format:
-
-    - path: Optional[str]
-        The path to a directory. If not provided, defaults to the user's home directory.
-
-    Returns
-    -------
-    list[dict]
-        A list of dictionaries with the following keys:
-
-        - path: str
-            The path to the file or directory.
-        - is_dir: bool
-            True if the path is a directory, False otherwise.
-
-    """
-    in_data = await request.json()
-    top = pathlib.Path(os.environ["HOME"]).resolve()
-    path = pathlib.Path(in_data.get("path", top)).resolve()
-
-    # Validate the path:
-    # path must be a sub-directory (direct or indirect)
-    # of os.environ["HOME"]:
-    if path != top and not is_subdirectory(path, top):
-        return JSONResponse(
-            content={"error": f"Provided `path` '{path}' is not allowed."},
-            status_code=400,
-        )
-
-    possible_parent = []
-    if path != top:
-        possible_parent.append({"path": str(path / ".."), "is_dir": True})
-
-    if not path.is_dir():
-        return JSONResponse(
-            content={"error": "Provided `path` is not a directory."},
-            status_code=http_bad_request,
-        )
-    return possible_parent + [
-        {"path": str(path / child), "is_dir": child.is_dir()}
-        for child in path.iterdir()
-        if not child.name.startswith(".")
-    ]
-
-
-# Put starred projects:
-@app.put("/casm/project/add/")
-async def project_add(request: Request):
-    """Add a project to the project list.
-
-    Expects to receive a JSON object with the following format:
-
-    - project_path: str
-        The path to the project directory.
-    - id: Optional[str]
-        An ID string used to refer to the project in menus, lists, etc. If None, the
-        project name will be used. Must be unique on this machine for the current user.
-
-    Returns
-    -------
-    data : dict
-        A dictionary with the following keys:
-
-        - id: str
-            The ID of the project.
-        - project_path: str
-            The path to the project directory.
-        - generic_dof: list[str]
-            The generic degrees of freedom on the prim, generic meaning any of
-            "occ", "disp", "strain", or "magspin" (without strain or magspin flavor).
-        - prim_str: str
-            The JSON string representation of the project's prim.
-
-    """
-
-    from casm.project import project_path as get_project_path
-
-    in_data = await request.json()
-
-    # Validate "project_path":
-    if "project_path" not in in_data:
-        return JSONResponse(
-            content={"error": "No `project_path` parameter provided."},
-            status_code=http_bad_request,
-        )
-    start = pathlib.Path(in_data["project_path"])
-    project_path = get_project_path(start=start)
-    if project_path != start:
-        return JSONResponse(
-            content={
-                "error": f"No project found at '{start}'. "
-                "Must be exactly the project root directory."
-            },
-            status_code=http_bad_logic,
-        )
-
-    # Validate "id":
-    if "id" in in_data and not isinstance(in_data["id"], str):
-        return JSONResponse(
-            content={"error": "Optional `id` parameter must be a string if provided."},
-            status_code=http_bad_request,
-        )
-    id = in_data.get("id", None)
-
-    try:
-        data = add_project(path=project_path, id=id)
-        return data
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=http_bad_logic)
-
-
-def remove_project_by_id(proj_id: str):
+def remove_project_by_id(proj_id: str) -> MessageResponse:
     from casm.tools.shared.json_io import read_optional, safe_dump
 
     # Remove from project_list.json
@@ -330,10 +243,7 @@ def remove_project_by_id(proj_id: str):
         if item["id"] == proj_id:
             break
     else:  # not found
-        return JSONResponse(
-            content={"message": f"No project with id={proj_id} currently added."},
-            status_code=http_success,
-        )
+        return MessageResponse(message=f"No project with id={proj_id} currently added.")
 
     project_list = [item for item in project_list if item["id"] != proj_id]
     safe_dump(project_list, path=project_list_path, force=True)
@@ -345,13 +255,10 @@ def remove_project_by_id(proj_id: str):
     if "projects" in data:
         data["projects"] = [id for id in data["projects"] if id != proj_id]
     safe_dump(data, path=starred_path, force=True)
-    return JSONResponse(
-        content={"message": f"Project '{proj_id}' removed successfully."},
-        status_code=http_success,
-    )
+    return MessageResponse(message=f"Project '{proj_id}' removed successfully.")
 
 
-def remove_project_by_path(project_path_str: str):
+def remove_project_by_path(project_path_str: str) -> MessageResponse:
     from casm.tools.shared.json_io import read_optional
 
     project_list_path = root / "project_list.json"
@@ -365,45 +272,87 @@ def remove_project_by_path(project_path_str: str):
             break
 
     if proj_id is None:
-        return JSONResponse(
-            content={"message": f"No project at '{project_path_str}' currently added."},
-            status_code=http_success,
+        return MessageResponse(
+            message=f"No project at '{project_path_str}' currently added."
         )
 
     return remove_project_by_id(proj_id)
 
 
+# --- Routes ---
+
+
+@app.get("/casm/")
+def home():
+    return HTMLResponse(content=home_html)
+
+
+@app.post("/files/", response_model=list[FileItem])
+async def files_post(body: FilesRequest):
+    """Get the files in a directory."""
+    top = pathlib.Path(os.environ["HOME"]).resolve()
+    path = pathlib.Path(body.path if body.path is not None else top).resolve()
+
+    if path != top and not is_subdirectory(path, top):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Provided `path` '{path}' is not allowed.",
+        )
+
+    possible_parent = []
+    if path != top:
+        possible_parent.append(FileItem(path=str(path / ".."), is_dir=True))
+
+    if not path.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail="Provided `path` is not a directory.",
+        )
+    return possible_parent + [
+        FileItem(path=str(path / child), is_dir=child.is_dir())
+        for child in path.iterdir()
+        if not child.name.startswith(".")
+    ]
+
+
+# Add projects:
+@app.put("/casm/project/add/", response_model=ProjectInfo)
+async def project_add(body: ProjectAddRequest):
+    """Add a project to the project list."""
+    from casm.project import project_path as get_project_path
+
+    start = pathlib.Path(body.project_path)
+    project_path = get_project_path(start=start)
+    if project_path != start:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No project found at '{start}'. "
+            "Must be exactly the project root directory.",
+        )
+
+    try:
+        data = add_project(path=project_path, id=body.id)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 # Remove projects (from project_list.json only - do not delete files):
-@app.put("/casm/project/{proj_id}/remove/")
+@app.put("/casm/project/{proj_id}/remove/", response_model=MessageResponse)
 def project_remove(proj_id: str):
     """Remove a project from the project list.
 
-    Parameters
-    ----------
-    proj_id : str
-        The ID of the project to remove.
+    **Path parameter:**
 
-    Returns
-    -------
-    data: dict
-        A dictionary containing either ``"error": str`` (if unsuccessful) or
-        ``"message": str`` (if successful).
-
+    - **proj_id**: The ID of the project to remove.
     """
     from casm.tools.shared.json_io import read_optional, safe_dump
 
-    # Validate "id":
-    if not isinstance(proj_id, str):
-        return JSONResponse(
-            content={"error": "Project ID must be a string."},
-            status_code=http_bad_request,
-        )
-
     project_ids = get_project_ids()
     if proj_id not in project_ids:
-        return JSONResponse(
-            content={"error": f"Project id='{proj_id}' not found."},
-            status_code=http_bad_logic,
+        raise HTTPException(
+            status_code=422,
+            detail=f"Project id='{proj_id}' not found.",
         )
 
     # Remove from project_list.json
@@ -423,121 +372,61 @@ def project_remove(proj_id: str):
         elif proj_id in data[key]:
             del data[key][proj_id]
     safe_dump(data, path=starred_path, force=True)
-    return JSONResponse(
-        content={"message": f"Project '{proj_id}' removed successfully."},
-        status_code=http_success,
-    )
+    return MessageResponse(message=f"Project '{proj_id}' removed successfully.")
 
 
 # Remove projects (from project_list.json only - do not delete files):
-@app.put("/casm/project/remove/")
-async def project_remove_alt(request: Request):
-    """Remove a project from the project list.
+@app.put("/casm/project/remove/", response_model=MessageResponse)
+async def project_remove_alt(body: ProjectRemoveRequest):
+    """Remove a project from the project list by path or ID.
 
-    Expects to receive a JSON object with the following format:
+    **Request body (JSON):** Provide exactly one of:
 
-    - project_path: Optional[str]
-        The path of the project to remove.
-    - id: Optional[str]
-        The ID of the project to remove.
-
-    Returns
-    -------
-    data: dict
-        A dictionary containing either ``"error": str`` (if unsuccessful) or
-        ``"message": str`` (if successful).
-
+    - **project_path**: Path of the project to remove.
+    - **id**: ID of the project to remove.
     """
-
-    in_data = await request.json()
-
-    if "project_path" in in_data and "id" in in_data:
-        return JSONResponse(
-            content={"error": "Provide only one of 'project_path' or 'id'."},
-            status_code=http_bad_request,
-        )
-
-    # Validate "project_path":
-    if "project_path" in in_data:
-        project_path_str = in_data["project_path"]
-        if not isinstance(project_path_str, str):
-            return JSONResponse(
-                content={"error": "`project_path` must be a string."},
-                status_code=http_bad_request,
-            )
-        return remove_project_by_path(project_path_str)
-    elif "id" in in_data:
-        proj_id = in_data["id"]
-        if not isinstance(proj_id, str):
-            return JSONResponse(
-                content={"error": "`id` must be a string."},
-                status_code=http_bad_request,
-            )
-        return remove_project_by_id(proj_id)
+    if body.project_path is not None:
+        return remove_project_by_path(body.project_path)
     else:
-        return JSONResponse(
-            content={"error": "One of 'project_path' or 'id' is required."},
-            status_code=http_bad_request,
-        )
+        return remove_project_by_id(body.id)
 
 
 @app.get("/casm/project/")
-async def project_get(request: Request):
+def project_get(project_path: str):
+    """Get project settings.
+
+    **Query parameter:**
+
+    - **project_path**: Path to the project directory.
+    """
     from casm.project import (
         DirectoryStructure,
     )
     from casm.project import project_path as get_project_path
     from casm.tools.shared.json_io import read_required
 
-    in_data = await request.json()
-    if "project_path" not in in_data:
-        return JSONResponse(
-            content={"error": "No project name or path provided."},
-            status_code=http_bad_request,
-        )
-    start = pathlib.Path(in_data["project_path"])
-    project_path = get_project_path(start=start)
-    if project_path != start:
-        return JSONResponse(
-            content={
-                "error": f"No project found at '{start}'. "
-                "Must be exactly the project directory root."
-            },
-            status_code=http_bad_logic,
+    start = pathlib.Path(project_path)
+    resolved_path = get_project_path(start=start)
+    if resolved_path != start:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No project found at '{start}'. "
+            "Must be exactly the project directory root.",
         )
 
     dir = DirectoryStructure(start)
     try:
         return read_required(dir.project_settings())
     except Exception:
-        return JSONResponse(
-            content={
-                "error": "Project settings could not be read from "
-                f"'{project_path}'."
-            },
-            status_code=http_bad_logic,
+        raise HTTPException(
+            status_code=422,
+            detail=f"Project settings could not be read from '{resolved_path}'.",
         )
 
 
-@app.get("/casm/project/list/")
+@app.get("/casm/project/list/", response_model=list[ProjectInfo])
 def project_list_get():
-    """Get the list of projects.
-
-    Returns
-    -------
-    data: list[dict]
-        A list of dictionaries with the following keys:
-
-        - id: str
-            The ID of the project.
-        - project_path: str
-            The path to the project directory.
-        - generic_dof: list[str]
-            The generic degrees of freedom on the prim, generic meaning any of
-            "occ", "disp", "strain", or "magspin" (without strain or magspin flavor).
-        - prim_str: str
-            The JSON string representation of the project's prim.
-    """
+    """Get the list of added projects."""
     from casm.tools.shared.json_io import read_optional
 
     # read ~/.casmvis/project_list.json:
@@ -546,8 +435,9 @@ def project_list_get():
     return read_optional(path=project_list_path, default=default_list)
 
 
-@app.get("/casm/project/starred/")
+@app.get("/casm/project/starred/", response_model=list[str])
 def project_starred_get():
+    """Get the list of starred project IDs."""
     from casm.tools.shared.json_io import read_optional
 
     # read root/starred.json:
@@ -559,85 +449,47 @@ def project_starred_get():
 
 
 # Put starred projects:
-@app.put("/casm/project/starred/")
-async def project_starred_put(request: Request):
+@app.put("/casm/project/starred/", response_model=MessageResponse)
+async def project_starred_put(body: Annotated[list[str], Body()]):
     """Update the starred projects.
 
-    Expects to receive a JSON list of project ID str indicating all the starred
-    projects.
-
-    Returns
-    -------
-    data: dict
-        A dictionary with the following keys
-
-        - message: Optional[str]
-            A message indicating the success of the operation.
-        - error: Optional[str]
-            An error message if the operation failed.
+    **Request body (JSON):** A list of project ID strings representing all starred projects.
     """
     from casm.tools.shared.json_io import read_optional, safe_dump
 
-    # Accepts a list of str (IDs of starred projects)
-
-    # Get the data from the request:
-    in_data = await request.json()
-    if not isinstance(in_data, list):
-        return JSONResponse(
-            content={"error": "Data must be a list of project_id."},
-            status_code=http_bad_request,
-        )
-
     # Validate the input:
     project_ids = get_project_ids()
-    for project_id in in_data:
-        if not isinstance(project_id, str):
-            return JSONResponse(
-                content={"error": "`id` must be a string."},
-                status_code=http_bad_request,
-            )
+    for project_id in body:
         if project_id not in project_ids:
-            return JSONResponse(
-                content={"error": f"id='{project_id}' not found."},
-                status_code=http_bad_logic,
+            raise HTTPException(
+                status_code=422,
+                detail=f"id='{project_id}' not found.",
             )
 
     # Update root/starred.json:
     path = root / "starred.json"
     default_data = dict()
     data = read_optional(path=path, default=default_data)
-    data["projects"] = copy.deepcopy(in_data)
+    data["projects"] = copy.deepcopy(body)
     safe_dump(data, path=path, force=True)
 
-    return JSONResponse(
-        content={"message": "Starred projects updated successfully."},
-        status_code=http_success,
-    )
+    return MessageResponse(message="Starred projects updated successfully.")
 
 
-@app.get("/casm/project/{proj_id}/{obj_type}/list/")
+@app.get("/casm/project/{proj_id}/{obj_type}/list/", response_model=list[ObjectId])
 def project_enum_list_get(proj_id: str, obj_type: str):
-    """Get the list of IDs of some type of project objects (enum, bset, etc.)
+    """Get the list of IDs for a type of project object.
 
-    Parameters
-    ----------
-    proj_id : str
-        The ID of the project.
-    obj_type : str
-        The type of object to list. Can be "enum" or "bset".
+    **Path parameters:**
 
-    Returns
-    -------
-    data : list[dict]
-        A list of dictionaries with the following keys:
-        - id: str
-            The ID of the object.
+    - **proj_id**: The project ID.
+    - **obj_type**: Object type — `"enum"` or `"bset"`.
     """
     proj = cache.get_project(proj_id)
     if obj_type == "enum":
-        data = [{"id": id} for id in proj.enum.all()]
+        data = [ObjectId(id=id) for id in proj.enum.all()]
     elif obj_type == "bset":
-        data = [{"id": id} for id in proj.bset.all()]
+        data = [ObjectId(id=id) for id in proj.bset.all()]
     else:
         data = []
 
