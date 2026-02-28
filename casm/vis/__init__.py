@@ -1,5 +1,10 @@
 """CASM visualizations."""
 
+from ._BokehServerManager import (
+    BokehServerManager,
+    add_application,
+    start_applications,
+)
 from ._casm_vis import (
     start,
     stop,
