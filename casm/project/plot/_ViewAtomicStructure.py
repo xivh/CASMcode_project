@@ -4,6 +4,7 @@ import pathlib
 import time
 from typing import Any, Optional, Union
 
+import bokeh.colors.named
 import bokeh.document  # Document
 import bokeh.models  # ColumnDataSource, Slider
 import bokeh.plotting
@@ -50,6 +51,24 @@ def _format_plot(p):
 
 Va_default_color = "#dcdcdc"
 Va_default_line_width = 1.0
+
+
+def _color_to_rgb(color: str) -> tuple:
+    """Convert a color string to an (r, g, b) tuple with values in [0, 1].
+
+    Supports hex colors (#RGB, #RRGGBB) and CSS named colors (via bokeh).
+    """
+    c = bokeh.colors.named.NamedColor.from_string(color)
+    return (c.r / 255.0, c.g / 255.0, c.b / 255.0)
+
+
+def _rgb_to_hex(rgb) -> str:
+    """Convert an (r, g, b) sequence with values in [0, 1] to a hex color string."""
+    return "#{:02x}{:02x}{:02x}".format(
+        int(round(rgb[0] * 255)),
+        int(round(rgb[1] * 255)),
+        int(round(rgb[2] * 255)),
+    )
 
 
 def make_generic_component_params(chemical_names: list[str]):
@@ -163,7 +182,8 @@ def adjust_color(color: str, factor: float = -0.3):
     Parameters
     ----------
     color: str
-        The color to adjust. Must be a valid matplotlib color.
+        The color to adjust. Supports hex colors (#RGB, #RRGGBB) and CSS named
+        colors.
     factor: float
         The factor to shift the RGB values by. Must be between -1 and 1.
 
@@ -173,9 +193,7 @@ def adjust_color(color: str, factor: float = -0.3):
         The adjusted color as a hex string.
 
     """
-    import matplotlib.colors
-
-    rgb = np.array(matplotlib.colors.to_rgb(color))
+    rgb = np.array(_color_to_rgb(color))
     tol = 0.001
     for i in range(3):
         if factor < 0 - tol:
@@ -183,8 +201,7 @@ def adjust_color(color: str, factor: float = -0.3):
         elif factor > 0 + tol:
             rgb[i] = rgb[i] + (1.0 - rgb[i]) * factor
     adjusted_rgb = np.clip(rgb, 0, 1)
-    adjusted_color = matplotlib.colors.to_hex(adjusted_rgb)
-    return adjusted_color
+    return _rgb_to_hex(adjusted_rgb)
 
 
 def make_highlight_params(
