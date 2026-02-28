@@ -23,9 +23,7 @@ def test_site_functions(shared_datadir):
     )
 
     print(s.getvalue())
-    assert (
-        s.getvalue()
-        == R"""Occupation site functions:
+    assert s.getvalue() == R"""Occupation site functions:
 - \phi(\vec{r}_{n}): [value1, ...], where:
   - n: neighborhood site index
   - \vec{r}_{n}: site position
@@ -34,7 +32,6 @@ def test_site_functions(shared_datadir):
 - sublattice: 1, occ_dof: [Si, Ge]
   - \phi(\vec{r}_{n}) = [-1, 1]
 """
-    )
 
 
 def test_functions(shared_datadir):

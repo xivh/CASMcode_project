@@ -79,8 +79,7 @@ def ZrO_tmp_project(tmp_path):
     )
     calctype_settings_dir.mkdir(parents=True, exist_ok=True)
     with open(calctype_settings_dir / "INCAR", "w") as f:
-        f.write(
-            """ISPIN = 1 #does non spin-polarized calc.
+        f.write("""ISPIN = 1 #does non spin-polarized calc.
 PREC = Accurate #cutoff + wrap around errors.
 IBRION= 2 #conj. grad. relaxation.
 NSW=61 #numberof ionic steps taken in minimization. Make it odd.
@@ -90,16 +89,13 @@ ISMEAR = 1 #BZ integration method (for relaxation runs).
 SIGMA = 0.2 #smearing width (keep T*S < 1meV/atom). 
 LWAVE = .FALSE.
 LCHARG = .FALSE.
-"""
-        )
+""")
     with open(calctype_settings_dir / "KPOINTS", "w") as f:
-        f.write(
-            """Fully automatic mesh
+        f.write("""Fully automatic mesh
 0              ! 0 -> automatic generation scheme 
 Auto           ! fully automatic
   10           ! length (R_k)
-"""
-        )
+""")
 
     settings = {
         "setups": {
@@ -161,8 +157,7 @@ def SiGe_occ_tmp_project(tmp_path):
 
     # !! CHANGE THIS AS NECESSARY !!
     with open(calctype_settings_dir / "INCAR", "w") as f:
-        f.write(
-            """ISPIN = 1 #does non spin-polarized calc.
+        f.write("""ISPIN = 1 #does non spin-polarized calc.
 PREC = Accurate #cutoff + wrap around errors.
 IBRION= 2 #conj. grad. relaxation.
 NSW=61 #numberof ionic steps taken in minimization. Make it odd.
@@ -172,18 +167,15 @@ ISMEAR = 1 #BZ integration method (for relaxation runs).
 SIGMA = 0.2 #smearing width (keep T*S < 1meV/atom). 
 LWAVE = .FALSE.
 LCHARG = .FALSE.
-"""
-        )
+""")
 
     # !! CHANGE THIS AS NECESSARY !!
     with open(calctype_settings_dir / "KPOINTS", "w") as f:
-        f.write(
-            """Fully automatic mesh
+        f.write("""Fully automatic mesh
 0              ! 0 -> automatic generation scheme 
 Auto           ! fully automatic
   10           ! length (R_k)
-"""
-        )
+""")
 
     # !! CHANGE THIS AS NECESSARY !!
     # Save pseuodopotential and xc settings
