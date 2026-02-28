@@ -2,7 +2,7 @@ bokeh
 darkdetect
 flask
 flask_cors
-gunicorn
+uvicorn
 latex2mathml
 numpy
 scipy

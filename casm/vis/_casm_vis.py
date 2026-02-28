@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import platform
 import signal
 import subprocess
 import time
@@ -14,23 +13,18 @@ config = get_config()
 
 
 def run_server(script, port):
-    """Run a server using gunicorn."""
+    """Run a server using uvicorn."""
     command = [
-        "gunicorn",
-        "-w",
-        "4",
-        "--worker-class",
-        "gthread",
-        "--worker-tmp-dir",
-        "/tmp",
-        "-b",
-        f"localhost:{port}",
+        "uvicorn",
+        "--interface",
+        "wsgi",
+        "--host",
+        "localhost",
+        "--port",
+        str(port),
         script,
     ]
-    env = os.environ.copy()
-    if platform.system() == "Darwin":
-        env["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
-    return subprocess.Popen(command, start_new_session=True, env=env)
+    return subprocess.Popen(command, start_new_session=True)
 
 
 def run_bokeh_server():
