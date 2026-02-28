@@ -16,12 +16,12 @@ def run_server(script, port):
     """Run a server using uvicorn."""
     command = [
         "uvicorn",
-        "--interface",
-        "wsgi",
         "--host",
         "localhost",
         "--port",
         str(port),
+        "--log-level",
+        "warning",
         script,
     ]
     return subprocess.Popen(command, start_new_session=True)

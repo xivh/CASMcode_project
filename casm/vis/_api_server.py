@@ -4,13 +4,9 @@ import os
 import pathlib
 import typing
 
-from flask import (
-    Flask,
-    jsonify,
-    render_template_string,
-    request,
-)
-from flask_cors import CORS
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from ._functions import get_config
 from ._ServerCache import ServerCache
@@ -28,28 +24,27 @@ home_html = """
   <head>
     <title>CASM</title>
     <link rel="stylesheet" href="https://use.typekit.net/tlb5xuy.css"/>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
   </head>
   <body>
-      <div><img src="{{ url_for('static', filename='images/logo.svg') }}" alt="CASM logo", width="200"></div>
+      <div><img src="/static/images/logo.svg" alt="CASM logo", width="200"></div>
   </body>
 </html>
 """  # noqa: E501
 
 
-app = Flask(__name__)
+app = FastAPI()
 config = get_config()
 casmvis_server = config["CASMVIS_SERVER"]
 
 allowed_origins = [
     casmvis_server,  # casmvis
 ]
-CORS(
-    app,
-    resources={
-        r"/casm*": {"origins": allowed_origins},
-        r"/files*": {"origins": allowed_origins},
-    },
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # http codes:
@@ -203,13 +198,13 @@ def is_subdirectory(path: pathlib.Path, top: pathlib.Path) -> bool:
     return top in path.parents
 
 
-@app.route("/casm/")
+@app.get("/casm/")
 def home():
-    return render_template_string(home_html)
+    return HTMLResponse(content=home_html)
 
 
-@app.route("/files/", methods=["POST"])
-def files_post():
+@app.post("/files/")
+async def files_post(request: Request):
     """Get the files in a directory.
 
     Expects to receive a JSON object with the following format:
@@ -228,7 +223,7 @@ def files_post():
             True if the path is a directory, False otherwise.
 
     """
-    in_data = request.get_json()
+    in_data = await request.json()
     top = pathlib.Path(os.environ["HOME"]).resolve()
     path = pathlib.Path(in_data.get("path", top)).resolve()
 
@@ -236,30 +231,30 @@ def files_post():
     # path must be a sub-directory (direct or indirect)
     # of os.environ["HOME"]:
     if path != top and not is_subdirectory(path, top):
-        return jsonify({"error": f"Provided `path` '{path}' is not allowed."}), 400
+        return JSONResponse(
+            content={"error": f"Provided `path` '{path}' is not allowed."},
+            status_code=400,
+        )
 
     possible_parent = []
     if path != top:
         possible_parent.append({"path": str(path / ".."), "is_dir": True})
 
     if not path.is_dir():
-        return (
-            jsonify({"error": "Provided `path` is not a directory."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "Provided `path` is not a directory."},
+            status_code=http_bad_request,
         )
-    return jsonify(
-        possible_parent
-        + [
-            {"path": str(path / child), "is_dir": child.is_dir()}
-            for child in path.iterdir()
-            if not child.name.startswith(".")
-        ]
-    )
+    return possible_parent + [
+        {"path": str(path / child), "is_dir": child.is_dir()}
+        for child in path.iterdir()
+        if not child.name.startswith(".")
+    ]
 
 
 # Put starred projects:
-@app.route("/casm/project/add/", methods=["PUT"])
-def project_add():
+@app.put("/casm/project/add/")
+async def project_add(request: Request):
     """Add a project to the project list.
 
     Expects to receive a JSON object with the following format:
@@ -289,40 +284,38 @@ def project_add():
 
     from casm.project import project_path as get_project_path
 
-    in_data = request.get_json()
+    in_data = await request.json()
 
     # Validate "project_path":
     if "project_path" not in in_data:
-        return (
-            jsonify({"error": "No `project_path` parameter provided."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "No `project_path` parameter provided."},
+            status_code=http_bad_request,
         )
     start = pathlib.Path(in_data["project_path"])
     project_path = get_project_path(start=start)
     if project_path != start:
-        return (
-            jsonify(
-                {
-                    "error": f"No project found at '{start}'. "
-                    "Must be exactly the project root directory."
-                }
-            ),
-            http_bad_logic,
+        return JSONResponse(
+            content={
+                "error": f"No project found at '{start}'. "
+                "Must be exactly the project root directory."
+            },
+            status_code=http_bad_logic,
         )
 
     # Validate "id":
     if "id" in in_data and not isinstance(in_data["id"], str):
-        return (
-            jsonify({"error": "Optional `id` parameter must be a string if provided."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "Optional `id` parameter must be a string if provided."},
+            status_code=http_bad_request,
         )
     id = in_data.get("id", None)
 
     try:
         data = add_project(path=project_path, id=id)
-        return jsonify(data)
+        return data
     except Exception as e:
-        return jsonify({"error": str(e)}), http_bad_logic
+        return JSONResponse(content={"error": str(e)}, status_code=http_bad_logic)
 
 
 def remove_project_by_id(proj_id: str):
@@ -337,9 +330,9 @@ def remove_project_by_id(proj_id: str):
         if item["id"] == proj_id:
             break
     else:  # not found
-        return (
-            jsonify({"message": f"No project with id={proj_id} currently added."}),
-            http_success,
+        return JSONResponse(
+            content={"message": f"No project with id={proj_id} currently added."},
+            status_code=http_success,
         )
 
     project_list = [item for item in project_list if item["id"] != proj_id]
@@ -352,9 +345,9 @@ def remove_project_by_id(proj_id: str):
     if "projects" in data:
         data["projects"] = [id for id in data["projects"] if id != proj_id]
     safe_dump(data, path=starred_path, force=True)
-    return (
-        jsonify({"message": f"Project '{proj_id}' removed successfully."}),
-        http_success,
+    return JSONResponse(
+        content={"message": f"Project '{proj_id}' removed successfully."},
+        status_code=http_success,
     )
 
 
@@ -372,19 +365,17 @@ def remove_project_by_path(project_path_str: str):
             break
 
     if proj_id is None:
-        return (
-            jsonify(
-                {"message": f"No project at '{project_path_str}' currently added."}
-            ),
-            http_success,
+        return JSONResponse(
+            content={"message": f"No project at '{project_path_str}' currently added."},
+            status_code=http_success,
         )
 
     return remove_project_by_id(proj_id)
 
 
 # Remove projects (from project_list.json only - do not delete files):
-@app.route("/casm/project/<proj_id>/remove/", methods=["PUT"])
-def project_remove(proj_id):
+@app.put("/casm/project/{proj_id}/remove/")
+def project_remove(proj_id: str):
     """Remove a project from the project list.
 
     Parameters
@@ -403,11 +394,17 @@ def project_remove(proj_id):
 
     # Validate "id":
     if not isinstance(proj_id, str):
-        return jsonify({"error": "Project ID must be a string."}), http_bad_request
+        return JSONResponse(
+            content={"error": "Project ID must be a string."},
+            status_code=http_bad_request,
+        )
 
     project_ids = get_project_ids()
     if proj_id not in project_ids:
-        return jsonify({"error": f"Project id='{proj_id}' not found."}), http_bad_logic
+        return JSONResponse(
+            content={"error": f"Project id='{proj_id}' not found."},
+            status_code=http_bad_logic,
+        )
 
     # Remove from project_list.json
     project_list_path = root / "project_list.json"
@@ -426,15 +423,15 @@ def project_remove(proj_id):
         elif proj_id in data[key]:
             del data[key][proj_id]
     safe_dump(data, path=starred_path, force=True)
-    return (
-        jsonify({"message": f"Project '{proj_id}' removed successfully."}),
-        http_success,
+    return JSONResponse(
+        content={"message": f"Project '{proj_id}' removed successfully."},
+        status_code=http_success,
     )
 
 
 # Remove projects (from project_list.json only - do not delete files):
-@app.route("/casm/project/remove/", methods=["PUT"])
-def project_remove_alt():
+@app.put("/casm/project/remove/")
+async def project_remove_alt(request: Request):
     """Remove a project from the project list.
 
     Expects to receive a JSON object with the following format:
@@ -452,78 +449,77 @@ def project_remove_alt():
 
     """
 
-    in_data = request.get_json()
+    in_data = await request.json()
 
     if "project_path" in in_data and "id" in in_data:
-        return (
-            jsonify({"error": "Provide only one of 'project_path' or 'id'."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "Provide only one of 'project_path' or 'id'."},
+            status_code=http_bad_request,
         )
 
     # Validate "project_path":
     if "project_path" in in_data:
         project_path_str = in_data["project_path"]
         if not isinstance(project_path_str, str):
-            return (
-                jsonify({"error": "`project_path` must be a string."}),
-                http_bad_request,
+            return JSONResponse(
+                content={"error": "`project_path` must be a string."},
+                status_code=http_bad_request,
             )
         return remove_project_by_path(project_path_str)
     elif "id" in in_data:
         proj_id = in_data["id"]
         if not isinstance(proj_id, str):
-            return (
-                jsonify({"error": "`id` must be a string."}),
-                http_bad_request,
+            return JSONResponse(
+                content={"error": "`id` must be a string."},
+                status_code=http_bad_request,
             )
         return remove_project_by_id(proj_id)
     else:
-        return (
-            jsonify({"error": "One of 'project_path' or 'id' is required."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "One of 'project_path' or 'id' is required."},
+            status_code=http_bad_request,
         )
 
 
-@app.route("/casm/project/")
-def project_get():
+@app.get("/casm/project/")
+async def project_get(request: Request):
     from casm.project import (
         DirectoryStructure,
     )
     from casm.project import project_path as get_project_path
     from casm.tools.shared.json_io import read_required
 
-    in_data = request.get_json()
+    in_data = await request.json()
     if "project_path" not in in_data:
-        return jsonify({"error": "No project name or path provided."}), http_bad_request
+        return JSONResponse(
+            content={"error": "No project name or path provided."},
+            status_code=http_bad_request,
+        )
     start = pathlib.Path(in_data["project_path"])
     project_path = get_project_path(start=start)
     if project_path != start:
-        return (
-            jsonify(
-                {
-                    "error": f"No project found at '{start}'. "
-                    "Must be exactly the project directory root."
-                }
-            ),
-            http_bad_logic,
+        return JSONResponse(
+            content={
+                "error": f"No project found at '{start}'. "
+                "Must be exactly the project directory root."
+            },
+            status_code=http_bad_logic,
         )
 
     dir = DirectoryStructure(start)
     try:
-        return jsonify(read_required(dir.project_settings()))
+        return read_required(dir.project_settings())
     except Exception:
-        return (
-            jsonify(
-                {
-                    "error": "Project settings could not be read from "
-                    f"'{project_path}'."
-                }
-            ),
-            http_bad_logic,
+        return JSONResponse(
+            content={
+                "error": "Project settings could not be read from "
+                f"'{project_path}'."
+            },
+            status_code=http_bad_logic,
         )
 
 
-@app.route("/casm/project/list/")
+@app.get("/casm/project/list/")
 def project_list_get():
     """Get the list of projects.
 
@@ -547,10 +543,10 @@ def project_list_get():
     # read ~/.casmvis/project_list.json:
     project_list_path = root / "project_list.json"
     default_list = list()
-    return jsonify(read_optional(path=project_list_path, default=default_list))
+    return read_optional(path=project_list_path, default=default_list)
 
 
-@app.route("/casm/project/starred/")
+@app.get("/casm/project/starred/")
 def project_starred_get():
     from casm.tools.shared.json_io import read_optional
 
@@ -559,12 +555,12 @@ def project_starred_get():
     default_data = dict()
     data = read_optional(path=path, default=default_data)
     starred = data.get("projects", list())
-    return jsonify(starred)
+    return starred
 
 
 # Put starred projects:
-@app.route("/casm/project/starred/", methods=["PUT"])
-def project_starred_put():
+@app.put("/casm/project/starred/")
+async def project_starred_put(request: Request):
     """Update the starred projects.
 
     Expects to receive a JSON list of project ID str indicating all the starred
@@ -585,22 +581,25 @@ def project_starred_put():
     # Accepts a list of str (IDs of starred projects)
 
     # Get the data from the request:
-    in_data = request.get_json()
+    in_data = await request.json()
     if not isinstance(in_data, list):
-        return (
-            jsonify({"error": "Data must be a list of project_id."}),
-            http_bad_request,
+        return JSONResponse(
+            content={"error": "Data must be a list of project_id."},
+            status_code=http_bad_request,
         )
 
     # Validate the input:
     project_ids = get_project_ids()
     for project_id in in_data:
         if not isinstance(project_id, str):
-            return jsonify({"error": "`id` must be a string."}), http_bad_request
+            return JSONResponse(
+                content={"error": "`id` must be a string."},
+                status_code=http_bad_request,
+            )
         if project_id not in project_ids:
-            return (
-                jsonify({"error": f"id='{project_id}' not found."}),
-                http_bad_logic,
+            return JSONResponse(
+                content={"error": f"id='{project_id}' not found."},
+                status_code=http_bad_logic,
             )
 
     # Update root/starred.json:
@@ -610,11 +609,14 @@ def project_starred_put():
     data["projects"] = copy.deepcopy(in_data)
     safe_dump(data, path=path, force=True)
 
-    return jsonify({"message": "Starred projects updated successfully."}), http_success
+    return JSONResponse(
+        content={"message": "Starred projects updated successfully."},
+        status_code=http_success,
+    )
 
 
-@app.route("/casm/project/<proj_id>/<obj_type>/list/")
-def project_enum_list_get(proj_id, obj_type):
+@app.get("/casm/project/{proj_id}/{obj_type}/list/")
+def project_enum_list_get(proj_id: str, obj_type: str):
     """Get the list of IDs of some type of project objects (enum, bset, etc.)
 
     Parameters
@@ -639,7 +641,7 @@ def project_enum_list_get(proj_id, obj_type):
     else:
         data = []
 
-    return jsonify(data)
+    return data
 
 
 def main():
@@ -654,22 +656,21 @@ def main():
 
     import threading
 
+    import uvicorn
+
     url = config["CASMVIS_API_SERVER"]
     port = int(url.split(":")[-1])
 
     print(f"Starting CASM API server ({url})...")
 
     def run_app():
-        app.run(
-            debug=args.debug,
+        uvicorn.run(
+            app,
+            host="localhost",
             port=port,
+            log_level="debug" if args.debug else "info",
         )
 
-    # Start the Flask app in a separate thread
+    # Start the app in a separate thread
     thread = threading.Thread(target=run_app)
     thread.start()
-
-    # time.sleep(1.0)
-
-    # # Open the home page in the default web browser
-    # webbrowser.open(f"http://localhost:{args.port}/casm")

@@ -1,7 +1,6 @@
 bokeh
 darkdetect
-flask
-flask_cors
+fastapi
 uvicorn
 latex2mathml
 numpy
