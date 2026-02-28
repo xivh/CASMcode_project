@@ -1,5 +1,6 @@
 bokeh
 jupyterlab
+jupyter_bokeh
 pytest
 pytest-datadir
 pytest-helpers-namespace

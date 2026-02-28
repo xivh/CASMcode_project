@@ -107,9 +107,13 @@ Auto           ! fully automatic
     safe_dump(settings, calctype_settings_dir / "calc.json", force=True)
 
     # !! CHANGE THIS AS NECESSARY !!
-    # Set VASP_PP_PATH
+    # Set VASP_PP_PATH in config.ini file for ASE.
     vasp_pp_path = input_dir / "dummy_vasp_potentials/"
-    os.environ["VASP_PP_PATH"] = str(vasp_pp_path.resolve())
+    config_ini_path = tmp_path / "config.ini"
+    config_ini_path.write_text(
+        f"[environment]\nVASP_PP_PATH = {str(vasp_pp_path.resolve())}\n"
+    )
+    os.environ["ASE_CONFIG_PATH"] = str(config_ini_path.resolve())
 
     return project
 
@@ -189,8 +193,12 @@ Auto           ! fully automatic
     safe_dump(ase_vasp_settings, calctype_settings_dir / "ase_vasp.json", force=True)
 
     # !! CHANGE THIS AS NECESSARY !!
-    # Set VASP_PP_PATH
+    # Set VASP_PP_PATH in config.ini file for ASE.
     vasp_pp_path = input_dir / "dummy_vasp_potentials/"
-    os.environ["VASP_PP_PATH"] = str(vasp_pp_path.resolve())
+    config_ini_path = tmp_path / "config.ini"
+    config_ini_path.write_text(
+        f"[environment]\nVASP_PP_PATH = {str(vasp_pp_path.resolve())}\n"
+    )
+    os.environ["ASE_CONFIG_PATH"] = str(config_ini_path.resolve())
 
     return project
