@@ -303,16 +303,16 @@ class CabinetProjection:
 class SinglePointProjection:
     """A single point perspective projection."""
 
-    def __init__(self, viewer_distance: float = 100.0, plane_offset: float = 50.0):
+    def __init__(self, viewer_distance: float = 500.0, plane_offset: float = 50.0):
         """
         .. rubric:: Constructor
 
         Parameters
         ----------
-        viewer_distance: float = 10.0
+        viewer_distance: float = 500.0
             The distance from the viewer to the projection plane, in terms of the
             3rd coordinate of the view basis.
-        plane_offset: float = 10.0
+        plane_offset: float = 50.0
             The position of the projection plane from the origin of the view basis,
             along the 3rd view basis axis.
         """

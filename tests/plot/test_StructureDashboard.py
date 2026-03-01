@@ -12,6 +12,7 @@ from casm.vis import (
 
 
 def test_StructureDashboard_1():
+    """test constructing and adding a StructureDashboard to the Bokeh server"""
     structure = xtal_structures.FCC(
         a=4.0,
         atom_type="A",
@@ -22,7 +23,6 @@ def test_StructureDashboard_1():
     )
 
     def modify_doc(doc):
-        print("modify_doc")
         layout = dash.make_layout()
         doc.add_root(layout)
 

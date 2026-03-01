@@ -91,7 +91,8 @@ def make_generic_component_params(chemical_names: list[str]):
             line_dash = "solid"
         component_params[chemical_name] = dict(
             color=color,
-            size=10,
+            # size=10,
+            radius_pm=175.0,
             alpha=0.8,
             line_color="black",
             line_width=line_width,

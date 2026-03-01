@@ -1,12 +1,14 @@
+import pathlib
 import typing
 
-import bokeh.layouts
-import bokeh.models
+from bokeh.layouts import column, row
+from bokeh.models import Spacer
 
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
 from ._DashboardStyles import DashboardStyles
+from ._OpenWithButton import OpenWithButton, vesta_installed
 from ._ProjectionView import ProjectionView
 from ._ViewControl import ViewControl
 
@@ -21,6 +23,7 @@ class StructureDashboard:
         structure: xtal.Structure,
         structure_name: str,
         component_params: typing.Optional[dict] = None,
+        views_dir: typing.Optional[pathlib.Path] = None,
     ):
         """
 
@@ -41,6 +44,10 @@ class StructureDashboard:
             Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
             parameters like "line_color" and "line_width" may also be included. The
             same attributes must be present for all components.
+
+        views_dir: typing.Optional[pathlib.Path] = None
+            The directory to save view files for use saving / loading state. If None,
+            views will not be saved.
         """
 
         self.prim = casmconfig.Prim(
@@ -48,6 +55,10 @@ class StructureDashboard:
         )
         """libcasm.configuration.Prim: The primitive cell, constructed from the 
         structure being visualized."""
+
+        self.views_dir = views_dir
+        """pathlib.Path: The directory to save view files for use saving / loading
+        state. If None, views will not be saved."""
 
         self.view_control = ViewControl(
             prim=self.prim,
@@ -64,6 +75,10 @@ class StructureDashboard:
         projection_view."""
 
         ### Dashboard inputs - end ###
+
+        self.open_with_vesta_button = OpenWithButton(
+            parent=self,
+        )
 
     def make_layout(self):
         styles = DashboardStyles()
@@ -109,11 +124,11 @@ class StructureDashboard:
 
         ### Build and return the layout ###
 
-        control_layout = self.view_control.make_controls_tabs_layout(
+        control_layout, settings_switch = self.view_control.make_controls_tabs_layout(
             select_control_layout=None,
             styles=styles,
             parent=self,
-            projection_view=self.projection_view.projection_view,
+            views_dir=self.views_dir,
         )
 
         # Figures grid
@@ -121,8 +136,30 @@ class StructureDashboard:
             styles=styles,
         )
 
+        # Top row:
+        row_elements = []
+        if vesta_installed():
+            open_with_vesta_button_layout = self.open_with_vesta_button.make_layout(
+                styles=styles
+            )
+            row_elements += [
+                Spacer(width=20, sizing_mode="stretch_width"),
+                open_with_vesta_button_layout,
+            ]
+        row_elements += [
+            column(
+                settings_switch,
+                margin=(20, 20),
+            )
+        ]
+        select_layout = row(
+            *row_elements,
+            sizing_mode="stretch_width",
+        )
+
         # Overall layout
-        layout = bokeh.layouts.column(
+        layout = column(
+            select_layout,
             control_layout,
             projection_view_layout,
         )

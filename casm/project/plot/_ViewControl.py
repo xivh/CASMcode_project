@@ -1121,12 +1121,12 @@ class ViewControl:
             row(images_a_range, images_b_range, images_c_range),
             images_m_range,
             width=300,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
         c2 = column(
             reset_button,
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
 
         # Save images widgets:
@@ -1213,7 +1213,7 @@ class ViewControl:
                 marker_alpha_scale_inc,
             ),
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
@@ -1222,7 +1222,7 @@ class ViewControl:
         c2 = column(
             reset_button,
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
 
         return row(
@@ -2043,7 +2043,7 @@ class ViewControl:
         cabinet_control_layout = column(
             row(cabinet_scale_div, cabinet_scale_dec, cabinet_scale_inc),
             row(cabinet_angle_div, cabinet_angle_dec, cabinet_angle_inc),
-            width=200,
+            width=250,
             margin=(0, 10),
             visible=isinstance(self.projection, CabinetProjection),
         )
@@ -2051,58 +2051,49 @@ class ViewControl:
         ### Single point controls ###
 
         # Projection viewer distance
-        viewer_distance_div = bokeh.models.Div(text="""<b>Viewer Distance:</b>""")
-        viewer_distance_inc = bokeh.models.Button(
-            label="+", stylesheets=[styles.dark_bk_input_style]
-        )
-        viewer_distance_dec = bokeh.models.Button(
-            label="-", stylesheets=[styles.dark_bk_input_style]
+        viewer_distance_spinner = bokeh.models.Spinner(
+            title="Viewer distance",
+            value=self.projection.viewer_distance,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=50, step=50),
+            high=2000,
         )
 
         # Projection plane offset
-        plane_offset_div = bokeh.models.Div(text="""<b>Plane Offset:</b>""")
-        plane_offset_inc = bokeh.models.Button(
-            label="+", stylesheets=[styles.dark_bk_input_style]
+        plane_offset_spinner = bokeh.models.Spinner(
+            title="Plane offset",
+            value=self.projection.plane_offset,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, step=10),  # low=0, high=1000,
         )
-        plane_offset_dec = bokeh.models.Button(
-            label="-", stylesheets=[styles.dark_bk_input_style]
-        )
-
-        self.plane_offset_step_size = 5.0
 
         # Callbacks:
-        def increase_viewer_distance(attr):
-            if isinstance(self.projection, SinglePointProjection):
-                self.projection.viewer_distance *= 1.5
-                parent.trigger_update()
+        def update_viewer_distance(attr, old, new):
+            if self._update_disabled:
+                return
 
-        viewer_distance_inc.on_click(increase_viewer_distance)
+            self._update_disabled = True
+            self.projection.viewer_distance = new
+            self._update_disabled = False
+            parent.trigger_update()
 
-        def decrease_viewer_distance(attr):
-            if isinstance(self.projection, SinglePointProjection):
-                self.projection.viewer_distance /= 1.5
-                parent.trigger_update()
+        viewer_distance_spinner.on_change("value", update_viewer_distance)
 
-        viewer_distance_dec.on_click(decrease_viewer_distance)
+        def update_plane_offset(attr, old, new):
+            if self._update_disabled:
+                return
 
-        def increase_plane_offset(attr):
-            if isinstance(self.projection, SinglePointProjection):
-                self.projection.plane_offset += self.plane_offset_step_size
-                parent.trigger_update()
+            self._update_disabled = True
+            self.projection.plane_offset = new
+            self._update_disabled = False
+            parent.trigger_update()
 
-        plane_offset_inc.on_click(increase_plane_offset)
-
-        def decrease_plane_offset(attr):
-            if isinstance(self.projection, SinglePointProjection):
-                self.projection.plane_offset -= self.plane_offset_step_size
-                parent.trigger_update()
-
-        plane_offset_dec.on_click(decrease_plane_offset)
+        plane_offset_spinner.on_change("value", update_plane_offset)
 
         singlepoint_control_layout = column(
-            row(viewer_distance_div, viewer_distance_dec, viewer_distance_inc),
-            row(plane_offset_div, plane_offset_dec, plane_offset_inc),
-            width=200,
+            row(viewer_distance_spinner),
+            row(plane_offset_spinner),
+            width=250,
             margin=(0, 10),
             visible=isinstance(self.projection, SinglePointProjection),
         )
@@ -2165,8 +2156,8 @@ class ViewControl:
             column(
                 projection_type_div,
                 projection_type_select,
-                width=200,
-                margin=(0, 10),
+                width=250,
+                # margin=(0, 10),
             ),
             cabinet_control_layout,
             singlepoint_control_layout,
@@ -2299,21 +2290,21 @@ class ViewControl:
                 column(
                     layout_type_select,
                     width=240,
-                    margin=(0, 10),
+                    # margin=(0, 10),
                 ),
                 column(
                     multivew_div,
                     multiview_height_spinner,
                     multiview_width_spinner,
                     width=150,
-                    margin=(0, 10),
+                    # margin=(0, 10),
                 ),
                 column(
                     singleview_div,
                     singleview_height_spinner,
                     singleview_width_spinner,
                     width=150,
-                    margin=(0, 10),
+                    # margin=(0, 10),
                 ),
             ),
             stylesheets=[
@@ -2378,7 +2369,7 @@ class ViewControl:
             grid_lines_switch,
             transparency_mode_switch,
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
@@ -2593,6 +2584,9 @@ class ViewControl:
         -------
         layout: bokeh.models.Tabs
             A Bokeh Tabs layout with view controls
+
+        settings_switch: bokeh.models.Switch
+            A switch to toggle the visibility of the controls layout
         """
         self.parent = parent
 
@@ -2631,24 +2625,20 @@ class ViewControl:
             parent=parent,
         )
 
-        tabs = []
+        panels = {}
         if select_control_layout:
-            tabs.append(
-                bokeh.models.TabPanel(child=select_control_layout, title="Select")
-            )
-        tabs += [
-            bokeh.models.TabPanel(child=images_control_layout, title="Supercell"),
-            bokeh.models.TabPanel(child=markers_control_layout, title="Markers"),
-            bokeh.models.TabPanel(child=styles_control_layout, title="Styles"),
-            bokeh.models.TabPanel(
-                child=projaxes_control_layout, title="Projection Axes"
-            ),
-            bokeh.models.TabPanel(
-                child=projection_control_layout, title="Projection Type"
-            ),
-            bokeh.models.TabPanel(child=layout_control_layout, title="Layout"),
-            bokeh.models.TabPanel(child=misc_control_layout, title="Misc"),
-        ]
+            panels["Select"] = select_control_layout
+        panels.update(
+            {
+                "Supercell": images_control_layout,
+                "Markers": markers_control_layout,
+                "Styles": styles_control_layout,
+                "Projection Axes": projaxes_control_layout,
+                "Projection Type": projection_control_layout,
+                "Layout": layout_control_layout,
+                "Misc": misc_control_layout,
+            }
+        )
 
         if views_dir is not None:
             state_control_layout = self.make_state_control_layout(
@@ -2656,49 +2646,56 @@ class ViewControl:
                 styles=styles,
                 parent=parent,
             )
-            tabs.append(
-                bokeh.models.TabPanel(child=state_control_layout, title="State")
-            )
+            panels["State"] = state_control_layout
 
-        tabs_layout = bokeh.models.Tabs(
-            tabs=tabs,
+        panel_names = list(panels.keys())
+
+        tab_select = bokeh.models.Select(
+            title="Settings type",
+            options=panel_names,
+            value=panel_names[0],
+            stylesheets=[styles.dark_bk_input_style],
+            width=200,
+        )
+
+        # Set initial visibility: show only the first panel
+        for name, layout in panels.items():
+            layout.visible = name == panel_names[0]
+
+        def switch_panel(attr, old, new):
+            for name, layout in panels.items():
+                layout.visible = name == new
+
+        tab_select.on_change("value", switch_panel)
+
+        controls_area = column(
+            tab_select,
+            *panels.values(),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
             ],
+            margin=(0, 20),
         )
-        tabs_layout.visible = False
+        controls_area.visible = False
 
         toggle_button = bokeh.models.Switch(label="Settings", active=False)
 
-        # CustomJS to toggle visibility
         toggle_button.js_on_change(
             "active",
             bokeh.models.CustomJS(
-                args=dict(tabs_layout=tabs_layout),
+                args=dict(controls_area=controls_area),
                 code="""
-            tabs_layout.visible = cb_obj.active;
+            controls_area.visible = cb_obj.active;
         """,
             ),
         )
 
         control_layout = column(
-            row(
-                toggle_button,
-                height=30,
-            ),
-            tabs_layout,
+            controls_area,
             margin=(0, 20),  # top/bottom, left/right
         )
 
-        # control_layout = column(
-        #     images_control_layout,
-        #     markers_control_layout,
-        #     projaxes_control_layout,
-        #     stylesheets=[
-        #         styles.darkstyle,
-        #         styles.typekit_stylesheet,
-        #     ],
-        # )
+        settings_switch = toggle_button
 
-        return control_layout
+        return control_layout, settings_switch

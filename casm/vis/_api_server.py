@@ -453,7 +453,8 @@ def project_starred_get():
 async def project_starred_put(body: Annotated[list[str], Body()]):
     """Update the starred projects.
 
-    **Request body (JSON):** A list of project ID strings representing all starred projects.
+    **Request body (JSON):** A list of project ID strings representing all starred
+    projects.
     """
     from casm.tools.shared.json_io import read_optional, safe_dump
 

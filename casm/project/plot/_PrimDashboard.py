@@ -31,9 +31,6 @@ class PrimDashboard:
         prim: libcasm.configuration.Prim
             The primitive cell.
 
-        configuration_set: libcasm.configuration.ConfigurationSet
-            The :class:`~libcasm.configuration.ConfigurationSet` to visualize.
-
         component_params: dict[str, dict]
             The bokeh scatter plot parameters used to draw atoms, with
             atom type name as key.
@@ -126,7 +123,7 @@ class PrimDashboard:
 
         select_layout = self.prim_coloring_select.make_layout(styles=styles)
 
-        control_layout = self.view_control.make_controls_tabs_layout(
+        control_layout, settings_switch = self.view_control.make_controls_tabs_layout(
             select_control_layout=None,
             styles=styles,
             parent=self,
@@ -138,16 +135,26 @@ class PrimDashboard:
             styles=styles,
         )
 
+        # Top row:
+        row_elements = [select_layout]
         if vesta_installed():
             open_with_vesta_button_layout = self.open_with_vesta_button.make_layout(
                 styles=styles
             )
-            select_layout = row(
-                select_layout,
+            row_elements += [
                 Spacer(width=20, sizing_mode="stretch_width"),
                 open_with_vesta_button_layout,
-                sizing_mode="stretch_width",
+            ]
+        row_elements += [
+            column(
+                settings_switch,
+                margin=(20, 20),
             )
+        ]
+        select_layout = row(
+            *row_elements,
+            sizing_mode="stretch_width",
+        )
 
         # Overall layout
         layout = column(
