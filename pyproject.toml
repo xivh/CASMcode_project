@@ -35,6 +35,10 @@ dependencies = [
     "casm-tools>=2.0a3",
 ]
 
+
+[project.optional-dependencies]
+ase = ["ase"]
+
 [project.urls]
 Homepage = "https://prisms-center.github.io/CASMcode_docs/"
 Repository = "https://github.com/prisms-center/casm_project"
