@@ -1,12 +1,15 @@
 import pathlib
 import typing
 
+import numpy as np
 from bokeh.layouts import column, row
-from bokeh.models import Spacer
+from bokeh.models import ColumnDataSource, Spacer
 
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
 
 from ._ConfigurationSetSelect import ConfigurationSetSelect
+from ._CopyToClipboardButton import CopyToClipboardButton
 from ._DashboardStyles import DashboardStyles
 from ._OpenWithButton import OpenWithButton, vesta_installed
 from ._ProjectionView import ProjectionView
@@ -83,6 +86,32 @@ class ConfigurationSetDashboardv2:
             parent=self,
         )
 
+        if self.selected_structure_name is not None:
+            self.last_name = self.selected_structure_name
+            self.last_T = self.view_control.get_transformation_matrix_to_super()
+            record = self.configuration_set.get_by_name(self.selected_structure_name)
+            if record is not None:
+                config = record.configuration
+                self.config_json_source = ColumnDataSource(
+                    data=dict(text_to_copy=[xtal.pretty_json(config.to_dict())])
+                )
+            else:
+                self.config_json_source = ColumnDataSource(
+                    data=dict(text_to_copy=["No configuration selected"])
+                )
+        else:
+            self.last_name = None
+            self.last_T = None
+            self.config_json_source = ColumnDataSource(
+                data=dict(text_to_copy=["No configuration selected"])
+            )
+        self.copy_data_button = CopyToClipboardButton(
+            label="Data",
+            source=self.config_json_source,
+            show_copy_icon=True,
+            snackbar_message="Copied configuration JSON to clipboard!",
+        )
+
     def make_layout(self):
         styles = DashboardStyles()
 
@@ -112,6 +141,31 @@ class ConfigurationSetDashboardv2:
         def _trigger_update():
             if self.selected_structure is None:
                 return
+
+            name = self.selected_structure_name
+            T = self.view_control.get_transformation_matrix_to_super()
+
+            if name != self.last_name or not np.array_equal(T, self.last_T):
+                # If the selected configuration or the transformation matrix has
+                # changed, we need to update the superstructure and the JSON data
+                self.last_name = name
+                self.last_T = T
+
+                record = self.configuration_set.get_by_name(name)
+                if record is not None:
+                    config = record.configuration
+                    T0 = config.supercell.transformation_matrix_to_super
+                    supercell = casmconfig.Supercell(
+                        prim=self.prim,
+                        transformation_matrix_to_super=T0 @ T,
+                    )
+                    superconfig = casmconfig.copy_configuration(
+                        motif=config,
+                        supercell=supercell,
+                    )
+                    self.config_json_source.data["text_to_copy"] = [
+                        xtal.pretty_json(superconfig.to_dict())
+                    ]
 
             self.projection_view.set_structure(
                 structure=self.view_control.make_superstructure(
@@ -151,10 +205,11 @@ class ConfigurationSetDashboardv2:
                 open_with_vesta_button_layout,
             ]
         row_elements += [
+            self.copy_data_button.make_layout(styles=styles),
             column(
                 settings_switch,
                 margin=(20, 10),
-            )
+            ),
         ]
         select_layout = row(
             *row_elements,
