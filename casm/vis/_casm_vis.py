@@ -87,7 +87,7 @@ def _start_casmvis(
     if start_bokeh and servers["bokeh"] == 0:
         print("Starting CASM Bokeh server...")
         _bokeh_server_process = run_bokeh_server()
-        time.sleep(0.2)
+        time.sleep(1.0)
         servers["bokeh"] = _bokeh_server_process.pid
     if start_api and servers["api"] == 0:
         api_url = config["CASMVIS_API_SERVER"]
@@ -116,10 +116,6 @@ def _start_casmvis(
     if browser:
         print(f"Opening casm-vis ({config['CASMVIS_SERVER']}) in your browser...")
         webbrowser.open(config["CASMVIS_SERVER"])
-    else:
-        print(
-            f"To open casm-vis, navigate to {config['CASMVIS_SERVER']} in your browser."
-        )
 
 
 def stop(
@@ -221,6 +217,11 @@ def run_start(args):
         browser=args.browser,
     )
 
+    if args.vis:
+        print(
+            f"To open casm-vis, navigate to {config['CASMVIS_SERVER']} in your browser."
+        )
+
 
 def run_stop(args):
     server_names = []
@@ -236,6 +237,59 @@ def run_stop(args):
     stop(
         server_names=server_names,
     )
+
+
+def open_casm_dash_prim(args):
+    _start_casmvis(
+        server_names=["bokeh"],
+        browser=False,
+    )
+
+    config = get_config()
+    bokeh_server_url = config["CASMVIS_BOKEH_SERVER"]
+
+    print(f"path={args.path}")
+
+    base_url = f"{bokeh_server_url}/casm/dash/prim/"
+    import pathlib
+    import webbrowser
+    from urllib.parse import urlencode
+
+    abs_path = pathlib.Path(args.path).resolve()
+
+    params = urlencode({"path": abs_path})
+    full_url = f"{base_url}?{params}"
+
+    print(f"Opening prim dashboard at {full_url}")
+
+    webbrowser.open(full_url)
+
+
+def open_casm_dash_structure(args):
+    _start_casmvis(
+        server_names=["bokeh"],
+        browser=False,
+    )
+
+    config = get_config()
+    bokeh_server_url = config["CASMVIS_BOKEH_SERVER"]
+
+    print(f"path={args.path}")
+
+    base_url = f"{bokeh_server_url}/casm/dash/structure/"
+    import pathlib
+    import webbrowser
+    from urllib.parse import urlencode
+
+    abs_path = pathlib.Path(args.path).resolve()
+    title = str(pathlib.Path(args.path).name)
+
+    params = urlencode({"path": abs_path, "title": title})
+    full_url = f"{base_url}?{params}"
+
+    print(f"Opening structure dashboard at {full_url}")
+
+    webbrowser.open(full_url)
 
 
 def main():
@@ -281,6 +335,26 @@ def main():
     )
     stop_parser.add_argument(
         "--vis", action="store_true", help="Stop the VIS server only."
+    )
+
+    # Prim Dashboard
+    prim_parser = subparsers.add_parser("prim", help="Open the CASM prim dashboard")
+    prim_parser.set_defaults(
+        func=open_casm_dash_prim,
+    )
+    prim_parser.add_argument(
+        "path", type=str, help="Path to the CASM Prim JSON file to visualize."
+    )
+
+    # Structure Dashboard
+    structure_parser = subparsers.add_parser(
+        "structure", help="Open the CASM structure dashboard"
+    )
+    structure_parser.set_defaults(
+        func=open_casm_dash_structure,
+    )
+    structure_parser.add_argument(
+        "path", type=str, help="Path to the CASM Structure JSON file to visualize."
     )
 
     args = parser.parse_args()

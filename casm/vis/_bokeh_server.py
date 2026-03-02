@@ -6,18 +6,22 @@ import darkdetect
 
 import casm.project as casmproj
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
 from casm.project.plot import (
     ConfigurationListDashboardv2,
     ConfigurationSetDashboardv2,
     PrimDashboard,
+    StructureDashboard,
 )
+from casm.tools.shared.json_io import read_required
 
 from ._BokehServerManager import (
     add_application,
     start_applications,
 )
 from ._functions import (
+    get_optional_argument,
     get_required_argument,
 )
 from ._ServerCache import (
@@ -173,12 +177,103 @@ def add_casm_enum_vis(cache: ServerCache):
     )
 
 
+def add_casm_dash_prim():
+    bokeh_app_path = "/casm/dash/prim/"
+
+    def modify_doc(doc):
+        # print("Begin /casm/dash/prim/")
+
+        try:
+            path = get_required_argument(doc, "path")
+            prim_data = read_required(path=path)
+            title = prim_data.get("title", "Prim (no title)")
+            prim = casmconfig.Prim.from_dict(data=prim_data)
+
+            dash = PrimDashboard(
+                prim=prim,
+                file_path=pathlib.Path(path),
+            )
+            dash.selected_structure_name = title
+
+            # Overall layout
+            layout = dash.make_layout()
+
+        except Exception as e:
+            from bokeh.layouts import column
+            from bokeh.models import Div
+
+            error_div = Div(
+                text=f"<h3>Error:</h3><p style='color: red;'>{str(e)}</p>",
+                width=800,
+                height=200,
+            )
+            layout = column(error_div)
+
+        doc.add_root(layout)
+
+        if darkdetect.isDark():
+            doc.theme = "carbon"
+
+    add_application(
+        url=pathlib.Path(bokeh_app_path),
+        app=modify_doc,
+    )
+
+
+def add_casm_dash_structure():
+    bokeh_app_path = "/casm/dash/structure/"
+
+    def modify_doc(doc):
+        # print("Begin /casm/dash/structure/")
+
+        try:
+            path = get_required_argument(doc, "path")
+            name = pathlib.Path(path).name
+            title = get_optional_argument(doc, "title", default=name)
+            structure_data = read_required(path=path)
+            structure = xtal.Structure.from_dict(data=structure_data)
+
+            dash = StructureDashboard(
+                structure=structure,
+                structure_name=title,
+                file_path=pathlib.Path(path),
+            )
+
+            # Overall layout
+            layout = dash.make_layout()
+
+        except Exception as e:
+            from bokeh.layouts import column
+            from bokeh.models import Div
+
+            error_div = Div(
+                text=f"<h3>Error:</h3><p style='color: red;'>{str(e)}</p>",
+                width=800,
+                height=200,
+            )
+            layout = column(error_div)
+
+        doc.add_root(layout)
+
+        if darkdetect.isDark():
+            doc.theme = "carbon"
+
+    add_application(
+        url=pathlib.Path(bokeh_app_path),
+        app=modify_doc,
+    )
+
+
 def main():
     cache = ServerCache()
 
-    # casm project visualizations
+    # Project visualizations
     add_casm_prim_vis(cache=cache)
     add_casm_enum_vis(cache=cache)
+
+    # Dashboards - independent of a project
+    add_casm_dash_prim()
+    add_casm_dash_structure()
 
     try:
         start_applications()

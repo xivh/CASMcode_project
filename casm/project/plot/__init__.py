@@ -12,6 +12,13 @@ from ._ConfigurationSetDashboard import (
 from ._ConfigurationSetDashboard_v2 import (
     ConfigurationSetDashboardv2,
 )
+from ._CopyToClipboardButton import (
+    CopyToClipboardButton,
+)
+from ._OpenWithButton import (
+    OpenWithButton,
+    vesta_installed,
+)
 from ._PrimDashboard import (
     PrimDashboard,
 )

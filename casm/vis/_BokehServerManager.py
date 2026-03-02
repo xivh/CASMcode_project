@@ -88,6 +88,7 @@ class BokehServerManager:
         """
         config = get_config()
         url = config["CASMVIS_BOKEH_SERVER"]
+        secret_key = config["CASMVIS_BOKEH_SN_KEY"]
         port = int(url.split(":")[-1])
 
         self._server = Server(
@@ -96,6 +97,9 @@ class BokehServerManager:
             io_loop=IOLoop.current(),
             allow_websocket_origin=self.allow_websocket_origin,
             allow_origin=self.allow_origin,
+            session_token_expiration=86400,
+            secret_key=secret_key,
+            sign_sessions=True,
         )
 
         self._server.start()

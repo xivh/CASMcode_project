@@ -943,6 +943,13 @@ class ViewControl:
             self.parent.projection_view.update_layout()
             self._projaxes_input.update_layout()
 
+    def get_transformation_matrix_to_super(self):
+        a = self.images_a_range
+        b = self.images_b_range
+        c = self.images_c_range
+        m = self.images_m_range
+        return np.diag([a, b, c]) * m
+
     def make_superstructure(
         self,
         init_structure: xtal.Structure,

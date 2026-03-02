@@ -1,12 +1,15 @@
 import pathlib
 import typing
 
+import numpy as np
 from bokeh.layouts import column, row
-from bokeh.models import Spacer
+from bokeh.models import ColumnDataSource, Spacer
 
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
 
 from ._ConfigurationListSelect import ConfigurationListSelect
+from ._CopyToClipboardButton import CopyToClipboardButton
 from ._DashboardStyles import DashboardStyles
 from ._OpenWithButton import OpenWithButton, vesta_installed
 from ._ProjectionView import ProjectionView
@@ -84,6 +87,26 @@ class ConfigurationListDashboardv2:
             parent=self,
         )
 
+        config = self.configuration_list_select.get_configuration()
+        if config is not None:
+            self.last_indices = self.configuration_list_select.get_indices()
+            self.last_T = self.view_control.get_transformation_matrix_to_super()
+            self.config_json_source = ColumnDataSource(
+                data=dict(text_to_copy=[xtal.pretty_json(config.to_dict())])
+            )
+        else:
+            self.last_indices = None
+            self.last_T = None
+            self.config_json_source = ColumnDataSource(
+                data=dict(text_to_copy=["No configuration selected"])
+            )
+        self.copy_data_button = CopyToClipboardButton(
+            label="Data",
+            source=self.config_json_source,
+            show_copy_icon=True,
+            snackbar_message="Copied configuration JSON to clipboard!",
+        )
+
     def make_layout(self):
         styles = DashboardStyles()
 
@@ -113,6 +136,31 @@ class ConfigurationListDashboardv2:
         def _trigger_update():
             if self.selected_structure is None:
                 return
+
+            indices = self.configuration_list_select.get_indices()
+            T = self.view_control.get_transformation_matrix_to_super()
+
+            if indices != self.last_indices or not np.array_equal(T, self.last_T):
+                # If the indics of the selected configuration or the transformation
+                # matrix has changed, we need to update the superstructure and the
+                # JSON data
+                self.last_indices = indices
+                self.last_T = T
+
+                config = self.configuration_list_select.get_configuration()
+                if config is not None:
+                    T0 = config.supercell.transformation_matrix_to_super
+                    supercell = casmconfig.Supercell(
+                        prim=self.prim,
+                        transformation_matrix_to_super=T0 @ T,
+                    )
+                    superconfig = casmconfig.copy_configuration(
+                        motif=config,
+                        supercell=supercell,
+                    )
+                    self.config_json_source.data["text_to_copy"] = [
+                        xtal.pretty_json(superconfig.to_dict())
+                    ]
 
             self.projection_view.set_structure(
                 structure=self.view_control.make_superstructure(
@@ -152,10 +200,11 @@ class ConfigurationListDashboardv2:
                 open_with_vesta_button_layout,
             ]
         row_elements += [
+            self.copy_data_button.make_layout(styles=styles),
             column(
                 settings_switch,
-                margin=(20, 20),
-            )
+                margin=(20, 10),
+            ),
         ]
         select_layout = row(
             *row_elements,

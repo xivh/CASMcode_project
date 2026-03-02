@@ -68,6 +68,19 @@ class ConfigurationListSelect:
 
         self.set_structure()
 
+    def get_indices(self):
+        return (self.i_page, self.i_index_on_page)
+
+    def get_configuration(self):
+        if self.i_page is None:
+            return None
+
+        config_index = int(
+            self.config_index_by_page_number[self.i_page][self.i_index_on_page]
+        )
+        configuration = self.configuration_list[config_index]
+        return configuration
+
     def set_structure(self):
         if self.i_page is None:
             return

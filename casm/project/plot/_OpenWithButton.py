@@ -11,6 +11,11 @@ import libcasm.xtal as xtal
 
 from ._DashboardStyles import DashboardStyles
 
+LaunchIcon_svg = (
+    '<path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 '
+    '2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>'
+)
+
 
 def vesta_installed() -> bool:
     """Check if VESTA is installed on the system.
@@ -123,8 +128,17 @@ class OpenWithButton:
         """Return the layout containing the button."""
 
         open_with_button = bokeh.models.Button(
-            label=f"Open with {self.program_name}",
+            label=f"{self.program_name}",
             button_type="success",
+            icon=bokeh.models.SVGIcon(
+                svg=(
+                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"'
+                    ' fill="currentColor">'
+                    f"{LaunchIcon_svg}"
+                    "</svg>"
+                ),
+                size="1.2em",
+            ),
         )
 
         def _on_click(attr):
@@ -138,5 +152,5 @@ class OpenWithButton:
 
         return column(
             open_with_button,
-            margin=(10, 20),
+            margin=(10, 0),
         )

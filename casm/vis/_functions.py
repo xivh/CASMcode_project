@@ -7,6 +7,7 @@ default_config = {
     "CASMVIS_SERVER": "http://localhost:3000",
     "CASMVIS_BOKEH_SERVER": "http://localhost:3002",
     "CASMVIS_API_SERVER": "http://localhost:3001",
+    "CASMVIS_BOKEH_SN_KEY": "TYBXCv67QzxvITExnD8LIaN2vjk9I2TTE7VqS6ZwUJDh",
 }
 
 

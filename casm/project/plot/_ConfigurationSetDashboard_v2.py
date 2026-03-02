@@ -153,7 +153,7 @@ class ConfigurationSetDashboardv2:
         row_elements += [
             column(
                 settings_switch,
-                margin=(20, 20),
+                margin=(20, 10),
             )
         ]
         select_layout = row(

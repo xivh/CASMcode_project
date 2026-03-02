@@ -2,10 +2,12 @@ import pathlib
 import typing
 
 from bokeh.layouts import column, row
-from bokeh.models import Spacer
+from bokeh.models import ColumnDataSource, Spacer
 
 import libcasm.configuration as casmconfig
+import libcasm.xtal as xtal
 
+from ._CopyToClipboardButton import CopyToClipboardButton
 from ._DashboardStyles import DashboardStyles
 from ._OpenWithButton import OpenWithButton, vesta_installed
 from ._PrimColoringSelect import PrimColoringSelect
@@ -21,6 +23,7 @@ class PrimDashboard:
         prim: casmconfig.Prim,
         component_params: typing.Optional[dict] = None,
         views_dir: typing.Optional[pathlib.Path] = None,
+        file_path: typing.Optional[pathlib.Path] = None,
     ):
         """
 
@@ -42,6 +45,10 @@ class PrimDashboard:
         views_dir: typing.Optional[pathlib.Path] = None
             The directory to save view files for use saving / loading state. If None,
             views will not be saved.
+
+        file_path: typing.Optional[pathlib.Path] = None
+            The file path of the prim JSON file, used for the "Copy Path" button. If
+            None, the button will not be shown.
         """
 
         self.prim = prim
@@ -62,8 +69,12 @@ class PrimDashboard:
         """libcasm.xtal.Structure: The structure to view in projection_view."""
 
         self.selected_structure_name = None
-        """str: The name of the selected structure, used as a label in 
+        """str: The name of the selected structure, used as a label in
         projection_view."""
+
+        self.file_path = file_path
+        """Optional[pathlib.Path]: The file path of the prim JSON file, used for the
+        "Copy Path" button. If None, the button will not be shown."""
 
         ### Dashboard inputs - end ###
 
@@ -74,6 +85,27 @@ class PrimDashboard:
 
         self.open_with_vesta_button = OpenWithButton(
             parent=self,
+        )
+
+        if self.file_path is not None:
+            self.path_source = ColumnDataSource(
+                data=dict(text_to_copy=[str(self.file_path.resolve())])
+            )
+            self.copy_to_clipboard_button = CopyToClipboardButton(
+                label="Path",
+                source=self.path_source,
+                show_copy_icon=True,
+                snackbar_message="Copied file path to clipboard!",
+            )
+
+        self.prim_json_source = ColumnDataSource(
+            data=dict(text_to_copy=[xtal.pretty_json(self.prim.to_dict())])
+        )
+        self.copy_data_button = CopyToClipboardButton(
+            label="Data",
+            source=self.prim_json_source,
+            show_copy_icon=True,
+            snackbar_message="Copied prim JSON to clipboard!",
         )
 
     def make_layout(
@@ -145,11 +177,19 @@ class PrimDashboard:
                 Spacer(width=20, sizing_mode="stretch_width"),
                 open_with_vesta_button_layout,
             ]
+        if self.file_path is not None:
+            copy_to_clipboard_button_layout = self.copy_to_clipboard_button.make_layout(
+                styles=styles
+            )
+            row_elements += [
+                copy_to_clipboard_button_layout,
+            ]
         row_elements += [
+            self.copy_data_button.make_layout(styles=styles),
             column(
                 settings_switch,
-                margin=(20, 20),
-            )
+                margin=(20, 10),
+            ),
         ]
         select_layout = row(
             *row_elements,
