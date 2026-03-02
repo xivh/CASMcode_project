@@ -43,6 +43,24 @@ def get_config():
     return read_required(path=config_file)
 
 
+def get_user_views_dir():
+    """Get the directory to save user view files.
+
+    Projects have their own views directory for saving view files, but this is a more
+    general directory for saving view files that are not project-specific, such as
+    views of structures that are not associated with a project.
+
+    Returns
+    -------
+    views_dir: pathlib.Path
+        The directory to save user view files. This directory is created if it does
+        not already exist. Location is ~/.casmvis/views by default.
+    """
+    views_dir = root / "views"
+    views_dir.mkdir(parents=True, exist_ok=True)
+    return views_dir
+
+
 def get_pid_file():
     """Get the casm-vis PID file."""
     return root / "casmvis.pid"

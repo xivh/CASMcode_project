@@ -797,7 +797,11 @@ class ViewControl:
                 "line_dash": "solid",
             },
         )
-        self.component_params = state.get("component_params", {})
+        component_params = make_highlight_params(
+            component_params=make_prim_component_params(prim=self.prim),
+        )
+        component_params.update(state.get("component_params", {}))
+        self.component_params = component_params
 
         # Projection parameters
         self._initial_projection = make_projection_from_dict(

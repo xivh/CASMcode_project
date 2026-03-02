@@ -23,6 +23,7 @@ from ._BokehServerManager import (
 from ._functions import (
     get_optional_argument,
     get_required_argument,
+    get_user_views_dir,
 )
 from ._ServerCache import (
     ServerCache,
@@ -192,6 +193,7 @@ def add_casm_dash_prim():
             dash = PrimDashboard(
                 prim=prim,
                 file_path=pathlib.Path(path),
+                views_dir=get_user_views_dir(),
             )
             dash.selected_structure_name = title
 
@@ -237,6 +239,7 @@ def add_casm_dash_structure():
                 structure=structure,
                 structure_name=title,
                 file_path=pathlib.Path(path),
+                views_dir=get_user_views_dir(),
             )
 
             # Overall layout
