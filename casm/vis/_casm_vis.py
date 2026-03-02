@@ -175,7 +175,6 @@ def stop(
         # Remove the PID file
         if pid_file.exists():
             pid_file.unlink()
-            print("PID file removed.")
             time.sleep(0.2)
 
         print("All casm-vis servers stopped.")
@@ -217,7 +216,7 @@ def run_start(args):
         browser=args.browser,
     )
 
-    if args.vis:
+    if "vis" in server_names or "all" in server_names:
         print(
             f"To open casm-vis, navigate to {config['CASMVIS_SERVER']} in your browser."
         )
