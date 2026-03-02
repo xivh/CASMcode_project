@@ -23,7 +23,7 @@ class StructureDashboard:
         self,
         structure: xtal.Structure,
         structure_name: str,
-        file_path: typing.Optional[pathlib.Path],
+        file_path: typing.Optional[pathlib.Path] = None,
         component_params: typing.Optional[dict] = None,
         views_dir: typing.Optional[pathlib.Path] = None,
     ):
