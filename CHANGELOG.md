@@ -6,17 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [2.0a2] - 2026-03-02
 
 ### Added
 
 - Added casm.project.DirectoryStructureV1 to separate CASM v1 project structure from CASM v2 project structure.
 - Added `start` and `stop` methods to `casm.vis` to start and stop the `casm-vis` servers.
+- Added `casm-vis prim` and `casm-vis structure` commands to visualization prim and structure JSON files outside of a project context.
+- Added rendered notebooks in the `Usage` documentation section.
 
 ### Changed
 
 - Changed casm.project.DirectoryStructure to remove CASM v1 project structure paths, change paths to v2 project locations, and to deprecate methods with `_v2` suffix.
 - Changed `casm-vis` interface to use `casm-vis start` and `casm-vis stop` commands.
+- Use FastAPI instead of Flask and uvicorn instead of gunicorn.
 
 
 ## [2.0a1] - 2025-08-08
