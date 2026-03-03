@@ -1,5 +1,7 @@
 import copy
+import json
 import math
+import pathlib
 import typing
 
 import bokeh.models
@@ -16,19 +18,25 @@ from ._misc import (
     scale_to_int_if_possible,
     to_miller_bravais_direction,
 )
+from ._view import (
+    CabinetProjection,
+    IsometricProjection,
+    SinglePointProjection,
+    make_projection_from_dict,
+)
 from ._ViewAtomicStructure import (
-    ViewAtomicStructure,
+    adjust_color,
+    make_highlight_params,
     make_prim_component_params,
 )
 
 
-class CabinetInput:
+class ProjectionAxesInput:
     def __init__(
         self,
         view_control,
         styles: DashboardStyles = None,
         parent: typing.Any = None,
-        view_cabinet: ViewAtomicStructure = None,
     ):
         """
 
@@ -40,14 +48,12 @@ class CabinetInput:
             Used to style the Bokeh widgets.
         parent: typing.Any
             A Dashboard object, used to call ``parent.trigger_update()``.
-        view_cabinet: ViewAtomicStructure
-            The cabinet view.
 
         """
         self.view_control = view_control
         self.styles = styles
         self.parent = parent
-        self.view_cabinet = view_cabinet
+        # self.projection_view = projection_view
 
         # -- Make widgets ---
 
@@ -55,19 +61,17 @@ class CabinetInput:
         self.view_basis_cart = None
         self.view_basis_frac = None
         self.view_basis_mb = None
-        self.cabinet_scale_row = None
-        self.cabinet_angle_row = None
-        self.cabinet_rotation_angle_row = None
+        self.projection_rotation_angle_row = None
 
         self._update_view_basis()
 
         # Axes priority/order
-        # self.cabinet_input_order_div = bokeh.models.Div(
+        # self.projaxes_input_order_div = bokeh.models.Div(
         #     text="""<b>Axes to set</b>""", width=200
         # )
-        self.cabinet_input_order_select = bokeh.models.Select(
-            options=[key for key in self.view_control.cabinet_input_order_options],
-            value=self.view_control.cabinet_input_order,
+        self.projaxes_input_order_select = bokeh.models.Select(
+            options=[key for key in self.view_control.projaxes_input_order_options],
+            value=self.view_control.projaxes_input_order,
             stylesheets=[self.styles.dark_bk_input_style],
             title="Axes to set",
             description="Set the horizontal axis (b1), "
@@ -79,7 +83,7 @@ class CabinetInput:
         )
 
         # Input mode
-        # self.cabinet_input_mode_div = bokeh.models.Div(
+        # self.projaxes_input_mode_div = bokeh.models.Div(
         #     text="""<b>Input mode</b>""", width=200
         # )
         options = [
@@ -87,10 +91,10 @@ class CabinetInput:
             ("cart", "Cartesian"),
             ("miller_bravais", "Miller-Bravais"),
         ]
-        self.cabinet_input_mode_select = bokeh.models.Select(
+        self.projaxes_input_mode_select = bokeh.models.Select(
             title="Mode",
             options=options,
-            value=self.view_control.cabinet_input_mode,
+            value=self.view_control.projaxes_input_mode,
             stylesheets=[self.styles.dark_bk_input_style],
         )
 
@@ -114,6 +118,7 @@ class CabinetInput:
                         title=f"b{b+1}{i + 1}",
                         value=0,
                         stylesheets=[self.styles.dark_bk_input_style],
+                        format="0.0",
                         **dict(width=80, low=None, high=None, step=0.1),
                     )
                 )
@@ -149,15 +154,15 @@ class CabinetInput:
 
         # -- Callbacks --
 
-        def update_cabinet_input_mode(attr, old, new):
+        def update_projaxes_input_mode(attr, old, new):
             self.update_layout()
 
-        self.cabinet_input_mode_select.on_change("value", update_cabinet_input_mode)
+        self.projaxes_input_mode_select.on_change("value", update_projaxes_input_mode)
 
-        def update_cabinet_input_order(attr, old, new):
+        def update_projaxes_input_order(attr, old, new):
             self.update_layout()
 
-        self.cabinet_input_order_select.on_change("value", update_cabinet_input_order)
+        self.projaxes_input_order_select.on_change("value", update_projaxes_input_order)
 
         def update_view_action(attr):
             self.update_view()
@@ -167,6 +172,10 @@ class CabinetInput:
 
         # -- Layout --
         self.make_layout()
+
+    @property
+    def projection_view(self):
+        return self.parent.projection_view.projection_view
 
     def _make_view_basis_div(self, B):
 
@@ -199,7 +208,7 @@ class CabinetInput:
         )
 
     def _update_view_basis(self):
-        view_basis = self.view_cabinet.view_basis
+        view_basis = self.projection_view.view_basis
 
         # Cart vectors
         B = [
@@ -239,62 +248,62 @@ class CabinetInput:
         else:
             self.view_basis_mb.children = col.children
 
-        # Cabinet scale display
-        r = row(
-            bokeh.models.Div(text="""<b>Cabinet scale: </b>""", width=140),
-            bokeh.models.Div(
-                text=f"""<b>{self.view_control.cabinet_scale:.3f}</b>""",
-                width=80,
-            ),
-        )
-        if self.cabinet_scale_row is None:
-            self.cabinet_scale_row = r
-        else:
-            self.cabinet_scale_row.children = r.children
-
-        # Cabinet angle display
-        angle = self.view_control.cabinet_angle * 180 / math.pi
-        r = row(
-            bokeh.models.Div(text="""<b>Cabinet angle: </b>""", width=140),
-            bokeh.models.Div(
-                text=f"""<b>{(angle):.3f}</b>""",
-                width=80,
-            ),
-        )
-        if self.cabinet_angle_row is None:
-            self.cabinet_angle_row = r
-        else:
-            self.cabinet_angle_row.children = r.children
+        # # Cabinet scale display
+        # r = row(
+        #     bokeh.models.Div(text="""<b>Cabinet scale: </b>""", width=140),
+        #     bokeh.models.Div(
+        #         text=f"""<b>{self.view_control.cabinet_scale:.3f}</b>""",
+        #         width=80,
+        #     ),
+        # )
+        # if self.cabinet_scale_row is None:
+        #     self.cabinet_scale_row = r
+        # else:
+        #     self.cabinet_scale_row.children = r.children
+        #
+        # # Cabinet angle display
+        # angle = self.view_control.cabinet_angle * 180 / math.pi
+        # r = row(
+        #     bokeh.models.Div(text="""<b>Cabinet angle: </b>""", width=140),
+        #     bokeh.models.Div(
+        #         text=f"""<b>{(angle):.3f}</b>""",
+        #         width=80,
+        #     ),
+        # )
+        # if self.cabinet_angle_row is None:
+        #     self.cabinet_angle_row = r
+        # else:
+        #     self.cabinet_angle_row.children = r.children
 
         # Cabinet rotation angle display
         r = row(
             bokeh.models.Div(text="""<b>Rotation angle: </b>""", width=140),
             bokeh.models.Div(
-                text=f"""<b>{self.view_control.cabinet_rotation_angle:.3f}</b>""",
+                text=f"""<b>{self.view_control.projection_rotation_angle:.3f}</b>""",
                 width=80,
             ),
         )
-        if self.cabinet_rotation_angle_row is None:
-            self.cabinet_rotation_angle_row = r
+        if self.projection_rotation_angle_row is None:
+            self.projection_rotation_angle_row = r
         else:
-            self.cabinet_rotation_angle_row.children = r.children
+            self.projection_rotation_angle_row.children = r.children
 
     def make_layout(self):
-        mode = self.cabinet_input_mode_select.value
-        order = self.cabinet_input_order_select.value
-        order_options = self.view_control.cabinet_input_order_options
+        mode = self.projaxes_input_mode_select.value
+        order = self.projaxes_input_order_select.value
+        order_options = self.view_control.projaxes_input_order_options
         priority = order_options[order]
 
         mode_frac = "frac"
         mode_cart = "cart"
         mode_mb = "miller_bravais"
 
-        # Display of current cabinet view basis
+        # Display of current projection view basis
         self.view_basis_cart.visible = mode == mode_cart
         self.view_basis_frac.visible = mode == mode_frac
         self.view_basis_mb.visible = mode == mode_mb
 
-        # Input of new cabinet view basis
+        # Input of new projection view basis
         self.spinner_frac_input = column(
             row(*[x for x in self.spinner[mode_frac][priority[0] - 1]]),
             row(*[x for x in self.spinner[mode_frac][priority[1] - 1]]),
@@ -313,20 +322,20 @@ class CabinetInput:
 
         self.layout = row(
             column(
-                self.cabinet_input_mode_select,
+                self.projaxes_input_mode_select,
                 bokeh.models.Div(text="""<b>Current axes: </b>""", width=200),
                 self.view_basis_frac,
                 self.view_basis_cart,
                 self.view_basis_mb,
-                self.cabinet_scale_row,
-                self.cabinet_angle_row,
-                self.cabinet_rotation_angle_row,
+                # self.cabinet_scale_row,
+                # self.cabinet_angle_row,
+                self.projection_rotation_angle_row,
                 height=250,
                 width=400,
             ),
             column(
                 row(
-                    self.cabinet_input_order_select,
+                    self.projaxes_input_order_select,
                     self.update_button,
                 ),
                 bokeh.models.Div(text="""<b>New axes: </b>""", width=200),
@@ -340,13 +349,13 @@ class CabinetInput:
         )
 
     def update_layout(self):
-        mode = self.cabinet_input_mode_select.value
-        # order = self.cabinet_input_order_select.value
-        # order_options = self.view_control.cabinet_input_order_options
+        mode = self.projaxes_input_mode_select.value
+        # order = self.projaxes_input_order_select.value
+        # order_options = self.view_control.projaxes_input_order_options
         # priority = order_options[order]
         # self.layout.children = [
-        #     self.cabinet_input_mode_select,
-        #     self.cabinet_input_order_select,
+        #     self.projaxes_input_mode_select,
+        #     self.projaxes_input_order_select,
         #     self.update_button,
         #     row(*[x for x in self.spinner[mode][priority[0] - 1]]),
         #     row(*[x for x in self.spinner[mode][priority[1] - 1]]),
@@ -379,25 +388,25 @@ class CabinetInput:
         # -- Get the view input --
 
         # - Input mode -
-        mode = self.cabinet_input_mode_select.value
-        self.view_control.cabinet_input_mode = mode
+        mode = self.projaxes_input_mode_select.value
+        self.view_control.projaxes_input_mode = mode
 
-        order = self.cabinet_input_order_select.value
-        self.view_control.cabinet_input_order = order
+        order = self.projaxes_input_order_select.value
+        self.view_control.projaxes_input_order = order
 
-        order_options = self.view_control.cabinet_input_order_options
+        order_options = self.view_control.projaxes_input_order_options
         priority = order_options[order]
 
         # Highest priority input (match this direction exactly)
         x = [s.value for s in self.spinner[mode][priority[0] - 1]]
-        self.view_control.cabinet_first_input = np.array(x)
+        self.view_control.projection_first_input = np.array(x)
 
         # Second highest priority input (make orthogonal to the first)
         x = [s.value for s in self.spinner[mode][priority[1] - 1]]
-        self.view_control.cabinet_second_input = np.array(x)
+        self.view_control.projection_second_input = np.array(x)
 
-        # -- Update the cabinet view axes --
-        self.view_control.set_cabinet_view_axes()
+        # -- Update the projection view axes --
+        self.view_control.set_projection_view_axes()
 
         # -- Trigger view update --
         self.parent.trigger_update()
@@ -408,10 +417,36 @@ class ViewControl:
         self,
         prim: casmconfig.Prim,
         component_params: typing.Optional[dict] = None,
+        projection: typing.Any = None,
     ):
         self.prim = prim
 
-        self._input_component_params = copy.deepcopy(component_params)
+        self.lattice_segment_params = {
+            "color": "green",
+            "line_width": 2.0,
+            "line_dash": "solid",
+        }
+
+        self.component_params = copy.deepcopy(component_params)
+        if self.component_params is None:
+            self.component_params = make_highlight_params(
+                component_params=make_prim_component_params(prim=self.prim),
+            )
+
+        self.selected_color_factor = -0.3
+
+        if projection is None:
+            projection = SinglePointProjection()
+
+        self._initial_projection = projection
+        self.projection = projection
+        self.parent = None
+
+        ### Widgets: ###
+        self._widgets = dict()
+        self._projaxes_input = None
+
+        ### Reset: ###
 
         self.reset()
 
@@ -435,49 +470,99 @@ class ViewControl:
         self.marker_alpha_scale = 1.0
         """float: The alpha value for the marker alpha"""
 
-        component_params = copy.deepcopy(self._input_component_params)
+        # component_params = copy.deepcopy(self._input_component_params)
+        # if component_params is None:
+        #     component_params = make_prim_component_params(prim=self.prim)
+        # self.component_params = component_params
+        # """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
+        # atom type name as key.
+        #
+        # Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
+        # parameters like "line_color" and "line_width" may also be included. The
+        # same attributes must be present for all components.
+        # """
+
+    def reset_component_params(
+        self,
+        component_params: typing.Optional[dict] = None,
+    ):
+        # self._input_component_params = copy.deepcopy(component_params)
+        # component_params = copy.deepcopy(self._input_component_params)
         if component_params is None:
             component_params = make_prim_component_params(prim=self.prim)
         self.component_params = component_params
         """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
         atom type name as key.
 
-        Must include "color", "size", and "alpha". Additional bokeh plotting
+        Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
         parameters like "line_color" and "line_width" may also be included. The
         same attributes must be present for all components.
         """
 
-    def reset_cabinet_view(self):
-        self.cabinet_scale = 0.2
-        """float: The scale factor for the cabinet view"""
+    def reset_layout_type(
+        self,
+    ):
+        self.layout_type = "singleview"
+        """str: The layout of the views; one of "multiview" or "singleview"."""
 
-        self.cabinet_angle = math.pi / 6.0
-        """float: The angle for the cabinet view"""
+        self.multiview_figure_params = {
+            "width": 600,
+            "height": 400,
+            "match_aspect": True,
+        }
 
-        self.cabinet_rotation_angle = 10.0
+        self.singleview_figure_params = {
+            "width": 1200,
+            "height": 800,
+            "match_aspect": True,
+        }
+        """dict: The parameters passed to bokeh.figure() when making the plots."""
+
+        self.title_params = {
+            "width": 1200,
+            "height": 50,  # Sufficient height for the text
+            "styles": {
+                "display": "flex",  # Make the Div a flex container
+                # "justify-content": "center",  # Center content horizontally
+                "align-items": "center",  # Center content vertically
+                "font-size": "32px",  # Adjust font size
+                "padding-bottom": "10px",  # Add some space below
+                # 'border': '1px solid red' # Uncomment for debugging to see bounds
+            },
+        }
+
+    def reset_projection_view(self):
+        # self.cabinet_scale = 0.2
+        # """float: The scale factor for the projection view"""
+        #
+        # self.cabinet_angle = math.pi / 6.0
+        # """float: The angle for the projection view"""
+        # self.projection = self._initial_projection
+
+        self.projection_rotation_angle = 10.0
         """float: The angle to rotate, in degrees"""
 
-        self.cabinet_v1 = np.array([1.0, 0.0, 0.0])
+        self.projection_v1 = np.array([1.0, 0.0, 0.0])
         """np.array[float]: The Cartesian vector for the horizontal axis of the 
-        cabinet view."""
+        projection view."""
 
-        self.cabinet_v2 = np.array([0.0, 0.0, 1.0])
+        self.projection_v2 = np.array([0.0, 0.0, 1.0])
         """np.array[float]: The Cartesian vector for the vertical axis of the 
-        cabinet view."""
+        projection view."""
 
-        self.cabinet_first_input = np.array([1.0, 0.0, 0.0])
+        self.projection_first_input = np.array([1.0, 0.0, 0.0])
         """np.array[float]: The Cartesian vector for the horizontal axis of the
-        cabinet view."""
+        projection view."""
 
-        self.cabinet_second_input = np.array([0.0, 0.0, 1.0])
+        self.projection_second_input = np.array([0.0, 0.0, 1.0])
         """np.array[float]: The Cartesian vector for the vertical axis of the
-        cabinet view."""
+        projection view."""
 
-        self.cabinet_input_mode = "cart"
-        """str: Cabinet view axes input mode; one of "frac", "cart", or 
+        self.projaxes_input_mode = "cart"
+        """str: projection view axes input mode; one of "frac", "cart", or 
         "miller_bravais"."""
 
-        self.cabinet_input_order_options = {
+        self.projaxes_input_order_options = {
             "b1, b2": [1, 2, 3],
             "b1, b3": [1, 3, 2],
             "b3, b1": [3, 1, 2],
@@ -485,63 +570,75 @@ class ViewControl:
             "b2, b1": [2, 1, 3],
             "b2, b3": [2, 3, 1],
         }
-        """dict: Options for the cabinet view axes input order."""
+        """dict: Options for the projection view axes input order."""
 
-        self.cabinet_input_order = "b1, b2"
-        """str: The current input order, as a key into `cabinet_input_order_options`."""
+        self.projaxes_input_order = "b1, b2"
+        """str: The current input order, as a key into 
+        `projaxes_input_order_options`."""
 
     def reset(self):
         self.reset_images()
         self.reset_markers()
-        self.reset_cabinet_view()
+        self.reset_projection_view()
+        self.reset_layout_type()
+        self.projection = self._initial_projection
+
+        # Misc.
+        self.misc_show_grid_lines = True
+        self.misc_transparency_mode = False
 
         self._update_disabled = False
-        """bool: Flag used internally to prevent triggering updates in some
-        callbacks"""
+        """bool: Flag used internally to prevent triggering updates in some callbacks"""
 
     def _vector_to_cart(self, v):
         if v is None:
             return np.zeros((3,))
         L = self.prim.xtal_prim.lattice().column_vector_matrix()
-        if self.cabinet_input_mode == "cart":
+        if self.projaxes_input_mode == "cart":
             return v
-        elif self.cabinet_input_mode == "frac":
+        elif self.projaxes_input_mode == "frac":
             return L @ v
-        elif self.cabinet_input_mode == "miller_bravais":
+        elif self.projaxes_input_mode == "miller_bravais":
             return L @ from_miller_bravais_direction(v)
         else:
-            raise Exception("Cabinet view input mode error")
+            raise Exception("projection view input mode error")
 
     def _vector_from_cart(self, v):
         size = 3
-        if self.cabinet_input_mode == "miller_bravais":
+        if self.projaxes_input_mode == "miller_bravais":
             size = 4
         if v is None:
             return np.zeros((size,))
-        if self.cabinet_input_mode == "cart":
+        if self.projaxes_input_mode == "cart":
             return v
-        elif self.cabinet_input_mode == "frac":
+        elif self.projaxes_input_mode == "frac":
             L = self.prim.xtal_prim.lattice().column_vector_matrix()
             return np.linalg.pinv(L) @ v
-        elif self.cabinet_input_mode == "miller_bravais":
+        elif self.projaxes_input_mode == "miller_bravais":
             L = self.prim.xtal_prim.lattice().column_vector_matrix()
             v_frac = np.linalg.pinv(L) @ v
             return to_miller_bravais_direction(v_frac)
         else:
-            raise Exception("Cabinet view input mode error")
+            raise Exception("projection view input mode error")
 
-    def set_cabinet_view_axes(
+    def set_projection_view_axes(
         self,
     ):
-        """Set the cabinet view axes"""
+        """Set the projection view axes"""
 
-        priority = self.cabinet_input_order_options[self.cabinet_input_order]
+        priority = self.projaxes_input_order_options[self.projaxes_input_order]
         if len(priority) != 3 or list(set(priority)) != [1, 2, 3]:
-            raise Exception("Cabinet view priority must be a permutation of [1, 2, 3]")
+            raise Exception(
+                "projection view priority must be a permutation of [1, 2, 3]"
+            )
 
         input_axes = np.zeros((3, 3))
-        input_axes[:, priority[0] - 1] = self._vector_to_cart(self.cabinet_first_input)
-        input_axes[:, priority[1] - 1] = self._vector_to_cart(self.cabinet_second_input)
+        input_axes[:, priority[0] - 1] = self._vector_to_cart(
+            self.projection_first_input
+        )
+        input_axes[:, priority[1] - 1] = self._vector_to_cart(
+            self.projection_second_input
+        )
         input_axes[:, priority[2] - 1] = self._vector_to_cart(None)
 
         # Build the new axes
@@ -557,7 +654,7 @@ class ViewControl:
                 norm = np.linalg.norm(x)
                 if np.isclose(norm, 0):
                     raise Exception(
-                        "Highest priority cabinet view axis cannot be length zero"
+                        "Highest priority projection view axis cannot be length zero"
                     )
                 first = x / norm
                 new_axes[:, i_axis - 1] = first
@@ -567,8 +664,8 @@ class ViewControl:
                 norm = np.linalg.norm(second)
                 if np.isclose(norm, 0):
                     raise Exception(
-                        "Second highest priority cabinet view axis cannot be parallel "
-                        "to the highest priority view axis"
+                        "Second highest priority projection view axis cannot be "
+                        "parallel to the highest priority view axis"
                     )
                 second = second / np.linalg.norm(second)
                 new_axes[:, i_axis - 1] = second
@@ -586,18 +683,22 @@ class ViewControl:
                 elif priority == [2, 3, 1]:
                     third = np.cross(first, second)
                 else:
-                    raise Exception("Cabinet view basis construction priority error")
+                    raise Exception("projection view basis construction priority error")
                 new_axes[:, i_axis - 1] = third
             else:
-                raise Exception("Cabinet view basis construction error")
+                raise Exception("projection view basis construction error")
 
-        self.cabinet_v1 = new_axes[:, 0]
-        self.cabinet_v2 = new_axes[:, 1]
+        self.projection_v1 = new_axes[:, 0]
+        self.projection_v2 = new_axes[:, 1]
 
-        self.cabinet_first_input = self._vector_from_cart(new_axes[:, priority[0] - 1])
-        self.cabinet_second_input = self._vector_from_cart(new_axes[:, priority[1] - 1])
+        self.projection_first_input = self._vector_from_cart(
+            new_axes[:, priority[0] - 1]
+        )
+        self.projection_second_input = self._vector_from_cart(
+            new_axes[:, priority[1] - 1]
+        )
 
-    def rotate_cabinet_view_basis(
+    def rotate_projection_view_basis(
         self,
         v_axis: np.ndarray,
         view_basis: np.ndarray,
@@ -630,38 +731,228 @@ class ViewControl:
         # Rotate the view basis
         new_view_basis = view_basis @ rotation_matrix
 
-        # Set the new cabinet_v1 and cabinet_v2
-        self.cabinet_v1 = new_view_basis[:, 0]
-        self.cabinet_v2 = new_view_basis[:, 1]
+        # Set the new projection_v1 and projection_v2
+        self.projection_v1 = new_view_basis[:, 0]
+        self.projection_v2 = new_view_basis[:, 1]
 
     def get_state(self):
         return {
+            #
+            # Images parameters
             "a_range": self.images_a_range,
             "b_range": self.images_b_range,
             "c_range": self.images_c_range,
             "m_range": self.images_m_range,
+            #
+            # Markers parameters
             "marker_size_scale": self.marker_size_scale,
             "marker_alpha_scale": self.marker_alpha_scale,
-            "cabinet_scale": self.cabinet_scale,
-            "cabinet_angle": self.cabinet_angle,
-            "cabinet_v1": self.cabinet_v1.tolist(),
-            "cabinet_v2": self.cabinet_v2.tolist(),
+            #
+            # Colors parameters
+            "selected_color_factor": self.selected_color_factor,
+            "lattice_segment_params": self.lattice_segment_params,
+            "component_params": self.component_params,
+            #
+            # Projection parameters
+            "initial_projection": self._initial_projection.to_dict(),
+            "projection": self.projection.to_dict(),
+            "projection_v1": self.projection_v1.tolist(),
+            "projection_v2": self.projection_v2.tolist(),
+            "projection_rotation_angle": self.projection_rotation_angle,
+            "projaxes_input_order": self.projaxes_input_order,
+            "projaxes_input_mode": self.projaxes_input_mode,
+            #
+            # Layout parameters
+            "layout_type": self.layout_type,
+            "multiview_figure_params": self.multiview_figure_params,
+            "singleview_figure_params": self.singleview_figure_params,
+            #
+            # Misc parameters
+            "misc_show_grid_lines": self.misc_show_grid_lines,
+            "misc_transparency_mode": self.misc_transparency_mode,
         }
 
     def set_state(
         self,
         state: dict,
     ):
-        self.images_a_range = state["a_range"]
-        self.images_b_range = state["b_range"]
-        self.images_c_range = state["c_range"]
-        self.images_m_range = state["m_range"]
-        self.marker_size_scale = state["marker_size_scale"]
-        self.marker_alpha_scale = state["marker_alpha_scale"]
-        self.cabinet_scale = state["cabinet_scale"]
-        self.cabinet_angle = state["cabinet_angle"]
-        self.cabinet_v1 = np.array(state["cabinet_v1"])
-        self.cabinet_v2 = np.array(state["cabinet_v2"])
+
+        # Image parameters
+        self.images_a_range = state.get("a_range", 1)
+        self.images_b_range = state.get("b_range", 1)
+        self.images_c_range = state.get("c_range", 1)
+        self.images_m_range = state.get("m_range", 1)
+
+        # Marker parameters
+        self.marker_size_scale = state.get("marker_size_scale", 1.0)
+        self.marker_alpha_scale = state.get("marker_alpha_scale", 1.0)
+
+        # Colors parameters
+        self.selected_color_factor = state.get("selected_color_factor", -0.3)
+        self.lattice_segment_params = state.get(
+            "lattice_segment_params",
+            {
+                "color": "green",
+                "line_width": 2.0,
+                "line_dash": "solid",
+            },
+        )
+        component_params = make_highlight_params(
+            component_params=make_prim_component_params(prim=self.prim),
+        )
+        component_params.update(state.get("component_params", {}))
+        self.component_params = component_params
+
+        # Projection parameters
+        self._initial_projection = make_projection_from_dict(
+            state.get(
+                "initial_projection",
+                SinglePointProjection().to_dict(),
+            )
+        )
+        self.projection = make_projection_from_dict(
+            state.get(
+                "projection",
+                SinglePointProjection().to_dict(),
+            )
+        )
+        self.projection_v1 = np.array(state.get("projection_v1", [1.0, 0.0, 0.0]))
+        self.projection_v2 = np.array(state.get("projection_v2", [0.0, 0.0, 1.0]))
+        self.projection_rotation_angle = state.get("projection_rotation_angle", 10.0)
+        self.projaxes_input_order = state.get("projaxes_input_order", "b1, b2")
+        self.projaxes_input_mode = state.get("projaxes_input_mode", "cart")
+
+        # Layout parameters
+        self.layout_type = state.get("layout_type", "singleview")
+        self.multiview_figure_params = state.get(
+            "multiview_figure_params",
+            {
+                "width": 600,
+                "height": 400,
+                "match_aspect": True,
+            },
+        )
+        self.singleview_figure_params = state.get(
+            "singleview_figure_params",
+            {
+                "width": 1200,
+                "height": 800,
+                "match_aspect": True,
+            },
+        )
+
+        # Misc parameters
+        self.misc_show_grid_lines = state.get("misc_show_grid_lines", True)
+        self.misc_transparency_mode = state.get("misc_transparency_mode", False)
+
+        # Update widgets if they exist:
+        if "images" in self._widgets:
+            self._update_disabled = True
+            self._widgets["images"]["images_a_range"].value = self.images_a_range
+            self._widgets["images"]["images_b_range"].value = self.images_b_range
+            self._widgets["images"]["images_c_range"].value = self.images_c_range
+            self._widgets["images"]["images_m_range"].value = self.images_m_range
+            self._update_disabled = False
+
+        if "styles" in self._widgets:
+            self._update_disabled = True
+
+            self._widgets["styles"]["lattice_line_dash_select"].value = (
+                self.lattice_segment_params.get("line_dash", "solid")
+            )
+            self._widgets["styles"]["lattice_line_color_picker"].color = (
+                self.lattice_segment_params.get("color", "green")
+            )
+            self._widgets["styles"]["lattice_line_width_spinner"].value = (
+                self.lattice_segment_params.get("line_width", 2.0)
+            )
+
+            self._widgets["styles"][
+                "selected_color_factor_spinner"
+            ].value = self.selected_color_factor
+
+            if "radius_spinners_by_name" in self._widgets["styles"]:
+                for name, spinner in self._widgets["styles"][
+                    "radius_spinners_by_name"
+                ].items():
+                    if name in self.component_params:
+                        spinner.value = self.component_params[name].get(
+                            "radius_pm", 100.0
+                        )
+
+            if "pickers_by_name" in self._widgets["styles"]:
+                for name, picker in self._widgets["styles"]["pickers_by_name"].items():
+                    if name in self.component_params:
+                        picker.color = self.component_params[name].get(
+                            "color", "#000000"
+                        )
+
+            # Update line style widgets
+            if "line_dash_selects_by_name" in self._widgets["styles"]:
+                for name, select in self._widgets["styles"][
+                    "line_dash_selects_by_name"
+                ].items():
+                    if name in self.component_params:
+                        select.value = self.component_params[name].get(
+                            "line_dash", "solid"
+                        )
+
+            if "line_color_pickers_by_name" in self._widgets["styles"]:
+                for name, picker in self._widgets["styles"][
+                    "line_color_pickers_by_name"
+                ].items():
+                    if name in self.component_params:
+                        picker.color = self.component_params[name].get(
+                            "line_color", "#000000"
+                        )
+
+            if "line_width_spinners_by_name" in self._widgets["styles"]:
+                for name, spinner in self._widgets["styles"][
+                    "line_width_spinners_by_name"
+                ].items():
+                    if name in self.component_params:
+                        spinner.value = self.component_params[name].get(
+                            "line_width", 1.0
+                        )
+
+            self._update_disabled = False
+
+        if "layout" in self._widgets:
+            self._update_disabled = True
+            self._widgets["layout"]["layout_type_select"].value = self.layout_type
+            self._widgets["layout"]["singleview_width_spinner"].value = (
+                self.singleview_figure_params.get("width", 1200)
+            )
+            self._widgets["layout"]["singleview_height_spinner"].value = (
+                self.singleview_figure_params.get("height", 800)
+            )
+            self._widgets["layout"]["multiview_width_spinner"].value = (
+                self.multiview_figure_params.get("width", 600)
+            )
+            self._widgets["layout"]["multiview_height_spinner"].value = (
+                self.multiview_figure_params.get("height", 400)
+            )
+            self._update_disabled = False
+
+        if "misc" in self._widgets:
+            self._update_disabled = True
+            widgets = self._widgets["misc"]
+            widgets["grid_lines_switch"].active = self.misc_show_grid_lines
+            widgets["transparency_mode_switch"].active = self.misc_transparency_mode
+            self._update_disabled = False
+
+        if self._projaxes_input is not None:
+            self.parent.projection_view.update_layout_type()
+            self.parent.trigger_update()
+            self.parent.projection_view.update_layout()
+            self._projaxes_input.update_layout()
+
+    def get_transformation_matrix_to_super(self):
+        a = self.images_a_range
+        b = self.images_b_range
+        c = self.images_c_range
+        m = self.images_m_range
+        return np.diag([a, b, c]) * m
 
     def make_superstructure(
         self,
@@ -693,6 +984,53 @@ class ViewControl:
             transformation_matrix_to_super=T,
             structure=structure,
         )
+
+    def update_highlight_style(
+        self,
+        highlight_color: str,
+        highlight_width: float = 2.0,
+    ):
+        """Update the highlight (selected component) line color and width in both
+        component_params and the corresponding widgets.
+
+        This method updates all selected component parameters and their associated
+        widgets to use the specified highlight color and width.
+
+        Parameters
+        ----------
+        highlight_color : str
+            The color to use for highlighted/selected components (e.g., "#FF0000")
+        highlight_width : float, optional
+            The line width to use for highlighted/selected components (default: 2.0)
+        """
+        if "styles" not in self._widgets:
+            return
+
+        self._update_disabled = True
+
+        # Update component_params for all selected components
+        for name, params in self.component_params.items():
+            if name.endswith("_sel"):
+                params["line_color"] = highlight_color
+                params["line_width"] = highlight_width
+                params["line_alpha"] = 1.0
+
+        # Update widgets if they exist
+        line_color_pickers = self._widgets["styles"].get(
+            "line_color_pickers_by_name", {}
+        )
+        line_width_spinners = self._widgets["styles"].get(
+            "line_width_spinners_by_name", {}
+        )
+
+        for name in self.component_params.keys():
+            if name.endswith("_sel"):
+                if name in line_color_pickers:
+                    line_color_pickers[name].color = highlight_color
+                if name in line_width_spinners:
+                    line_width_spinners[name].value = highlight_width
+
+        self._update_disabled = False
 
     # trigger:
     # self.set_image_index(self.selected_image_index)
@@ -794,13 +1132,21 @@ class ViewControl:
             row(images_a_range, images_b_range, images_c_range),
             images_m_range,
             width=300,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
         c2 = column(
             reset_button,
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
+
+        # Save images widgets:
+        self._widgets["images"] = dict()
+        self._widgets["images"]["images_a_range"] = images_a_range
+        self._widgets["images"]["images_b_range"] = images_b_range
+        self._widgets["images"]["images_c_range"] = images_c_range
+        self._widgets["images"]["images_m_range"] = images_m_range
+
         return row(
             c1,
             c2,
@@ -878,7 +1224,7 @@ class ViewControl:
                 marker_alpha_scale_inc,
             ),
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
@@ -887,77 +1233,591 @@ class ViewControl:
         c2 = column(
             reset_button,
             width=200,
-            margin=(0, 10),
+            # margin=(0, 10),
         )
+
         return row(
             c1,
             c2,
         )
 
-    def make_cabinet_view_control_layout(
+    def make_styles_layout(
         self,
         styles=None,
         parent=None,
-        view_cabinet=None,
     ):
-        # Cabinet scale controls
-        cabinet_scale_div = bokeh.models.Div(text="""<b>Cabinet Scale:</b>""")
-        cabinet_scale_inc = bokeh.models.Button(
-            label="+", stylesheets=[styles.dark_bk_input_style]
-        )
-        cabinet_scale_dec = bokeh.models.Button(
-            label="-", stylesheets=[styles.dark_bk_input_style]
+        line_dash_options = ["solid", "dashed", "dotted", "dotdash", "dashdot"]
+
+        # Control lattice styles
+        lattice_div = bokeh.models.Div(
+            text="""<b>Lattice Line Style:</b>""",
+            width=200,
+            styles={"text-align": "left"},
         )
 
-        # Cabinet angle controls
-        cabinet_angle_div = bokeh.models.Div(text="""<b>Cabinet Angle:</b>""")
-        cabinet_angle_inc = bokeh.models.Button(
-            label="+", stylesheets=[styles.dark_bk_input_style]
-        )
-        cabinet_angle_dec = bokeh.models.Button(
-            label="-", stylesheets=[styles.dark_bk_input_style]
+        lattice_line_dash_select = bokeh.models.Select(
+            title="Style",
+            value=self.lattice_segment_params.get("line_dash", "solid"),
+            options=line_dash_options,
+            width=100,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
         )
 
-        # Cabinet rotation angle controls
-        cabinet_rotation_angle_div = bokeh.models.Div(text="""<b>Rotation Angle:</b>""")
-        cabinet_rotation_angle_inc = bokeh.models.Button(
+        lattice_line_color_picker = bokeh.models.ColorPicker(
+            title="Color",
+            color=self.lattice_segment_params.get("color", "#00FF00"),
+            width=60,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        lattice_line_width_spinner = bokeh.models.Spinner(
+            title="Width",
+            value=self.lattice_segment_params.get("line_width", 2.0),
+            low=0.0,
+            step=0.25,
+            width=80,
+            format="0.0",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Lattice style callbacks:
+
+        def update_lattice_line_dash(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["line_dash"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_dash_select.on_change("value", update_lattice_line_dash)
+
+        def update_lattice_line_color(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["color"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_color_picker.on_change("color", update_lattice_line_color)
+
+        def update_lattice_line_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.lattice_segment_params["line_width"] = new
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        lattice_line_width_spinner.on_change("value", update_lattice_line_width)
+
+        # Allow users to adjust the factor that makes "selected" colors lighter/darker
+        # than default colors:
+        selected_color_factor_div = bokeh.models.Div(
+            text="""<b>Selected Color Factor:&nbsp;&nbsp;</b>""",
+            styles={"text-align": "left"},
+        )
+        selected_color_factor_spinner = bokeh.models.Spinner(
+            title="Factor",
+            description=(
+                "Use to adjust the color of selected atoms to be darker/lighter "
+                "than default colors. Numbers less than 0 make the color darker, "
+                "greater than 0 make it lighter."
+            ),
+            value=self.selected_color_factor,
+            format="0.0",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=-1, high=1, step=0.1),
+        )
+
+        # Update selected color factor callback:
+
+        def update_selected_color_factor(attr, old, new):
+            self.selected_color_factor = new
+            self._update_disabled = True
+
+            for comp, params in self.component_params.items():
+                if comp.endswith("_sel"):
+                    continue
+                default_color = params.get("color", "#FFFFFF")
+                adjusted_color = adjust_color(
+                    color=default_color,
+                    factor=self.selected_color_factor,
+                )
+                selected_name = f"{comp}_sel"
+                if selected_name in self.component_params:
+                    self.component_params[selected_name]["color"] = adjusted_color
+                    if selected_name in pickers_by_name:
+                        pickers_by_name[selected_name].color = adjusted_color
+
+            self._update_disabled = False
+            if parent:
+                parent.trigger_update()
+
+        selected_color_factor_spinner.on_change("value", update_selected_color_factor)
+
+        # Component styling widgets
+        pickers = []
+        radius_spinners_by_name = dict()
+        pickers_by_name = dict()
+        line_color_pickers_by_name = dict()
+        line_dash_selects_by_name = dict()
+        line_width_spinners_by_name = dict()
+
+        def make_radius_update_callback(component_name):
+            def update_radius(attr, old, new):
+                if self._update_disabled:
+                    return
+                self._update_disabled = True
+                self.component_params[component_name]["radius_pm"] = new
+                if not component_name.endswith("_sel"):
+                    selected_name = f"{component_name}_sel"
+                    self.component_params[selected_name]["radius_pm"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_radius
+
+        # Callback factory functions
+        def make_color_update_callback(component_name):
+            def update_color(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                new_adjusted = adjust_color(
+                    color=new,
+                    factor=self.selected_color_factor,
+                )
+                selected_name = f"{component_name}_sel"
+
+                self._update_disabled = True
+                self.component_params[component_name]["color"] = new
+
+                if not component_name.endswith("_sel"):
+                    pickers_by_name[selected_name].color = new_adjusted
+                    self.component_params[selected_name]["color"] = new_adjusted
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_color
+
+        def make_alpha_update_callback(component_name):
+            def update_alpha(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["alpha"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_alpha
+
+        def make_line_dash_update_callback(component_name):
+            def update_line_dash(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_dash"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_dash
+
+        def make_line_color_update_callback(component_name):
+            def update_line_color(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_color"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_color
+
+        def make_line_width_update_callback(component_name):
+            def update_line_width(attr, old, new):
+                if self._update_disabled:
+                    return
+
+                self._update_disabled = True
+                self.component_params[component_name]["line_width"] = new
+                self._update_disabled = False
+                if parent:
+                    parent.trigger_update()
+
+            return update_line_width
+
+        # Create widgets for each component
+        for comp, params in self.component_params.items():
+            if comp.endswith("_sel"):
+                continue
+
+            row_items = []
+
+            # Create label div
+            label_div = bokeh.models.Div(
+                text=f"<b>{comp}:</b>",
+                width=40,
+                margin=(25, 5, 0, 0),
+                align="center",  # Center align vertically
+                styles={"text-align": "right"},
+            )
+            row_items.append(label_div)
+
+            # === SECTION 0: Radius ===
+
+            # Radius spinner
+            radius_spinner = bokeh.models.Spinner(
+                title="Radius (pm)",
+                value=params.get("radius_pm", 100.0),
+                width=80,
+                low=0.0,
+                high=None,
+                step=1.0,
+                format="0.0",
+                align="end",
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            radius_spinners_by_name[comp] = radius_spinner
+            radius_spinner.on_change("value", make_radius_update_callback(comp))
+            row_items.append(radius_spinner)
+
+            # === SECTION 1: Default Fill Styles ===
+
+            # Fill Div:
+            fill_div = bokeh.models.Div(
+                text="<b>Fill:</b>",
+                width=50,
+                margin=(0, 0, 0, 5),
+                align="end",
+                styles={"text-align": "left"},
+            )
+
+            # Default fill color picker
+            color = params.get("color", "#FFFFFF")
+            color_picker = bokeh.models.ColorPicker(
+                title="Color",
+                color=color,
+                width=60,
+                height=30,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            pickers_by_name[comp] = color_picker
+            color_picker.on_change("color", make_color_update_callback(comp))
+
+            # Default alpha spinner
+            alpha_spinner = bokeh.models.Spinner(
+                title="Alpha",
+                value=params.get("alpha", 0.8),
+                width=80,
+                low=0.0,
+                high=1.0,
+                step=0.1,
+                format="0.0",
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            alpha_spinner.on_change("value", make_alpha_update_callback(comp))
+
+            fill_widgets = column(
+                row(fill_div),
+                row(color_picker, alpha_spinner),
+                margin=(0, 0, 0, 0),
+            )
+
+            row_items.append(fill_widgets)
+
+            # === SECTION 2: Default Line Styles ===
+
+            # Line Div:
+            line_div = bokeh.models.Div(
+                text="<b>Line:</b>",
+                width=50,
+                margin=(0, 0, 0, 5),
+                align="end",
+                styles={"text-align": "left"},
+            )
+
+            # Default line style selector
+            line_dash_select = bokeh.models.Select(
+                title="Style",
+                value=params.get("line_dash", "solid"),
+                options=line_dash_options,
+                width=100,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_dash_selects_by_name[comp] = line_dash_select
+            line_dash_select.on_change("value", make_line_dash_update_callback(comp))
+
+            # Default line color picker
+            line_color = params.get("line_color", "#000000")
+            line_color_picker = bokeh.models.ColorPicker(
+                title="Color",
+                color=line_color,
+                width=60,
+                height=30,
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_color_pickers_by_name[comp] = line_color_picker
+            line_color_picker.on_change("color", make_line_color_update_callback(comp))
+
+            # Default line width spinner
+            line_width_spinner = bokeh.models.Spinner(
+                title="Width",
+                value=params.get("line_width", 1.0),
+                width=80,
+                low=0.0,
+                high=10.0,
+                step=0.25,
+                format="0.00",
+                stylesheets=[styles.dark_bk_input_style] if styles else [],
+            )
+            line_width_spinners_by_name[comp] = line_width_spinner
+            line_width_spinner.on_change("value", make_line_width_update_callback(comp))
+
+            line_widgets = column(
+                row(line_div),
+                row(line_dash_select, line_color_picker, line_width_spinner),
+                margin=(0, 0, 0, 0),
+            )
+            row_items.append(line_widgets)
+
+            # === SECTION 3 & 4: Selected Fill and Line Styles ===
+
+            if f"{comp}_sel" in self.component_params:
+                sel_params = self.component_params[f"{comp}_sel"]
+
+                # === SECTION 3: Selected Fill Styles ===
+
+                # Selected Fill Div:
+                sel_fill_div = bokeh.models.Div(
+                    text="<b>Selected Fill:</b>",
+                    width=140,
+                    margin=(0, 0, 0, 5),
+                    align="end",
+                    styles={"text-align": "left"},
+                )
+
+                # Selected fill color picker
+                sel_color = sel_params.get("color", "#FF0000")
+                sel_color_picker = bokeh.models.ColorPicker(
+                    title="Color",
+                    color=sel_color,
+                    width=60,
+                    height=30,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                pickers_by_name[f"{comp}_sel"] = sel_color_picker
+                sel_color_picker.on_change(
+                    "color", make_color_update_callback(f"{comp}_sel")
+                )
+
+                # Selected alpha spinner
+                sel_alpha_spinner = bokeh.models.Spinner(
+                    title="Alpha",
+                    value=sel_params.get("alpha", 0.8),
+                    width=80,
+                    low=0.0,
+                    high=1.0,
+                    step=0.1,
+                    format="0.0",
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                sel_alpha_spinner.on_change(
+                    "value", make_alpha_update_callback(f"{comp}_sel")
+                )
+
+                sel_fill_widgets = column(
+                    row(sel_fill_div),
+                    row(sel_color_picker, sel_alpha_spinner),
+                    margin=(0, 0, 0, 0),
+                )
+                row_items.append(sel_fill_widgets)
+
+                # === SECTION 4: Selected Line Styles ===
+
+                # Selected Line Div:
+                sel_line_div = bokeh.models.Div(
+                    text="<b>Selected Line:</b>",
+                    width=140,
+                    margin=(0, 0, 0, 5),
+                    align="end",
+                    styles={"text-align": "left"},
+                )
+
+                # Selected line style selector
+                sel_line_dash_select = bokeh.models.Select(
+                    title="Style",
+                    value=sel_params.get("line_dash", "solid"),
+                    options=line_dash_options,
+                    width=100,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                line_dash_selects_by_name[f"{comp}_sel"] = sel_line_dash_select
+                sel_line_dash_select.on_change(
+                    "value", make_line_dash_update_callback(f"{comp}_sel")
+                )
+
+                # Selected line color picker
+                sel_line_color = sel_params.get("line_color", "#000000")
+                sel_line_color_picker = bokeh.models.ColorPicker(
+                    title="Color",
+                    color=sel_line_color,
+                    width=60,
+                    height=30,
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                line_color_pickers_by_name[f"{comp}_sel"] = sel_line_color_picker
+                sel_line_color_picker.on_change(
+                    "color", make_line_color_update_callback(f"{comp}_sel")
+                )
+
+                # Selected line width spinner
+                sel_line_width_spinner = bokeh.models.Spinner(
+                    title="Width",
+                    value=sel_params.get("line_width", 1.0),
+                    width=80,
+                    low=0.0,
+                    high=10.0,
+                    step=0.25,
+                    format="0.00",
+                    stylesheets=[styles.dark_bk_input_style] if styles else [],
+                )
+                line_width_spinners_by_name[f"{comp}_sel"] = sel_line_width_spinner
+                sel_line_width_spinner.on_change(
+                    "value", make_line_width_update_callback(f"{comp}_sel")
+                )
+
+                sel_line_widgets = column(
+                    row(sel_line_div),
+                    row(
+                        sel_line_dash_select,
+                        sel_line_color_picker,
+                        sel_line_width_spinner,
+                    ),
+                    margin=(0, 0, 0, 0),
+                )
+                row_items.append(sel_line_widgets)
+
+            # Add label and all widgets as a row
+            picker_row = row(*row_items, margin=(10, 10))
+            pickers.append(picker_row)
+
+            # end component styler loop
+
+        layout = column(
+            row(
+                lattice_div,
+            ),
+            row(
+                lattice_line_dash_select,
+                lattice_line_color_picker,
+                lattice_line_width_spinner,
+                width=300,
+                margin=(0, 10, 0, 50),
+            ),
+            row(
+                selected_color_factor_div,
+            ),
+            row(
+                selected_color_factor_spinner,
+                width=300,
+                margin=(0, 10, 0, 50),
+            ),
+            bokeh.models.Div(
+                text="""<b>Component Styles:</b>""",
+                width=300,
+                styles={"text-align": "left"},
+            ),
+            *pickers,
+            stylesheets=[
+                DashboardStyles().darkstyle,
+                DashboardStyles().typekit_stylesheet,
+            ],
+        )
+
+        # Save styles widgets:
+        self._widgets["styles"] = dict()
+        self._widgets["styles"]["lattice_line_dash_select"] = lattice_line_dash_select
+        self._widgets["styles"]["lattice_line_color_picker"] = lattice_line_color_picker
+        self._widgets["styles"][
+            "lattice_line_width_spinner"
+        ] = lattice_line_width_spinner
+        self._widgets["styles"]["radius_spinners_by_name"] = radius_spinners_by_name
+        self._widgets["styles"][
+            "selected_color_factor_spinner"
+        ] = selected_color_factor_spinner
+        self._widgets["styles"]["pickers_by_name"] = pickers_by_name
+        self._widgets["styles"][
+            "line_color_pickers_by_name"
+        ] = line_color_pickers_by_name
+        self._widgets["styles"]["line_dash_selects_by_name"] = line_dash_selects_by_name
+        self._widgets["styles"][
+            "line_width_spinners_by_name"
+        ] = line_width_spinners_by_name
+
+        return layout
+
+    def make_projaxes_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        # Projection rotation angle controls
+        projection_rotation_angle_div = bokeh.models.Div(
+            text="""<b>Rotation Angle:</b>"""
+        )
+        projection_rotation_angle_inc = bokeh.models.Button(
             label="+", stylesheets=[styles.dark_bk_input_style]
         )
-        cabinet_rotation_angle_dec = bokeh.models.Button(
+        projection_rotation_angle_dec = bokeh.models.Button(
             label="-", stylesheets=[styles.dark_bk_input_style]
         )
 
         # Cabinet rotate controls
-        cabinet_rotate_b1_div = bokeh.models.Div(text="""<b>Rotate b1:</b>""")
-        cabinet_rotate_b1_inc = bokeh.models.Button(
+        projection_rotate_b1_div = bokeh.models.Div(text="""<b>Rotate b1:</b>""")
+        projection_rotate_b1_inc = bokeh.models.Button(
             label="+", stylesheets=[styles.dark_bk_input_style]
         )
-        cabinet_rotate_b1_dec = bokeh.models.Button(
+        projection_rotate_b1_dec = bokeh.models.Button(
             label="-", stylesheets=[styles.dark_bk_input_style]
         )
 
-        cabinet_rotate_b2_div = bokeh.models.Div(text="""<b>Rotate b2:</b>""")
-        cabinet_rotate_b2_inc = bokeh.models.Button(
+        projection_rotate_b2_div = bokeh.models.Div(text="""<b>Rotate b2:</b>""")
+        projection_rotate_b2_inc = bokeh.models.Button(
             label="+", stylesheets=[styles.dark_bk_input_style]
         )
-        cabinet_rotate_b2_dec = bokeh.models.Button(
+        projection_rotate_b2_dec = bokeh.models.Button(
             label="-", stylesheets=[styles.dark_bk_input_style]
         )
 
-        cabinet_rotate_b3_div = bokeh.models.Div(text="""<b>Rotate b3:</b>""")
-        cabinet_rotate_b3_inc = bokeh.models.Button(
+        projection_rotate_b3_div = bokeh.models.Div(text="""<b>Rotate b3:</b>""")
+        projection_rotate_b3_inc = bokeh.models.Button(
             label="+", stylesheets=[styles.dark_bk_input_style]
         )
-        cabinet_rotate_b3_dec = bokeh.models.Button(
+        projection_rotate_b3_dec = bokeh.models.Button(
             label="-", stylesheets=[styles.dark_bk_input_style]
         )
 
-        # Cabinet view axes input
-        cabinet_input = CabinetInput(
+        # projection view axes input
+        projaxes_input = ProjectionAxesInput(
             view_control=self,
             styles=styles,
             parent=parent,
-            view_cabinet=view_cabinet,
         )
 
         # Reset button:
@@ -966,140 +1826,149 @@ class ViewControl:
         # --- Callbacks ---
 
         def reset_button_action(attr):
-            self.reset_cabinet_view()
+            self.reset_projection_view()
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
         reset_button.on_click(reset_button_action)
 
-        # Cabinet scale controls
-        def increase_cabinet_scale(attr):
-            self.cabinet_scale *= 1.5
-            parent.trigger_update()
-            cabinet_input._update_view_basis()
-
-        cabinet_scale_inc.on_click(increase_cabinet_scale)
-
-        def decrease_cabinet_scale(attr):
-            self.cabinet_scale /= 1.5
-            parent.trigger_update()
-            cabinet_input._update_view_basis()
-
-        cabinet_scale_dec.on_click(decrease_cabinet_scale)
-
-        # Cabinet angle controls
-        def increase_cabinet_angle(attr):
-            self.cabinet_angle += math.pi / 36.0
-            parent.trigger_update()
-            cabinet_input._update_view_basis()
-
-        cabinet_angle_inc.on_click(increase_cabinet_angle)
-
-        def decrease_cabinet_angle(attr):
-            self.cabinet_angle -= math.pi / 36.0
-            parent.trigger_update()
-            cabinet_input._update_view_basis()
-
-        cabinet_angle_dec.on_click(decrease_cabinet_angle)
-
         # Cabinet rotation angle controls
-        def increase_cabinet_rotation_angle(attr):
-            self.cabinet_rotation_angle += 1.0
+        def increase_projection_rotation_angle(attr):
+            self.projection_rotation_angle += 1.0
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotation_angle_inc.on_click(increase_cabinet_rotation_angle)
+        projection_rotation_angle_inc.on_click(increase_projection_rotation_angle)
 
-        def decrease_cabinet_rotation_angle(attr):
-            if self.cabinet_rotation_angle <= 1.0:
+        def decrease_projection_rotation_angle(attr):
+            if self.projection_rotation_angle <= 1.0:
                 return
-            self.cabinet_rotation_angle -= 1.0
+            self.projection_rotation_angle -= 1.0
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotation_angle_dec.on_click(decrease_cabinet_rotation_angle)
+        projection_rotation_angle_dec.on_click(decrease_projection_rotation_angle)
 
         # Cabinet rotate controls
         def rotate_b1_inc(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([1.0, 0.0, 0.0]),
-                view_cabinet.view_basis,
-                self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b1_inc.on_click(rotate_b1_inc)
+        projection_rotate_b1_inc.on_click(rotate_b1_inc)
 
         def rotate_b1_dec(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([1.0, 0.0, 0.0]),
-                view_cabinet.view_basis,
-                -self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                -self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b1_dec.on_click(rotate_b1_dec)
+        projection_rotate_b1_dec.on_click(rotate_b1_dec)
 
         def rotate_b2_inc(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([0.0, 1.0, 0.0]),
-                view_cabinet.view_basis,
-                self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b2_inc.on_click(rotate_b2_inc)
+        projection_rotate_b2_inc.on_click(rotate_b2_inc)
 
         def rotate_b2_dec(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([0.0, 1.0, 0.0]),
-                view_cabinet.view_basis,
-                -self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                -self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b2_dec.on_click(rotate_b2_dec)
+        projection_rotate_b2_dec.on_click(rotate_b2_dec)
 
         def rotate_b3_inc(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([0.0, 0.0, 1.0]),
-                view_cabinet.view_basis,
-                self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b3_inc.on_click(rotate_b3_inc)
+        projection_rotate_b3_inc.on_click(rotate_b3_inc)
 
         def rotate_b3_dec(attr):
-            self.rotate_cabinet_view_basis(
+            self.rotate_projection_view_basis(
                 np.array([0.0, 0.0, 1.0]),
-                view_cabinet.view_basis,
-                -self.cabinet_rotation_angle,
+                parent.projection_view.projection_view.view_basis,
+                -self.projection_rotation_angle,
             )
             parent.trigger_update()
-            cabinet_input._update_view_basis()
+            projaxes_input._update_view_basis()
 
-        cabinet_rotate_b3_dec.on_click(rotate_b3_dec)
+        projection_rotate_b3_dec.on_click(rotate_b3_dec)
+
+        # Fix axes range switch
+
+        fix_axes_range_switch = bokeh.models.Switch(
+            label="Fix axes range",
+            active=False,
+        )
+
+        def fix_axes_range_switch_action(attr, old, new):
+            from bokeh.models import DataRange1d, Range1d
+
+            plot = parent.projection_view.projection_view.plot
+
+            if new is False:
+                plot.x_range = DataRange1d()
+                plot.y_range = DataRange1d()
+            else:
+                # Get current range values
+                x_start = plot.x_range.start
+                x_end = plot.x_range.end
+                y_start = plot.y_range.start
+                y_end = plot.y_range.end
+
+                plot.x_range = Range1d(start=x_start, end=x_end)
+                plot.y_range = Range1d(start=y_start, end=y_end)
+            parent.trigger_update()
+
+        fix_axes_range_switch.on_change("active", fix_axes_range_switch_action)
 
         # --- Layout ---
 
-        c1b = cabinet_input.layout
+        c1b = projaxes_input.layout
         c2 = column(
-            row(cabinet_scale_div, cabinet_scale_dec, cabinet_scale_inc),
-            row(cabinet_angle_div, cabinet_angle_dec, cabinet_angle_inc),
             row(
-                cabinet_rotation_angle_div,
-                cabinet_rotation_angle_dec,
-                cabinet_rotation_angle_inc,
+                projection_rotation_angle_div,
+                projection_rotation_angle_dec,
+                projection_rotation_angle_inc,
             ),
-            row(cabinet_rotate_b1_div, cabinet_rotate_b1_dec, cabinet_rotate_b1_inc),
-            row(cabinet_rotate_b2_div, cabinet_rotate_b2_dec, cabinet_rotate_b2_inc),
-            row(cabinet_rotate_b3_div, cabinet_rotate_b3_dec, cabinet_rotate_b3_inc),
+            row(
+                projection_rotate_b1_div,
+                projection_rotate_b1_dec,
+                projection_rotate_b1_inc,
+            ),
+            row(
+                projection_rotate_b2_div,
+                projection_rotate_b2_dec,
+                projection_rotate_b2_inc,
+            ),
+            row(
+                projection_rotate_b3_div,
+                projection_rotate_b3_dec,
+                projection_rotate_b3_inc,
+            ),
+            fix_axes_range_switch,
             width=200,
             margin=(0, 10),
         )
@@ -1118,6 +1987,587 @@ class ViewControl:
             ],
         )
 
+        # Save projection axes:
+        self._projaxes_input = projaxes_input
+
+        return layout
+
+    def make_projection_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        projection_type_div = bokeh.models.Div(text="""<b>Projection Type:</b>""")
+        projection_type_select = bokeh.models.Select(
+            value=self.projection.label,
+            options=["Single point", "Isometric", "Cabinet"],
+            stylesheets=[styles.dark_bk_input_style],
+            width=200,
+        )
+
+        ### Cabinet controls ###
+
+        # Cabinet scale controls
+        cabinet_scale_div = bokeh.models.Div(text="""<b>Cabinet Scale:</b>""")
+        cabinet_scale_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_scale_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
+        # Cabinet angle controls
+        cabinet_angle_div = bokeh.models.Div(text="""<b>Cabinet Angle:</b>""")
+        cabinet_angle_inc = bokeh.models.Button(
+            label="+", stylesheets=[styles.dark_bk_input_style]
+        )
+        cabinet_angle_dec = bokeh.models.Button(
+            label="-", stylesheets=[styles.dark_bk_input_style]
+        )
+
+        # Cabinet scale controls
+        def increase_cabinet_scale(attr):
+            self.projection.scale *= 1.5
+            parent.trigger_update()
+
+        cabinet_scale_inc.on_click(increase_cabinet_scale)
+
+        def decrease_cabinet_scale(attr):
+            self.projection.scale /= 1.5
+            parent.trigger_update()
+
+        cabinet_scale_dec.on_click(decrease_cabinet_scale)
+
+        # Cabinet angle controls
+        def increase_cabinet_angle(attr):
+            self.projection.angle += math.pi / 36.0
+            parent.trigger_update()
+
+        cabinet_angle_inc.on_click(increase_cabinet_angle)
+
+        def decrease_cabinet_angle(attr):
+            self.projection.angle -= math.pi / 36.0
+            parent.trigger_update()
+
+        cabinet_angle_dec.on_click(decrease_cabinet_angle)
+
+        cabinet_control_layout = column(
+            row(cabinet_scale_div, cabinet_scale_dec, cabinet_scale_inc),
+            row(cabinet_angle_div, cabinet_angle_dec, cabinet_angle_inc),
+            width=250,
+            margin=(0, 10),
+            visible=isinstance(self.projection, CabinetProjection),
+        )
+
+        ### Single point controls ###
+
+        # Projection viewer distance
+        viewer_distance_spinner = bokeh.models.Spinner(
+            title="Viewer distance",
+            value=self.projection.viewer_distance,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=50, step=50),
+            high=2000,
+        )
+
+        # Projection plane offset
+        plane_offset_spinner = bokeh.models.Spinner(
+            title="Plane offset",
+            value=self.projection.plane_offset,
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, step=10),  # low=0, high=1000,
+        )
+
+        # Callbacks:
+        def update_viewer_distance(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.projection.viewer_distance = new
+            self._update_disabled = False
+            parent.trigger_update()
+
+        viewer_distance_spinner.on_change("value", update_viewer_distance)
+
+        def update_plane_offset(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.projection.plane_offset = new
+            self._update_disabled = False
+            parent.trigger_update()
+
+        plane_offset_spinner.on_change("value", update_plane_offset)
+
+        singlepoint_control_layout = column(
+            row(viewer_distance_spinner),
+            row(plane_offset_spinner),
+            width=250,
+            margin=(0, 10),
+            visible=isinstance(self.projection, SinglePointProjection),
+        )
+
+        ### Isometric controls ###
+
+        # (No additional controls for isometric projection)
+
+        isometric_control_layout = column(
+            bokeh.models.Div(text=""),
+            width=200,
+            margin=(0, 10),
+            visible=isinstance(self.projection, IsometricProjection),
+        )
+
+        ### Shared controls ###
+
+        def update_projection_type(attr, old, new):
+            if new == "Cabinet" and not isinstance(self.projection, CabinetProjection):
+                self.projection = CabinetProjection()
+                cabinet_control_layout.visible = True
+                singlepoint_control_layout.visible = False
+                isometric_control_layout.visible = False
+                parent.trigger_update()
+            elif new == "Single point" and not isinstance(
+                self.projection, SinglePointProjection
+            ):
+                self.projection = SinglePointProjection()
+                cabinet_control_layout.visible = False
+                singlepoint_control_layout.visible = True
+                isometric_control_layout.visible = False
+                parent.trigger_update()
+            elif new == "Isometric" and not isinstance(
+                self.projection, IsometricProjection
+            ):
+                self.projection = IsometricProjection()
+                cabinet_control_layout.visible = False
+                singlepoint_control_layout.visible = False
+                isometric_control_layout.visible = True
+                parent.trigger_update()
+
+        projection_type_select.on_change("value", update_projection_type)
+
+        # Reset button:
+        reset_button = bokeh.models.Button(label="Reset", button_type="success")
+
+        def reset_button_action(attr):
+            self.plane_offset_step_size = 5.0
+            if isinstance(self.projection, CabinetProjection):
+                self.projection = CabinetProjection()
+            elif isinstance(self.projection, SinglePointProjection):
+                self.projection = SinglePointProjection()
+            elif isinstance(self.projection, IsometricProjection):
+                self.projection = IsometricProjection()
+            parent.trigger_update()
+
+        reset_button.on_click(reset_button_action)
+
+        layout = row(
+            column(
+                projection_type_div,
+                projection_type_select,
+                width=250,
+                # margin=(0, 10),
+            ),
+            cabinet_control_layout,
+            singlepoint_control_layout,
+            reset_button,
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
+
+        return layout
+
+    # Layout for specifying layout_type, width, and height:
+    def make_layout_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        layout_type_select = bokeh.models.Select(
+            title="Layout Type",
+            value=self.layout_type,
+            options=["multiview", "singleview"],
+            stylesheets=[styles.dark_bk_input_style],
+            width=200,
+        )
+
+        singleview_div = bokeh.models.Div(text="""<b>Single View:</b>""")
+
+        singleview_width_spinner = bokeh.models.Spinner(
+            title="Figure width",
+            value=self.singleview_figure_params["width"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        singleview_height_spinner = bokeh.models.Spinner(
+            title="Figure height",
+            value=self.singleview_figure_params["height"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        multivew_div = bokeh.models.Div(text="""<b>Multi View:</b>""")
+
+        multiview_width_spinner = bokeh.models.Spinner(
+            title="Figure width",
+            value=self.multiview_figure_params["width"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        multiview_height_spinner = bokeh.models.Spinner(
+            title="Figure height",
+            value=self.multiview_figure_params["height"],
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            **dict(width=80, low=100, high=2000, step=50),
+        )
+
+        # Callbacks
+        def update_layout_type(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.layout_type = new
+            self._update_disabled = False
+            parent.projection_view.update_layout_type()
+            parent.trigger_update()
+            parent.projection_view.update_layout()
+
+        layout_type_select.on_change("value", update_layout_type)
+
+        def update_singleview_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.singleview_figure_params["width"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        singleview_width_spinner.on_change("value", update_singleview_width)
+
+        def update_singleview_height(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.singleview_figure_params["height"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        singleview_height_spinner.on_change("value", update_singleview_height)
+
+        def update_multiview_width(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.multiview_figure_params["width"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        multiview_width_spinner.on_change("value", update_multiview_width)
+
+        def update_multiview_height(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.multiview_figure_params["height"] = new
+            self._update_disabled = False
+            parent.projection_view.update_layout()
+            parent.trigger_update()
+
+        multiview_height_spinner.on_change("value", update_multiview_height)
+
+        self._widgets["layout"] = dict()
+        self._widgets["layout"]["layout_type_select"] = layout_type_select
+        self._widgets["layout"]["multiview_width_spinner"] = multiview_width_spinner
+        self._widgets["layout"]["multiview_height_spinner"] = multiview_height_spinner
+        self._widgets["layout"]["singleview_width_spinner"] = singleview_width_spinner
+        self._widgets["layout"]["singleview_height_spinner"] = singleview_height_spinner
+
+        layout = column(
+            row(
+                column(
+                    layout_type_select,
+                    width=240,
+                    # margin=(0, 10),
+                ),
+                column(
+                    multivew_div,
+                    multiview_height_spinner,
+                    multiview_width_spinner,
+                    width=150,
+                    # margin=(0, 10),
+                ),
+                column(
+                    singleview_div,
+                    singleview_height_spinner,
+                    singleview_width_spinner,
+                    width=150,
+                    # margin=(0, 10),
+                ),
+            ),
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
+
+        self._widgets["layout"] = dict()
+        self._widgets["layout"]["layout_type_select"] = layout_type_select
+        self._widgets["layout"]["multiview_width_spinner"] = multiview_width_spinner
+        self._widgets["layout"]["multiview_height_spinner"] = multiview_height_spinner
+        self._widgets["layout"]["singleview_width_spinner"] = singleview_width_spinner
+        self._widgets["layout"]["singleview_height_spinner"] = singleview_height_spinner
+
+        return layout
+
+    def make_misc_control_layout(
+        self,
+        styles=None,
+        parent=None,
+    ):
+        # Set grid lines visibility
+        grid_lines_switch = bokeh.models.Switch(
+            label="Show Grid Lines",
+            active=self.misc_show_grid_lines,
+        )
+
+        # Make axes, labels, title, background, etc. transparent
+        transparency_mode_switch = bokeh.models.Switch(
+            label="Transparency mode",
+            active=self.misc_transparency_mode,
+        )
+
+        def grid_lines_switch_action(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.misc_show_grid_lines = new
+            parent.projection_view.set_grid_visibility(new)
+            self._update_disabled = False
+
+        grid_lines_switch.on_change("active", grid_lines_switch_action)
+
+        def transparency_mode_switch_action(attr, old, new):
+            if self._update_disabled:
+                return
+
+            self._update_disabled = True
+            self.misc_transparency_mode = new
+            parent.projection_view.set_transparency_mode(new)
+            self._update_disabled = False
+
+        transparency_mode_switch.on_change("active", transparency_mode_switch_action)
+
+        self._widgets["misc"] = dict()
+        self._widgets["misc"]["grid_lines_switch"] = grid_lines_switch
+        self._widgets["misc"]["transparency_mode_switch"] = transparency_mode_switch
+
+        layout = column(
+            grid_lines_switch,
+            transparency_mode_switch,
+            width=200,
+            # margin=(0, 10),
+            stylesheets=[
+                styles.darkstyle,
+                styles.typekit_stylesheet,
+            ],
+        )
+
+        return layout
+
+    def make_state_control_layout(
+        self,
+        views_dir: pathlib.Path,
+        styles=None,
+        parent=None,
+    ):
+        """
+        Create a layout for managing saved view states.
+
+        Parameters
+        ----------
+        views_dir : pathlib.Path
+            Directory where view states are saved.
+        styles : DashboardStyles, optional
+            Provides styling for the layout.
+        parent : typing.Any, optional
+            The parent Dashboard object.
+
+        Returns
+        -------
+        layout : bokeh.layouts.column
+            A Bokeh layout for managing saved view states.
+        """
+
+        # Save default state if not already present:
+        views_dir.mkdir(parents=True, exist_ok=True)
+        default_state_path = views_dir / "default.json"
+        if not default_state_path.exists():
+            with open(default_state_path, "w") as f:
+                f.write(xtal.pretty_json(self.get_state()))
+
+        # Dropdown to select saved states
+        options = [str(f.stem) for f in views_dir.glob("*.json")]
+        options += ["(current)"]
+        saved_states_select = bokeh.models.Select(
+            title="Load a saved state",
+            options=options,
+            value="(current)",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Input box to name the current state
+        state_name_input = bokeh.models.TextInput(
+            title="Save current state as",
+            placeholder="Enter a name for the current state",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Save button
+        save_button = bokeh.models.Button(
+            label="Save",
+            button_type="success",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Input box to name a state to delete
+        delete_state_name_input = bokeh.models.TextInput(
+            title="State to delete",
+            placeholder="Enter the name of a state to delete",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+            width=300,
+        )
+
+        # Delete button
+        delete_button = bokeh.models.Button(
+            label="Delete",
+            button_type="danger",
+            stylesheets=[styles.dark_bk_input_style] if styles else [],
+        )
+
+        # Message div
+        message_div = bokeh.models.Div(
+            text="", width=600, stylesheets=[styles.darkstyle] if styles else []
+        )
+
+        # Callbacks
+        def save_state():
+            if self._update_disabled:
+                return
+
+            name = state_name_input.value.strip()
+
+            if not name:
+                message_div.text = (
+                    "<b style='color: red;'>Please enter a valid name.</b>"
+                )
+                return
+
+            self._update_disabled = True
+            views_dir.mkdir(parents=True, exist_ok=True)
+            name = state_name_input.value.strip()
+            state_path = views_dir / f"{name}.json"
+            with open(state_path, "w") as f:
+                f.write(xtal.pretty_json(self.get_state()))
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
+            saved_states_select.options = options
+            saved_states_select.value = "(current)"
+
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{name}' saved.</b>"
+
+            self._update_disabled = False
+
+        def delete_state():
+            if self._update_disabled:
+                return
+
+            name = delete_state_name_input.value.strip()
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
+
+            if name not in options:
+                message_div.text = (
+                    "<b style='color: red;'>"
+                    "Please enter a valid state name to delete."
+                    "</b>"
+                )
+                return
+
+            self._update_disabled = True
+            state_path = views_dir / f"{name}.json"
+            if state_path.exists():
+                state_path.unlink()
+
+            options = [str(f.stem) for f in views_dir.glob("*.json")]
+            options += ["(current)"]
+
+            saved_states_select.options = [
+                str(f.stem) for f in views_dir.glob("*.json")
+            ]
+            saved_states_select.value = "(current)"
+
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{name}' deleted.</b>"
+
+            self._update_disabled = False
+
+        def load_state(attr, old, new):
+            if self._update_disabled:
+                return
+            if not new:
+                return
+            state_path = views_dir / f"{new}.json"
+            if not state_path.exists():
+                return
+            self._update_disabled = True
+            with open(state_path, "r") as f:
+                self.set_state(json.load(f))
+
+            saved_states_select.value = "(current)"
+            state_name_input.value = ""
+            delete_state_name_input.value = ""
+            message_div.text = f"<b>State '{new}' loaded.</b>"
+
+            self._update_disabled = False
+
+        # Attach callbacks
+        save_button.on_click(save_state)
+        delete_button.on_click(delete_state)
+        saved_states_select.on_change("value", load_state)
+
+        # Layout
+        layout = column(
+            saved_states_select,
+            state_name_input,
+            save_button,
+            delete_state_name_input,
+            delete_button,
+            message_div,
+            stylesheets=(
+                [styles.darkstyle, styles.typekit_stylesheet] if styles else []
+            ),
+            width=350,
+        )
         return layout
 
     def make_controls_tabs_layout(
@@ -1125,7 +2575,7 @@ class ViewControl:
         select_control_layout: typing.Optional[typing.Any],
         styles: DashboardStyles,
         parent: typing.Any,
-        view_cabinet: ViewAtomicStructure,
+        views_dir: typing.Optional[pathlib.Path] = None,
     ):
         """
 
@@ -1137,14 +2587,20 @@ class ViewControl:
             Provides styling
         parent: typing.Any
             The parent Dashboard
-        view_cabinet: ViewAtomicStructure
-            The cabinet view.
+        views_dir : typing.Optional[pathlib.Path] = None
+            Directory where view states are saved. If provided, a "State" tab will be
+            added to manage saved view states.
 
         Returns
         -------
         layout: bokeh.models.Tabs
             A Bokeh Tabs layout with view controls
+
+        settings_switch: bokeh.models.Switch
+            A switch to toggle the visibility of the controls layout
         """
+        self.parent = parent
+
         images_control_layout = self.make_images_control_layout(
             styles=styles,
             parent=parent,
@@ -1155,63 +2611,102 @@ class ViewControl:
             parent=parent,
         )
 
-        cabinet_view_control_layout = self.make_cabinet_view_control_layout(
+        styles_control_layout = self.make_styles_layout(
             styles=styles,
             parent=parent,
-            view_cabinet=view_cabinet,
         )
 
-        tabs = []
-        if select_control_layout:
-            tabs.append(
-                bokeh.models.TabPanel(child=select_control_layout, title="Select")
-            )
-        tabs += [
-            bokeh.models.TabPanel(child=images_control_layout, title="Supercell"),
-            bokeh.models.TabPanel(child=markers_control_layout, title="Markers"),
-            bokeh.models.TabPanel(
-                child=cabinet_view_control_layout, title="Cabinet View"
-            ),
-        ]
+        projaxes_control_layout = self.make_projaxes_control_layout(
+            styles=styles,
+            parent=parent,
+        )
 
-        tabs_layout = bokeh.models.Tabs(
-            tabs=tabs,
+        projection_control_layout = self.make_projection_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
+        layout_control_layout = self.make_layout_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
+        misc_control_layout = self.make_misc_control_layout(
+            styles=styles,
+            parent=parent,
+        )
+
+        panels = {}
+        if select_control_layout:
+            panels["Select"] = select_control_layout
+        panels.update(
+            {
+                "Supercell": images_control_layout,
+                "Markers": markers_control_layout,
+                "Styles": styles_control_layout,
+                "Projection Axes": projaxes_control_layout,
+                "Projection Type": projection_control_layout,
+                "Layout": layout_control_layout,
+                "Misc": misc_control_layout,
+            }
+        )
+
+        if views_dir is not None:
+            state_control_layout = self.make_state_control_layout(
+                views_dir=views_dir,
+                styles=styles,
+                parent=parent,
+            )
+            panels["State"] = state_control_layout
+
+        panel_names = list(panels.keys())
+
+        tab_select = bokeh.models.Select(
+            title="Settings type",
+            options=panel_names,
+            value=panel_names[0],
+            stylesheets=[styles.dark_bk_input_style],
+            width=200,
+        )
+
+        # Set initial visibility: show only the first panel
+        for name, layout in panels.items():
+            layout.visible = name == panel_names[0]
+
+        def switch_panel(attr, old, new):
+            for name, layout in panels.items():
+                layout.visible = name == new
+
+        tab_select.on_change("value", switch_panel)
+
+        controls_area = column(
+            tab_select,
+            *panels.values(),
             stylesheets=[
                 styles.darkstyle,
                 styles.typekit_stylesheet,
             ],
+            margin=(0, 20),
         )
-        tabs_layout.visible = False
+        controls_area.visible = False
 
         toggle_button = bokeh.models.Switch(label="Settings", active=False)
 
-        # CustomJS to toggle visibility
         toggle_button.js_on_change(
             "active",
             bokeh.models.CustomJS(
-                args=dict(tabs_layout=tabs_layout),
+                args=dict(controls_area=controls_area),
                 code="""
-            tabs_layout.visible = cb_obj.active;
+            controls_area.visible = cb_obj.active;
         """,
             ),
         )
 
         control_layout = column(
-            row(
-                toggle_button,
-                height=30,
-            ),
-            tabs_layout,
+            controls_area,
+            margin=(0, 20),  # top/bottom, left/right
         )
 
-        # control_layout = column(
-        #     images_control_layout,
-        #     markers_control_layout,
-        #     cabinet_view_control_layout,
-        #     stylesheets=[
-        #         styles.darkstyle,
-        #         styles.typekit_stylesheet,
-        #     ],
-        # )
+        settings_switch = toggle_button
 
-        return control_layout
+        return control_layout, settings_switch

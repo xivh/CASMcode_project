@@ -33,6 +33,12 @@ class SystemCommand:
     def get(self, id: str):
         """Load system data
 
+        This constructs an :class:`~casm.project.system.SystemData`
+        object for a system with the given id. If there is any existing data in the
+        corresponding system directory it is loaded. See
+        :class:`~casm.project.system.SystemData` for more details.
+
+
         Parameters
         ----------
         id : str

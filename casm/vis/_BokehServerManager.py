@@ -4,12 +4,12 @@ import typing
 from bokeh.server.server import Server
 from tornado.ioloop import IOLoop
 
-import casm.vis
+from ._functions import get_config
 
 _server_manager = None
 
 
-class ServerManager:
+class BokehServerManager:
     """Manage multiple Bokeh applications on a single server."""
 
     def __init__(
@@ -41,7 +41,7 @@ class ServerManager:
         self._server = None
 
         if allow_websocket_origin is None:
-            config = casm.vis.get_config()
+            config = get_config()
             casmvis_server = config["CASMVIS_SERVER"].split("://")[-1]
             api_server = config["CASMVIS_API_SERVER"].split("://")[-1]
             bokeh_server = config["CASMVIS_BOKEH_SERVER"].split("://")[-1]
@@ -86,8 +86,9 @@ class ServerManager:
             If True, open a browser window to the server.
 
         """
-        config = casm.vis.get_config()
+        config = get_config()
         url = config["CASMVIS_BOKEH_SERVER"]
+        secret_key = config["CASMVIS_BOKEH_SN_KEY"]
         port = int(url.split(":")[-1])
 
         self._server = Server(
@@ -96,6 +97,9 @@ class ServerManager:
             io_loop=IOLoop.current(),
             allow_websocket_origin=self.allow_websocket_origin,
             allow_origin=self.allow_origin,
+            session_token_expiration=86400,
+            secret_key=secret_key,
+            sign_sessions=True,
         )
 
         self._server.start()
@@ -123,7 +127,7 @@ def add_application(
     global _server_manager
 
     if _server_manager is None:
-        _server_manager = ServerManager()
+        _server_manager = BokehServerManager()
     _server_manager.add_application(url=url, app=app)
 
 

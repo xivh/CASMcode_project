@@ -32,6 +32,10 @@ class BsetCommand:
     def get(self, id: str):
         """Load basis set data
 
+        This constructs an :class:`~casm.project.bset.BsetData` object for a
+        basis set with the given id. See :class:`~casm.project.bset.BsetData` for more
+        details.
+
         Parameters
         ----------
         id : str

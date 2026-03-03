@@ -1,4 +1,5 @@
 ase
 bokeh
 jupyterlab
+jupyter_bokeh
 scikit-learn

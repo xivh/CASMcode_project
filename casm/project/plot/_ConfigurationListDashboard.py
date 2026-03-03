@@ -35,7 +35,7 @@ class ConfigurationListDashboard:
             The bokeh scatter plot parameters used to draw atoms, with
             atom type name as key.
 
-            Must include "color", "size", and "alpha". Additional bokeh plotting
+            Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
             parameters like "line_color" and "line_width" may also be included. The
             same attributes must be present for all components.
         page_size: int = 100
@@ -93,10 +93,10 @@ class ConfigurationListDashboard:
         """float: The alpha value for the marker alpha"""
 
         self.cabinet_scale = 0.2
-        """float: The scale factor for the cabinet view"""
+        """float: The scale factor for the projection view"""
 
         self.cabinet_angle = math.pi / 6.0
-        """float: The angle for the cabinet view"""
+        """float: The angle for the projection view"""
 
         component_params = copy.deepcopy(self._input_component_params)
         if component_params is None and len(self.configuration_list) != 0:
@@ -109,7 +109,7 @@ class ConfigurationListDashboard:
         """dict[str, dict]: The bokeh scatter plot parameters used to draw atoms, with
         atom type name as key.
 
-        Must include "color", "size", and "alpha". Additional bokeh plotting
+        Must include "color", "radius_pm", and "alpha". Additional bokeh plotting
         parameters like "line_color" and "line_width" may also be included. The
         same attributes must be present for all components.
         """

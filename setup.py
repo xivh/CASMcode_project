@@ -1,4 +1,4 @@
-__version__ = "2.0a1"
+__version__ = "2.0a2"
 
 # Available at setup time due to pyproject.toml
 from setuptools import setup
@@ -17,7 +17,9 @@ setup(
         "casm.project.structure_import",
         "casm.project.sym",
         "casm.project.system",
+        "casm.project.vis",
         "casm.vis",
+        "casm.vis.client",
     ],
     install_requires=[],
 )

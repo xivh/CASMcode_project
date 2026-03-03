@@ -7,13 +7,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casm-project"
-version = "2.0a1"
+version = "2.0a2"
 authors = [
   { name="CASM developers", email="casm-developers@lists.engr.ucsb.edu" },
 ]
 description = "CASM project interface"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10,<3.15"
 license = {text = "LGPL2.1+"}
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -24,17 +24,20 @@ classifiers = [
 dependencies = [
     "bokeh",
     "darkdetect",
-    "flask",
-    "flask_cors",
-    "gunicorn",
+    "fastapi",
+    "uvicorn",
     "latex2mathml",
     "numpy",
     "scipy",
-    "libcasm-mapping>=2.3.0",
-    "libcasm-clexmonte>=2.2.0",
-    "casm-bset>=2.1.0",
-    "casm-tools>=2.0a2",
+    "libcasm-mapping>=2.4.1",
+    "libcasm-clexmonte>=2.4.0",
+    "casm-bset>=2.2.0",
+    "casm-tools>=2.0a3",
 ]
+
+
+[project.optional-dependencies]
+ase = ["ase"]
 
 [project.urls]
 Homepage = "https://prisms-center.github.io/CASMcode_docs/"

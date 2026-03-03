@@ -1,10 +1,10 @@
 import copy
 import json
-import math
 import pathlib
 import time
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
+import bokeh.colors.named
 import bokeh.document  # Document
 import bokeh.models  # ColumnDataSource, Slider
 import bokeh.plotting
@@ -15,9 +15,9 @@ import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
 from ._view import (
-    apply_cabinet,
     make_cartesian_view_basis,
     make_lattice_cell_data,
+    make_projection_from_dict,
 )
 
 default_component_params_path = (
@@ -53,6 +53,24 @@ Va_default_color = "#dcdcdc"
 Va_default_line_width = 1.0
 
 
+def _color_to_rgb(color: str) -> tuple:
+    """Convert a color string to an (r, g, b) tuple with values in [0, 1].
+
+    Supports hex colors (#RGB, #RRGGBB) and CSS named colors (via bokeh).
+    """
+    c = bokeh.colors.named.NamedColor.from_string(color)
+    return (c.r / 255.0, c.g / 255.0, c.b / 255.0)
+
+
+def _rgb_to_hex(rgb) -> str:
+    """Convert an (r, g, b) sequence with values in [0, 1] to a hex color string."""
+    return "#{:02x}{:02x}{:02x}".format(
+        int(round(rgb[0] * 255)),
+        int(round(rgb[1] * 255)),
+        int(round(rgb[2] * 255)),
+    )
+
+
 def make_generic_component_params(chemical_names: list[str]):
     if len(chemical_names) > 7:
         raise ValueError(
@@ -73,7 +91,8 @@ def make_generic_component_params(chemical_names: list[str]):
             line_dash = "solid"
         component_params[chemical_name] = dict(
             color=color,
-            size=10,
+            # size=10,
+            radius_pm=175.0,
             alpha=0.8,
             line_color="black",
             line_width=line_width,
@@ -120,11 +139,6 @@ def make_component_params(
                 chemical_names=_chemical_names
             )
 
-    # # Normalize "size" so the mean is 30.0:
-    sizes = np.array([params["size"] for params in component_params.values()])
-    size_min = np.min(sizes)
-    for params in component_params.values():
-        params["size"] = 30.0 * params["size"] / size_min
     return component_params
 
 
@@ -163,6 +177,68 @@ def make_prim_component_params(
     )
 
 
+def adjust_color(color: str, factor: float = -0.3):
+    """Make a color a bit darker or lighter.
+
+    Parameters
+    ----------
+    color: str
+        The color to adjust. Supports hex colors (#RGB, #RRGGBB) and CSS named
+        colors.
+    factor: float
+        The factor to shift the RGB values by. Must be between -1 and 1.
+
+    Returns
+    -------
+    adjusted_color: str
+        The adjusted color as a hex string.
+
+    """
+    rgb = np.array(_color_to_rgb(color))
+    tol = 0.001
+    for i in range(3):
+        if factor < 0 - tol:
+            rgb[i] = rgb[i] * (1.0 + factor)
+        elif factor > 0 + tol:
+            rgb[i] = rgb[i] + (1.0 - rgb[i]) * factor
+    adjusted_rgb = np.clip(rgb, 0, 1)
+    return _rgb_to_hex(adjusted_rgb)
+
+
+def make_highlight_params(
+    component_params: dict,
+    highlight_color: str = "cyan",
+    highlight_width: float = 2.0,
+):
+    highlight_params = dict(component_params)
+
+    for name, params in highlight_params.items():
+        params["line_alpha"] = 1.0
+
+    for name, params in component_params.items():
+
+        new_params = dict(params)
+
+        new_params["color"] = adjust_color(params["color"], factor=-0.3)
+        new_params["line_color"] = highlight_color
+        new_params["line_width"] = highlight_width
+        new_params["line_alpha"] = 1.0
+        highlight_params[name + "_sel"] = new_params
+    return highlight_params
+
+
+def update_highlight_params(
+    component_params: dict,
+    highlight_color: str,
+    highlight_width: float = 2.0,
+):
+    for name, params in component_params.items():
+        if name.endswith("_sel"):
+            params["line_color"] = highlight_color
+            params["line_width"] = highlight_width
+            params["line_alpha"] = 1.0
+
+
 class ViewAtomicStructureParams:
     def __init__(
         self,
@@ -172,8 +248,7 @@ class ViewAtomicStructureParams:
         images_m_range: int = 1,
         marker_size_scale: float = 1.0,
         marker_alpha_scale: float = 1.0,
-        cabinet_scale: float = 0.2,
-        cabinet_angle: float = math.pi / 6.0,
+        projection: Any = None,
         component_params: Optional[dict] = None,
     ):
         self.images_a_range = images_a_range
@@ -182,12 +257,11 @@ class ViewAtomicStructureParams:
         self.images_m_range = images_m_range
         self.marker_size_scale = marker_size_scale
         self.marker_alpha_scale = marker_alpha_scale
-        self.cabinet_scale = cabinet_scale
-        self.cabinet_angle = cabinet_angle
+        self.projection = projection
         if component_params is None:
             # Get first record in configuration set:
             record = next(iter(self.configuration_set))
-            component_params = self._make_component_params(
+            component_params = make_prim_component_params(
                 prim=record.configuration.supercell.prim
             )
         self.component_params = component_params
@@ -201,8 +275,7 @@ class ViewAtomicStructureParams:
             "images_m_range": self.images_m_range,
             "marker_size_scale": self.marker_size_scale,
             "marker_alpha_scale": self.marker_alpha_scale,
-            "cabinet_scale": self.cabinet_scale,
-            "cabinet_angle": self.cabinet_angle,
+            "projection": self.projection.to_dict(),
             "component_params": self.component_params,
         }
 
@@ -216,8 +289,7 @@ class ViewAtomicStructureParams:
             images_m_range=data["images_m_range"],
             marker_size_scale=data["marker_size_scale"],
             marker_alpha_scale=data["marker_alpha_scale"],
-            cabinet_scale=data["cabinet_scale"],
-            cabinet_angle=data["cabinet_angle"],
+            projection=make_projection_from_dict(data["projection"]),
             component_params=data["component_params"],
         )
 
@@ -228,12 +300,14 @@ class ViewAtomicStructure:
     def __init__(
         self,
         doc: bokeh.document.Document,
+        lattice_segment_params: dict,
         component_params: dict[str, dict],
         v1: Optional[np.ndarray] = None,
         v2: Optional[np.ndarray] = None,
-        cabinet: Optional[tuple[float, float]] = None,
+        projection: Any = None,
         marker_size_scale: float = 1.0,
         marker_alpha_scale: float = 1.0,
+        figure_params: Optional[dict] = None,
     ):
         """
         .. rubric:: Constructor
@@ -242,6 +316,17 @@ class ViewAtomicStructure:
         ----------
         doc : bokeh.document.Document
             The Bokeh document
+        lattice_segment_params : dict
+            A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` when
+            creating the lattice cell segments. Example:
+
+            .. code-block:: python
+
+                lattice_segment_params = dict(
+                    color="green",
+                    line_width=2,
+                )
+
         component_params : dict[str, dict]
             A dict of component name to scatter plot keyword arguments. Every dict
             must have the same keys.
@@ -271,15 +356,16 @@ class ViewAtomicStructure:
         v2: np.ndarray = [0.0, 0.0, 1.0]
             A shape `(3,)` array giving the Cartesian vector that should lie along
             the vertical axis.
-        cabinet: Optional[tuple[float, float]] = None
-            A tuple, :math:`(f, \theta)`, where :math:`f` is a factor indicating
-            fraction of "real" length displayed for vectors perpendicular to the
-            viewing plane, and :math:`\theta` is the angle the vectors are displayed
-            at. A typical value is ``(0.2, math.pi/6.0)``.
+        projection: Any = None
+            A projection object that defines how to project 3D coordinates to 2D.
+            Default is None.
         marker_size_scale: float = 1.0
             A scale factor to apply to the marker sizes.
         marker_alpha_scale: float = 1.0
             A scale factor to apply to the marker alpha values.
+        figure_params: dict = None
+            A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` when
+            creating the figure. If None, default parameters are used.
 
         """
         self.system = None
@@ -288,6 +374,19 @@ class ViewAtomicStructure:
         self.doc = doc
         """bokeh.document.Document: The Bokeh document, used to add callbacks that
         update the figure."""
+
+        self.lattice_segment_params = lattice_segment_params
+        """dict: A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` 
+        when creating the lattice cell segments. Example:
+        
+        .. code-block:: python
+        
+            lattice_segment_params = dict(
+                color="green",
+                line_width=2,
+            )
+        
+        """
 
         self.component_params = component_params
         """dict[str, dict]: A dict of component name to scatter plot keyword arguments.
@@ -313,23 +412,11 @@ class ViewAtomicStructure:
 
         """
 
-        # make component_params_keys
-        component_params_keys = None
-        if component_params is not None:
-            for _params in component_params.values():
-                keys = sorted(list(_params.keys()))
-                if component_params_keys is None:
-                    component_params_keys = keys
-                elif keys != component_params_keys:
-                    raise ValueError(
-                        "Error in ViewConfiguration2d: "
-                        "component_params must have the same keys for all components"
-                    )
-        self.component_params_keys = component_params_keys
-        """list[str]: The keys of the component_params dict, sorted alphabetically."""
-
         self.marker_size_scale = marker_size_scale
         """float: A scale factor to apply to the marker sizes."""
+
+        self.marker_alpha_scale = marker_alpha_scale
+        """float: A scale factor to apply to the marker alpha values."""
 
         self.v1 = v1
         """np.ndarray: A shape `(3,)` array giving the Cartesian vector that should lie
@@ -339,14 +426,22 @@ class ViewAtomicStructure:
         """np.ndarray: A shape `(3,)` array giving the Cartesian vector that should lie
         along the vertical axis."""
 
-        self.cabinet = cabinet
-        """Optional[tuple[float, float]]: Optional "cabinet" perspective parameters.
-        
-        A tuple, :math:`(f, \theta)`, where :math:`f` is a factor indicating fraction
-        of "real" length displayed for vectors perpendicular to the viewing plane, and
-        :math:`\theta` is the angle the vectors are displayed at. A typical value is
-        ``(0.2, math.pi/6.0)``.
-        """
+        self.projection = projection
+        """Any: A projection object that defines how to project 3D coordinates to 2D.
+        Default uses :class:`~libcasm.project.plot.SinglePointProjection`."""
+
+        if figure_params is None:
+            figure_params = dict(
+                width=600,
+                height=400,
+                match_aspect=True,
+            )
+        if "title" in figure_params:
+            del figure_params["title"]
+
+        self.figure_params = figure_params
+        """dict: A dict of keyword arguments to pass to :func:`bokeh.plotting.figure` 
+        when creating the figure. If None, default parameters are used."""
 
         self.view_basis = make_cartesian_view_basis(v1=v1, v2=v2)
         """np.ndarray: The inverse of the view basis, :math:`B`, a shape `(3, 3)` array 
@@ -468,7 +563,9 @@ class ViewAtomicStructure:
         title: str,
         new_marker_size_scale: Optional[float] = None,
         new_marker_alpha_scale: Optional[float] = None,
-        new_cabinet: Optional[tuple[float, float]] = None,
+        new_projection: Any = None,
+        new_lattice_segment_params: Optional[dict] = None,
+        new_component_params: Optional[dict] = None,
     ):
         self.structure = structure.copy()
         self.title = title
@@ -477,8 +574,27 @@ class ViewAtomicStructure:
             self.marker_size_scale = new_marker_size_scale
         if new_marker_alpha_scale is not None:
             self.marker_alpha_scale = new_marker_alpha_scale
-        if new_cabinet is not None:
-            self.cabinet = new_cabinet
+        if new_projection is not None:
+            self.projection = new_projection
+        if new_lattice_segment_params is not None:
+            self.lattice_segment_params = new_lattice_segment_params
+        if new_component_params is not None:
+            self.component_params = new_component_params
+
+        # make component_params_keys
+        component_params_keys = None
+        if self.component_params is not None:
+            for _params in self.component_params.values():
+                keys = sorted(list(_params.keys()))
+                if component_params_keys is None:
+                    component_params_keys = keys
+                elif keys != component_params_keys:
+                    raise ValueError(
+                        "Error in ViewConfiguration2d: "
+                        "component_params must have the same keys for all components"
+                    )
+        self.component_params_keys = component_params_keys
+        """list[str]: The keys of the component_params dict, sorted alphabetically."""
 
         # Create initial data:
         data = dict()
@@ -491,7 +607,8 @@ class ViewAtomicStructure:
 
         # Add projected coordinates
         coordinate_view = self.view_basis_inv @ coordinate_cart
-        apply_cabinet(self.cabinet, coordinate_view)
+        if self.projection is not None:
+            self.projection.apply(coordinate_view)
         data["px"] = coordinate_view[0, :]
         data["py"] = coordinate_view[1, :]
         data["pz"] = coordinate_view[2, :]
@@ -499,13 +616,21 @@ class ViewAtomicStructure:
         # Add component properties
         atom_type = self.structure.atom_type()
         for key in self.component_params_keys:
-            data[key] = list()
-            if key == "size":
+            if key == "radius_pm":
+                data["radius"] = list()
                 for name in atom_type:
-                    data[key].append(
-                        self.component_params[name][key] * self.marker_size_scale
+                    data["radius"].append(
+                        self.component_params[name][key]
+                        * self.marker_size_scale
+                        / 100.0
+                        / 2.0
                     )
+                data["radius"] = self.projection.projected_radius(
+                    radius=data["radius"],
+                    values=coordinate_view,
+                )
             elif key == "alpha":
+                data[key] = list()
                 for name in atom_type:
                     alpha = self.component_params[name][key] * self.marker_alpha_scale
                     if alpha < 0.0:
@@ -514,18 +639,27 @@ class ViewAtomicStructure:
                         alpha = 1.0
                     data[key].append(alpha)
             else:
+                data[key] = list()
                 for name in atom_type:
                     data[key].append(self.component_params[name][key])
+
+        # Get indices of `data["pz"]` in sorted order (least to greatest):
+        sorted_indices = np.argsort(data["pz"])
+
+        # Sort all data entries by `data["pz"]`:
+        for key in data.keys():
+            data[key] = np.array(data[key])[sorted_indices].tolist()
 
         # Add lattice vectors
         lattice_cell_data = make_lattice_cell_data(
             lattice=self.structure.lattice(),
             view_basis=self.view_basis,
-            cabinet=self.cabinet,
+            projection=self.projection,
             center=False,
             shift=None,
             hex=False,
             dim=3,
+            **self.lattice_segment_params,
         )
 
         if self.doc is None:
@@ -552,30 +686,31 @@ class ViewAtomicStructure:
         title = "(None)"
         if len(self.figure_source.data) != 0:
             title = self.figure_source.data["title"][0]
-        figure_params = dict(
-            title=title,
-            width=600,
-            height=400,
-            match_aspect=True,
-        )
-        p = bokeh.plotting.figure(**figure_params)
+        p = bokeh.plotting.figure(title=title, **self.figure_params)
 
         if len(self.lattice_cell_source.data) != 0:
-            scatter_kwargs = {x: x for x in self.component_params_keys}
             p.segment(
                 x0="px0",
                 y0="py0",
                 x1="px1",
                 y1="py1",
                 source=self.lattice_cell_source,
-                color="green",
-                line_width=2,
+                line_color="line_color",
+                line_width="line_width",
+                line_dash="line_dash",
             )
 
         if len(self.source.data) != 0:
-            p.scatter(
+            scatter_kwargs = {x: x for x in self.component_params_keys}
+            if "size" in scatter_kwargs:
+                del scatter_kwargs["size"]
+            if "radius_pm" in scatter_kwargs:
+                del scatter_kwargs["radius_pm"]
+
+            p.circle(
                 "px",
                 "py",
+                "radius",
                 source=self.source,
                 **scatter_kwargs,
             )

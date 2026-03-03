@@ -144,6 +144,7 @@ class Project:
         self._structure_import = None
         self._fit = None
         self._system = None
+        self._vis = None
 
     def make_chemical_comp_calculator(self):
         """Make a chemical composition calculator using the current axes.
@@ -193,32 +194,28 @@ class Project:
         )
 
         if self.settings.name != prev_settings.name:
-            print(
-                f"""!!! Warning: Project name has changed !!!
+            print(f"""!!! Warning: Project name has changed !!!
             
 Project name changed from '{prev_settings.name}' to '{self.settings.name}'. 
 
 You will need to:
 1) Construct a new Project object for this project
 2) Update all bset built with the previous project name 
-   using project.bset.update(...)."""
-            )
+   using project.bset.update(...).""")
 
         if not np.allclose(
             self.settings.nlist_weight_matrix, prev_settings.nlist_weight_matrix
         ) or not (
             self.settings.nlist_sublat_indices == prev_settings.nlist_sublat_indices
         ):
-            print(
-                """!!! Warning: Project neighbor list has changed !!!
+            print("""!!! Warning: Project neighbor list has changed !!!
 
 The neighbor list weight matrix has changed.
 
 You will need to:
 1) Construct a new Project object for this project
 2) Update all bset built with the previous project name 
-   using project.bset.update(...)."""
-            )
+   using project.bset.update(...).""")
 
     @property
     def global_dof_types(self):
@@ -308,6 +305,15 @@ You will need to:
         if self._system is None:
             self._system = SystemCommand(proj=self)
         return self._system
+
+    @property
+    def vis(self):
+        """casm.project.vis.VisCommand: Visualize CASM project data."""
+        from casm.project.vis import VisCommand
+
+        if self._vis is None:
+            self._vis = VisCommand(proj=self)
+        return self._vis
 
     @staticmethod
     def init(

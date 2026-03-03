@@ -7,7 +7,13 @@ default_config = {
     "CASMVIS_SERVER": "http://localhost:3000",
     "CASMVIS_BOKEH_SERVER": "http://localhost:3002",
     "CASMVIS_API_SERVER": "http://localhost:3001",
+    "CASMVIS_BOKEH_SN_KEY": "TYBXCv67QzxvITExnD8LIaN2vjk9I2TTE7VqS6ZwUJDh",
 }
+
+
+def get_root():
+    """Get the casm-vis root directory."""
+    return root
 
 
 def get_config():
@@ -35,6 +41,29 @@ def get_config():
         return default_config
 
     return read_required(path=config_file)
+
+
+def get_user_views_dir():
+    """Get the directory to save user view files.
+
+    Projects have their own views directory for saving view files, but this is a more
+    general directory for saving view files that are not project-specific, such as
+    views of structures that are not associated with a project.
+
+    Returns
+    -------
+    views_dir: pathlib.Path
+        The directory to save user view files. This directory is created if it does
+        not already exist. Location is ~/.casmvis/views by default.
+    """
+    views_dir = root / "views"
+    views_dir.mkdir(parents=True, exist_ok=True)
+    return views_dir
+
+
+def get_pid_file():
+    """Get the casm-vis PID file."""
+    return root / "casmvis.pid"
 
 
 def get_required_argument(doc, name):

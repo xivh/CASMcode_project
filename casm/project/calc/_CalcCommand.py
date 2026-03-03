@@ -31,6 +31,10 @@ class CalcCommand:
     def get(self, id: str):
         """Load calculation settings data
 
+        This constructs an :class:`~casm.project.calc.CalcData` object for calculation
+        settings with the given id. See :class:`~casm.project.calc.CalcData` for more
+        details.
+
         Parameters
         ----------
         id : str

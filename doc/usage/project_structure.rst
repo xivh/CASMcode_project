@@ -1,15 +1,16 @@
 
+.. toctree::
+    :maxdepth: 2
+    :hidden:
+
 .. _project-structure-v2:
 .. _project-structure-latest:
 
-CASM Project Structure (v2 / latest)
-====================================
+CASM project structure
+======================
 
 The CASM project structure standardizes the location of various files used by CASM.
 
-For the project structure in previous versions, see:
-
-- :ref:`CASM Project Structure (v1) <project-structure-v1>`
 
 Path variable convention
 ------------------------
@@ -21,12 +22,12 @@ Path variables include:
 - *<project>*: The root CASM project directory
 - *<configname>*: The name of a configuration.
 - *<title>*: The CASM project title, as given in the *prim.json* file used to initialize it.
-- *<dof_key>*: The name of a type of degrees of freedom (DoF), as listed in *prim.json*.
 - *<enum>*: Enumeration directory, ex: *<enum> = 'enum.main'*.
+- *<event>*: Event directory, ex: *<event> = 'event.1'*.
 - *<bset>*: Basis set directory, ex: *<bset> = 'bset.chebychev'*.
 - *<calctype>*: Calculation settings directory, Ex: *<calctype> = 'calctype.vasp_gga'*.
 - *<ref>*: Reference states directory, ex: *<ref> = 'ref.1'*.
-- *<eci>*: Fitting coefficients (effective cluster interactions) directory, ex: *<eci> = 'eci.1'*.
+- *<fit>*: Fitting coefficients (effective cluster interactions) directory, ex: *<fit> = 'fit.formation_energy_1'*.
 
 
 CASM project directories

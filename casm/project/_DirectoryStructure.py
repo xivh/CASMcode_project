@@ -492,6 +492,7 @@ class DirectoryStructure:
         self.__fit_dir = "fits"
         self.__sym_dir = "symmetry"
         self.__system_dir = "systems"
+        self.__plot_settings_dir = "plot_settings"
 
     # ** Query filesystem **
 
@@ -546,6 +547,9 @@ class DirectoryStructure:
 
     def all_system(self):
         return self.__all_settings("system", self.__system_dir)
+
+    def all_plottype(self):
+        return self.__all_settings("plottype", self.__plot_settings_dir)
 
     # ** File and Directory paths **
 
@@ -1049,6 +1053,12 @@ class DirectoryStructure:
                 / "system.json"
             )
 
+    # -- Plots --------
+
+    def views_dir(self):
+        """Return path to directory for saving casm-vis view states."""
+        return self.path / self.__plot_settings_dir / "views"
+
     # private:
 
     def __enum(self, enum: str):
@@ -1071,6 +1081,9 @@ class DirectoryStructure:
 
     def __system(self, system: str):
         return "system." + system
+
+    def __plottype(self, plottype: str):
+        return "plottype." + plottype
 
     def __all_settings(self, pattern: str, location: pathlib.Path):
         """

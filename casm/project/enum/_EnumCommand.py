@@ -57,6 +57,11 @@ class EnumCommand:
     def get(self, id: str):
         """Load enumeration data
 
+        This constructs an :class:`~casm.project.enum.EnumData` object for an
+        enumeration with the given id. If there is any existing data in the
+        corresponding enumeration directory it is loaded. See
+        :class:`~casm.project.enum.EnumData` for more details.
+
         Parameters
         ----------
         id : str

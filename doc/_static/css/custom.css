@@ -41,6 +41,11 @@
   --pst-color-danger-bg: #d72d47;
 }
 
+div.tag_scroll div.output.stream {
+  max-height: 20em; /* You can adjust this value as needed */
+  overflow-y: auto;
+  overflow-x: auto;
+}
 
 
 /*!* Fix breadcrumb overlap https://github.com/holoviz/panel/issues/5199 *!*/

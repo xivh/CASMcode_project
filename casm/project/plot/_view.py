@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -232,6 +232,232 @@ def make_cartesian_view_basis(
     return np.array([b1, b2, b3]).transpose()
 
 
+class CabinetProjection:
+    """A cabinet perspective projection."""
+
+    def __init__(self, scale: float = 0.2, angle: float = math.pi / 6.0):
+        """
+        .. rubric:: Constructor
+
+        Parameters
+        ----------
+        scale: float = 0.2
+            A factor indicating fraction of "real" length displayed for vectors
+            perpendicular to the viewing plane. A typical value is 0.2.
+        angle: float = math.pi / 6.0
+            The angle the vectors are displayed at. A typical value is pi/6.
+        """
+
+        self.scale = scale
+        """float: A factor indicating fraction of "real" length displayed for vectors
+        perpendicular to the viewing plane."""
+
+        self.angle = angle
+        """float: The angle the vectors are displayed at."""
+
+        self.label = "Cabinet"
+        """str: A label for the projection type."""
+
+    def apply(self, values):
+        """Apply the cabinet perspective projection to values.
+
+        Parameters
+        ----------
+        values: np.array[np.float[3,n]]
+            A shape ``(3, n)`` array of values to apply the cabinet perspective to
+            where the columns are coordinate values in the view basis.
+        """
+        apply_cabinet((self.scale, self.angle), values)
+
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to cabinet projection.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        return np.array(radius)
+
+    def to_dict(self):
+        """Serialize to a dictionary."""
+        return {"type": "cabinet", "scale": self.scale, "angle": self.angle}
+
+    @staticmethod
+    def from_dict(data):
+        """Deserialize from a dictionary."""
+        if data["type"] != "cabinet":
+            raise ValueError(
+                "Error in CabinetProjection.from_dict: Invalid projection type"
+            )
+        return CabinetProjection(scale=data["scale"], angle=data["angle"])
+
+
+class SinglePointProjection:
+    """A single point perspective projection."""
+
+    def __init__(self, viewer_distance: float = 500.0, plane_offset: float = 50.0):
+        """
+        .. rubric:: Constructor
+
+        Parameters
+        ----------
+        viewer_distance: float = 500.0
+            The distance from the viewer to the projection plane, in terms of the
+            3rd coordinate of the view basis.
+        plane_offset: float = 50.0
+            The position of the projection plane from the origin of the view basis,
+            along the 3rd view basis axis.
+        """
+
+        self.viewer_distance = viewer_distance
+        """float: The distance from the viewer to the projection plane, in terms of
+        the 3rd coordinate of the view basis."""
+
+        self.plane_offset = plane_offset
+        """float: The position of the projection plane from the origin of the view 
+        basis, along the 3rd view basis axis."""
+
+        self.label = "Single point"
+        """str: A label for the projection type."""
+
+    def apply(self, values):
+        """Apply the single point perspective projection to values.
+
+        Parameters
+        ----------
+        values: np.array[np.float[3,n]]
+            A shape ``(3, n)`` array of values to apply the single point perspective
+            projection to, where the columns are coordinate values in the view basis.
+        """
+        # Apply perspective projection:
+        # x' = x / (1 + (z_plane - z) / d_viewer)
+        # y' = y / (1 + (z_plane - z) / d_viewer)
+
+        d = self.viewer_distance
+
+        for i in range(values.shape[1]):
+            delta_z = self.plane_offset - values[2, i]
+            values[0, i] /= 1.0 + delta_z / d
+            values[1, i] /= 1.0 + delta_z / d
+
+    # Get change in radius due to perspective (i.e. change in x + delta_x):
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to perspective.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        d = self.viewer_distance
+        projected_radius = np.array(radius)
+        for i in range(values.shape[1]):
+            delta_z = self.plane_offset - values[2, i]
+            projected_radius[i] /= 1.0 + delta_z / d
+        return projected_radius
+
+    def to_dict(self):
+        """Serialize to a dictionary."""
+        return {
+            "type": "single_point",
+            "viewer_distance": self.viewer_distance,
+            "plane_offset": self.plane_offset,
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Deserialize from a dictionary."""
+        if data["type"] != "single_point":
+            raise ValueError(
+                "Error in SinglePointProjection.from_dict: Invalid projection type"
+            )
+        return SinglePointProjection(
+            viewer_distance=data["viewer_distance"],
+            plane_offset=data["plane_offset"],
+        )
+
+
+class IsometricProjection:
+    """An isometric projection."""
+
+    def __init__(self):
+        """
+        .. rubric:: Constructor
+        """
+
+        self.label = "Isometric"
+        """str: A label for the projection type."""
+
+    def apply(self, values):
+        """Apply the isometric projection to values.
+
+        Parameters
+        ----------
+        values: np.array[np.float[3,n]]
+            A shape ``(3, n)`` array of values to apply the isometric projection to,
+            where the columns are coordinate values in the view basis.
+        """
+        # Coordinates are already put into isometric view basis, so nothing to do
+        pass
+
+    def projected_radius(self, radius: np.ndarray, values: np.ndarray) -> np.ndarray:
+        """Get the projected radius due to isometric projection.
+
+        Parameters
+        ----------
+        radius: np.ndarray
+            A shape `(n,)` array of radii to project.
+        values: np.ndarray
+            A shape `(3, n)` array of values in the view basis.
+
+        Returns
+        -------
+        projected_radius: np.ndarray
+            A shape `(n,)` array of projected radii.
+        """
+        return np.array(radius)
+
+    def to_dict(self):
+        """Serialize to a dictionary."""
+        return {"type": "isometric"}
+
+    @staticmethod
+    def from_dict(data):
+        """Deserialize from a dictionary."""
+        if data["type"] != "isometric":
+            raise ValueError(
+                "Error in IsometricProjection.from_dict: Invalid projection type"
+            )
+        return IsometricProjection()
+
+
+def make_projection_from_dict(data):
+    """Deserialize a projection from a dictionary."""
+    if data["type"] == "cabinet":
+        return CabinetProjection.from_dict(data)
+    elif data["type"] == "single_point":
+        return SinglePointProjection.from_dict(data)
+    elif data["type"] == "isometric":
+        return IsometricProjection.from_dict(data)
+    else:
+        raise ValueError("Error in make_projection_from_dict: Invalid projection type")
+
+
 def apply_cabinet(cabinet, values):
     """Apply 'cabinet' perspective to values. This is similar to how most people draw
     3d shapes (like a kitchen cabinet) by hand.
@@ -256,11 +482,14 @@ def apply_cabinet(cabinet, values):
 def make_lattice_cell_data(
     lattice: xtal.Lattice,
     view_basis: np.array,
-    cabinet: Optional[tuple[float, float]] = None,
+    projection: Any = None,
     center: bool = False,
     shift: Optional[np.array] = None,
     hex: bool = False,
     dim: int = 3,
+    color: str = "green",
+    line_width: float = 2.0,
+    line_dash: str = "solid",
 ):
     """Plot the lattice cell.
 
@@ -270,11 +499,8 @@ def make_lattice_cell_data(
         The lattice to plot.
     view_basis: np.array
         The view basis to use for plotting.
-    cabinet: Optional[tuple[float, float]] = None
-        Optional "cabinet" perspective parameters. A tuple, :math:`(f, \theta)`,
-        where :math:`f` is a factor indicating fraction of "real" length displayed
-        for vectors perpendicular to the viewing plane, and :math:`\theta` is the
-        angle the vectors are displayed at. A typical value is ``(0.2, math.pi/6.0)``.
+    projection: Any = None
+        A projection to apply to the view. If None, no projection is applied.
     center: bool = False
         If True, draw lattice so that cell body center is located
         at the origin.
@@ -286,6 +512,12 @@ def make_lattice_cell_data(
     dim: int = 3
         Use dim==3 to draw 3d lattice cells, and dim==2 to draw 2d lattice
         cells.
+    color: str = "green"
+        The color to use for the lattice cell lines.
+    line_width: float = 2.0
+        The line width to use for the lattice cell lines.
+    line_dash: str = "solid"
+        The line dash to use for the lattice cell lines.
     """
     view_basis_inv = np.linalg.pinv(view_basis)
 
@@ -334,9 +566,11 @@ def make_lattice_cell_data(
     end_cart = L @ _end_frac
 
     begin_values = view_basis_inv @ begin_cart
-    apply_cabinet(cabinet, begin_values)
+    if projection is not None:
+        projection.apply(begin_values)
     end_values = view_basis_inv @ end_cart
-    apply_cabinet(cabinet, end_values)
+    if projection is not None:
+        projection.apply(end_values)
 
     # fig.segment(
     #     x0=begin_values[0, :],
@@ -347,9 +581,14 @@ def make_lattice_cell_data(
     #     line_width=2,
     # )
 
+    size = begin_values.shape[1]
+
     return {
         "px0": begin_values[0, :],
         "py0": begin_values[1, :],
         "px1": end_values[0, :],
         "py1": end_values[1, :],
+        "line_color": [color] * size,
+        "line_width": [line_width] * size,
+        "line_dash": [line_dash] * size,
     }
