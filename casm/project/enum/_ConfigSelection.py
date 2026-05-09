@@ -734,7 +734,7 @@ class ConfigSelectionRecord:
         """
         calc_dir = self.calc_dir
         if calc_dir is None:
-            return False
+            return None
 
         structure_file = calc_dir / "structure_with_properties.json"
         if not structure_file.exists():
