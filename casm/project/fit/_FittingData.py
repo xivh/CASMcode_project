@@ -26,7 +26,7 @@ class FittingData:
     attributes except `formation_energies` will be filled
     """
 
-    def __init__(self, proj: "Project", id: str):
+    def __init__(self, proj: "Project", id: str, use_npz: bool = False):
         """
 
         .. rubric:: Constructor
@@ -38,6 +38,10 @@ class FittingData:
         id: str
             The fit identifier. Fitting data is stored in the
             fits directory at `<project>/fits/fit.<id>/`.
+        use_npz: bool, optional
+            If True, prefer loading from fitting_data.npz over
+            fitting_data.json. If False (default), load from fitting_data.json only.
+            Passed to :meth:`load`.
         """
 
         self.proj = proj
@@ -75,7 +79,7 @@ class FittingData:
         configurations, a shape=(n_configs,) array, if given."""
 
         # load data
-        self.load()
+        self.load(use_npz=use_npz)
 
     def from_dict(self, data):
         """Set fitting data attributes from a dictionary.
@@ -96,29 +100,56 @@ class FittingData:
         else:
             self.formation_energies = None
 
-    def load(self):
-        """Read meta.json and fitting_data.json
+    def load(self, use_npz: bool = False):
+        """Read meta.json and fitting_data.npz or fitting_data.json
 
         This will replace the current contents of this FittingData object with
         the contents of the associated files, or set the current contents to None if the
         associated files do not exist.
+
+        Parameters
+        ----------
+        use_npz : bool, optional
+            If True, load from fitting_data.npz if it exists, falling back to
+            fitting_data.json. If False (default), load from fitting_data.json only.
         """
 
         # read meta.json if it exists
         path = self.fit_dir / "meta.json"
         self.meta = read_optional(path, default=dict())
 
-        # read fitting_data.json if it exists
-        path = self.fit_dir / "fitting_data.json"
-        data = read_optional(path, default=None)
-        if data is not None:
-            self.from_dict(data)
+        npz_path = self.fit_dir / "fitting_data.npz"
+        json_path = self.fit_dir / "fitting_data.json"
 
-    def commit(self, verbose: bool = True):
-        """Write meta.json and fitting_data.json
+        if use_npz and npz_path.exists():
+            data = np.load(npz_path, allow_pickle=False)
+            self.names = data["names"]
+            self.parametric_compositions = data["parametric_compositions"]
+            self.mol_compositions = data["mol_compositions"]
+            self.correlations_per_unitcell = data["correlations_per_unitcell"]
+            self.formation_energies = (
+                data["formation_energies"] if "formation_energies" in data else None
+            )
+        else:
+            data = read_optional(json_path, default=None)
+            if data is not None:
+                self.from_dict(data)
+
+    def commit(self, verbose: bool = True, use_npz: bool = False):
+        """Write meta.json and fitting_data.npz or fitting_data.json
 
         If the data does not exist in this object, this will erase the associated
         files if they do exist.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            If True (default), print the path of the file being written.
+        use_npz : bool, optional
+            If True, write fitting data as a compressed numpy binary file
+            (fitting_data.npz). Significantly faster and smaller for large datasets.
+            Any existing fitting_data.json is removed. If False (default), write as
+            fitting_data.json and remove any existing fitting_data.npz.
         """
         quiet = not verbose
         self.fit_dir.mkdir(parents=True, exist_ok=True)
@@ -139,13 +170,33 @@ class FittingData:
         elif path.exists():
             path.unlink()
 
-        # write fitting_data.json
-        path = self.fit_dir / "fitting_data.json"
+        # write fitting data
+        json_path = self.fit_dir / "fitting_data.json"
+        npz_path = self.fit_dir / "fitting_data.npz"
+
         if self.names is not None:
-            data = self.to_dict()
-            safe_dump(data=data, path=path, quiet=quiet, force=True)
-        elif path.exists():
-            path.unlink()
+            if use_npz:
+                arrays = dict(
+                    names=self.names,
+                    parametric_compositions=self.parametric_compositions,
+                    mol_compositions=self.mol_compositions,
+                    correlations_per_unitcell=self.correlations_per_unitcell,
+                )
+                if self.formation_energies is not None:
+                    arrays["formation_energies"] = self.formation_energies
+                np.savez_compressed(npz_path, **arrays)
+                if not quiet:
+                    print(f"write: {npz_path}")
+                if json_path.exists():
+                    json_path.unlink()
+            else:
+                safe_dump(data=self.to_dict(), path=json_path, quiet=quiet, force=True)
+                if npz_path.exists():
+                    npz_path.unlink()
+        else:
+            for path in [json_path, npz_path]:
+                if path.exists():
+                    path.unlink()
 
     def clear(self):
         """Clear fitting data"""
