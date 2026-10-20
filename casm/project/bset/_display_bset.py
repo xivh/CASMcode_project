@@ -383,11 +383,12 @@ def display_functions_v2(
     if options is None:
         options = DisplayBasisOptions()
 
-    # Display multiple functions in one {flalign} environment
+    # Display multiple functions in one {align} environment
+    # KaTeX (e.g. VS Code) does not support {flalign}
     multiple = True
 
     if multiple:
-        s = R"\begin{flalign}" + "\n"
+        s = R"\begin{align}" + "\n"
 
     bfuncs = None
     is_site_functions = False
@@ -465,10 +466,10 @@ def display_functions_v2(
         first = False
 
         if not multiple:
-            display(Latex(R"\begin{flalign}" + s + R"& \end{flalign}"))
+            display(Latex(R"\begin{align}" + s + R"& \end{align}"))
 
     if multiple:
-        s += "\n" + R"\end{flalign}"
+        s += "\n" + R"\end{align}"
         try:
             display(Latex(s))
         except Exception:
